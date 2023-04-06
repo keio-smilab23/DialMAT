@@ -53,7 +53,7 @@ pip install -r requirements.txt
 
 Download [ALFRED dataset](https://github.com/askforalfred/alfred) (**about 2h?**):
 
-**You can get `nas07/06DialFRED-Challenge/data/json_2.1.0` and `nas07/06DialFRED-Challenge/data/json_feat_2.1.0` in `DialFRED-Challenge/data/` instead of the following.**
+**You can get `nas07/06DialFRED-Challenge/data/json_2.1.0`, `nas07/06DialFRED-Challenge/data/json_feat_2.1.0` and store in `DialFRED-Challenge/data/` instead of the following.**
 ```bash
 cd $DATA
 sh download_data.sh json
@@ -69,7 +69,7 @@ mv pretrained $LOGS/
 
 Render images (**about 22h5m**):
 
-**You can get `nas07/06DialFRED-Challenge/data/generated_2.1.0` in `DialFRED-Challenge/data/` instead of the following.**
+**You can get `nas07/06DialFRED-Challenge/data/generated_2.1.0` and store in `DialFRED-Challenge/data/` instead of the following.**
 ```bash
 cd $DF_ROOT
 python -m alfred.gen.render_trajs
@@ -77,7 +77,7 @@ python -m alfred.gen.render_trajs
 
 ## Prepare dataset
 
-**In this section, you can get `nas07/06DialFRED-Challenge/data/lmdb_augmented_human_subgoal` in `DialFRED-Challenge/data/` instead of all the following.**
+**You can get `nas07/06DialFRED-Challenge/data/lmdb_augmented_human_subgoal` and store in `DialFRED-Challenge/data/` instead of all the following in this section.**
 
 We provide the code to augment the Alfred data by merging low level actions into subgoals and spliting one subgoal into multiple ones. We also created new instructions to improve language variety. 
 ```bash
@@ -160,7 +160,6 @@ Given the lmdb dataset, we can pre-train the performer (**about 3h38m**).
 ```bash
 export EXP_NAME=augmented_human
 export SUBGOAL=subgoal
-export EVAL_TYPE=valid_unseen
 
 # train the ET performer
 python -m alfred.model.train with exp.model=transformer exp.name=et_${EXP_NAME}_${SUBGOAL} exp.data.train=lmdb_${EXP_NAME}_${SUBGOAL} train.seed=1 > ./logs/et_${EXP_NAME}_${SUBGOAL}.log 2>&1 &

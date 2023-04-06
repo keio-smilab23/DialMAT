@@ -28,7 +28,7 @@ def cfg_args():
     # where to load the original ALFRED dataset images and jsons from
     data_input = 'generated_2.1.0'
     # whether to overwrite old data in case it exists
-    overwrite = False
+    overwrite = True
     # number of processes to run the data processing in (0 for main thread)
     num_workers = 4
     # debug run with only 16 entries

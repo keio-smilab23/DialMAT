@@ -11,5 +11,7 @@ __pycache__/
 *.pt
 *.pyc
 logs/*/
-!logs/questioner_rl/
+logs/questioner_rl/
 data/lmdb*
+aws/
+.python-version

@@ -1,58 +1,29 @@
-import os
-import numpy as np
-import json
-from alfred.env.thor_env import ThorEnv
-import pickle
-from tqdm import tqdm
-import os
-from itertools import count
-import time
-import math
-import json
-import matplotlib.pyplot as plt
-import unicodedata
-import string
-import re
-import random
-import csv
-import pickle
-from io import open
-import logging
 import argparse
-from alfred.gen.utils import py_util
-from alfred.data.preprocessor import *
+import json
+import logging
+import os
+from io import open
 
+import colored_traceback.always
+import numpy as np
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
-from torch import optim
 import torch.nn.functional as F
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from torch.distributions import Categorical
+from torch.utils.data import Dataset as TorchDataset
+from tqdm import tqdm
+from pathlib import Path
 
-from alfred.gen import constants
+from alfred.data.preprocessor import *
 from alfred.env.thor_env import ThorEnv
+# from alfred.data.zoo.alfred import Dataset
+from alfred.eval.eval_subgoals import *
+from alfred.gen import constants
 from alfred.nn.enc_visual import FeatureExtractor
 from alfred.utils import data_util, model_util
 from alfred.utils.eval_util import *
-# from alfred.data.zoo.alfred import Dataset
-from alfred.eval.eval_subgoals import *
 from seq2seq_questioner_multimodel import *
 from utils import *
-from torch.utils.data import Dataset as TorchDataset
-
-
-import os
-import torch
-import pickle
-import numpy as np
-from io import BytesIO
-
-from alfred.gen import constants
-from alfred.data.zoo.base import BaseDataset
-from alfred.utils import data_util, model_util
-import colored_traceback.always
-from vocab import Vocab
 
 
 class BDataset(TorchDataset):
@@ -635,7 +606,7 @@ def setup_scene(env, traj_data):
     object_toggles = traj_data['scene']['object_toggles']
 
     scene_name = 'FloorPlan%d' % scene_num
-    env.reset(scene_name)
+    env.reset(scene_name,silent=True)
     env.restore_scene(object_poses, object_toggles, dirty_and_empty)
 
     # initialize to start position
@@ -803,9 +774,8 @@ def main():
 
     args = parser.parse_args()
     # path to testset json file
-    input_json = os.environ['DF_ROOT'] + \
-        "/testset/dialfred_testset_final/0001.json"
-    test(args, [input_json])
+    input_jsons = [str(path) for path in Path(os.environ['DF_ROOT'] + "/testset/dialfred_testset_final/").glob("*.json")]
+    test(args, input_jsons)
 
 
 if __name__ == "__main__":

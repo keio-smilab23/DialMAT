@@ -37,6 +37,7 @@ class BDataset(TorchDataset):
         self.ann_type = ann_type
         self.test_mode = True
         self.pad = 0
+        self.vocab = data_util.load_vocab("lmdb_augmented_human_subgoal", "tests_seen")
 
         # read information about the dataset
         self.dataset_info = data_util.read_dataset_info(name)
@@ -77,9 +78,11 @@ class BDataset(TorchDataset):
                     import json
                     jsons.append((path, json.load(f)))
             self.jsons_and_keys = []
-            for idx in range(len(jsons)):
+            print("Loading jsons ... ")
+            for idx in tqdm(range(len(jsons))):
                 path, js = jsons[idx]
-                key = str(idx)
+                key = path.split("/")[-1][:-len(".json")]
+                # print(key)
                 # compatibility with the evaluation
                 if 'task' in js and isinstance(js['task'], str):
                     pass
@@ -88,6 +91,15 @@ class BDataset(TorchDataset):
                     js['task'] = '/'.join(path.split('/')[-3:-1])
                 # add dataset idx and partition into the json
                 js['dataset_name'] = self.name
+                
+                if 'num' not in js:
+                    pp = Preprocessor(self.vocab, is_test_split=True) # TODO: vocabここ合ってるかわからん これだと無限に時間かかる (vocab=Noneだと全体で1hくらいで終わる)
+                    pp.process_language(js, js, 0)
+                    path = os.environ['DF_ROOT'] + f"/testset/dialfred_testset_final/{key}.json"
+                    assert 'num' in js
+                    with open(path, "w") as f:
+                        f.write(json.dumps(js, indent=4))
+
                 self.jsons_and_keys.append((js, key))
                 # if the dataset has script annotations, do not add identical data
                 # if len(set([str(j['ann']['instr']) for j in task_jsons])) == 1:
@@ -251,48 +263,7 @@ class Dataset(BDataset):
         load numericalized language from task_json
         '''
 
-        if 'num' not in task_json:
-            # vocab = self.vocab_obj
-            # vocab = None
-            
-            vocab = data_util.load_vocab("lmdb_augmented_human_subgoal", "tests_seen") # TODO: ここ合ってるかわからん
-            pp = Preprocessor(vocab, is_test_split=True)
-            pp.process_language(task_json, task_json, 0)
-            # pp.process_actions(task_json,task_json)
-
-            # task_json['num'] = {}
-            # # tokenize language
-            # goal_ann = task_json['turk_annotations']['anns'][0]['task_desc']
-            # instr_anns = task_json['turk_annotations']['anns'][0]['high_descs']
-            # # tokenize annotations
-            # goal_ann = revtok.tokenize(
-            #     py_util.remove_spaces_and_lower(goal_ann))
-            # instr_anns = [revtok.tokenize(py_util.remove_spaces_and_lower(instr_ann))
-            #               for instr_ann in instr_anns]
-            # # this might be not needed
-            # goal_ann = [w.strip().lower() for w in goal_ann]
-            # instr_anns = [[w.strip().lower() for w in instr_ann]
-            #               for instr_ann in instr_anns]
-
-            # task_json['ann'] = {
-            #     'goal': goal_ann + ['<<goal>>'],
-            #     'instr': [instr_ann + ['<<instr>>'] for instr_ann in instr_anns],
-            #     'repeat_idx': 0
-            # }
-            # task_json['ann']['instr'] += [['<<stop>>']]
-
-            # vocab = {
-            #     'word': Vocab(['<<pad>>', '<<seg>>', '<<goal>>', '<<mask>>']),
-            #     'action_low': Vocab(['<<pad>>', '<<seg>>', '<<stop>>', '<<mask>>']),
-            #     'action_high': Vocab(['<<pad>>', '<<seg>>', '<<stop>>', '<<mask>>']),
-            # }
-
-            # # convert words to tokens
-            # task_json['num']['lang_goal'] = Dataset.numericalize(vocab['word'], task_json['ann']['goal'], train=False)
-            # task_json['num']['lang_instr'] = [Dataset.numericalize(vocab['word'], x, train=False) for x in task_json['ann']['instr']]
-
         if subgoal_idx is None:
-            # TODO: ここでtokenizeする？
             lang_num_goal = task_json['num']['lang_goal']
             lang_num = lang_num_goal + sum(task_json['num']['lang_instr'], [])
         else:

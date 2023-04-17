@@ -16,3 +16,4 @@ logs/questioner_rl/
 data/lmdb*
 aws/
 .python-version
+submission/

@@ -588,7 +588,7 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
 
             it += 1
             save_path_full = os.path.join(
-                os.environ['DF_ROOT'] + "/misc/" + path[-9:])
+                os.environ['DF_ROOT'] + "/submission/" + path[-9:])
             with open(save_path_full, "w") as f:
                 json.dump(meta_data, f, sort_keys=True, indent=4)
 

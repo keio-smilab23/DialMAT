@@ -253,7 +253,9 @@ class Dataset(BDataset):
 
         if 'num' not in task_json:
             # vocab = self.vocab_obj
-            vocab = None
+            # vocab = None
+            
+            vocab = data_util.load_vocab("lmdb_augmented_human_subgoal", "tests_seen") # TODO: ここ合ってるかわからん
             pp = Preprocessor(vocab, is_test_split=True)
             pp.process_language(task_json, task_json, 0)
             # pp.process_actions(task_json,task_json)
@@ -478,25 +480,26 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
                 # set up query and answer
                 repeat_idx = -1
                 ans = ""
+                task_id = path.split("/")[-1][:-len(".json")]
                 # for appearance answer, we can directly use the saved ones
                 if decoded_words[0] == "appearance":
                     query = "<<app>> " + decoded_words[1]
-                    # if task in app_ans and trial in app_ans[task] and subgoal_idx in app_ans[task][trial] and 0 in app_ans[task][trial][subgoal_idx]:
-                    #     ans_sg = app_ans[task][trial][subgoal_idx][0]
-                    #     if decoded_words[1] in ans_sg and ans_sg[decoded_words[1]]["ans"] is not None:
-                    #         ans += ans_sg[decoded_words[1]]["ans"]
-                    #     else:
-                    #         ans += "invalid"
-                    # else:
-                    #     logging.info("invalid answer for %s, %s, %s" %
-                    #                  (task, trial, subgoal_idx))
-                    #     ans += "invalid"
-                # TODO: metadataの記載あり
+                    if task_id in app_ans  and subgoal_idx in app_ans[task_id] and 0 in app_ans[task_id][subgoal_idx]:
+                        ans_sg = app_ans[task_id][subgoal_idx][0]
+                        if decoded_words[1] in ans_sg and ans_sg[decoded_words[1]]["ans"] is not None:
+                            ans += ans_sg[decoded_words[1]]["ans"]
+                        else:
+                            ans += "invalid"
+                    else:
+                        logging.info("invalid answer for %s, %s, %s" %
+                                     (task_id, trial, subgoal_idx))
+                        ans += "invalid"
+
                 # for location answer, we need to construct a new one using current metadata
                 elif decoded_words[0] == "location":
                     query = "<<loc>> " + decoded_words[1]
-                    # if task in loc_ans and trial in loc_ans[task] and subgoal_idx in loc_ans[task][trial] and 0 in loc_ans[task][trial][subgoal_idx]:
-                    #     ans_sg = loc_ans[task][trial][subgoal_idx][0]
+                    # if task_id in loc_ans  and subgoal_idx in loc_ans[task_id] and 0 in loc_ans[task_id][subgoal_idx]:
+                    #     ans_sg = loc_ans[task_id][subgoal_idx][0]
                     #     if decoded_words[1] in ans_sg:
                     #         obj_id = ans_sg[decoded_words[1]]["obj_id"]
                     #         event = env.last_event
@@ -760,8 +763,20 @@ def test(args, json_paths):
     dataset.vocab_translate = performer.vocab_out
     dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
 
+    loc_ans_fn = "testset/loc_testset_final.pkl"
+    app_ans_fn = "testset/appear_testset_final.pkl"
+    dir_ans_fn = "testset/direction_testset_final.pkl"
+    with open(loc_ans_fn, "rb") as f:
+        loc_ans = pickle.load(f)
+    with open(app_ans_fn, "rb") as f:
+        app_ans = pickle.load(f)
+    with open(dir_ans_fn, "rb") as f:
+        # dir_ans = pickle.load(f)
+        dir_ans = None
+    all_ans = [loc_ans, app_ans, dir_ans]
+
     iters(json_paths, model_args, lang, dataset, encoder, decoder, critic, performer, extractor,
-          [None, None, None], split_id=data_split + str(train_id), max_steps=1000, print_every=1, save_every=10)
+          all_ans, split_id=data_split + str(train_id), max_steps=1000, print_every=1, save_every=10)
 
 
 def main():

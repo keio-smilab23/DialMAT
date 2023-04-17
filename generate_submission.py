@@ -555,10 +555,6 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
                     interm_states = step(env, performer, dataset, extractor,
                                          trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, num_rollout=5)
 
-                    m_data = env.last_event.metadata
-                    m_data["pose_discrete"] = env.last_event.pose_discrete
-                    meta_data.append(m_data)
-
                 # if log_entry['success']:
                 #     reward += REWARD_SUC
                 #     done = 1.0
@@ -585,6 +581,10 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
                 logging.info("instruction: %s" % all_instr[-1])
                 logging.info("questions: %s" % all_query[-1])
                 logging.info("number of questions: %s" % num_q[-1])
+
+            m_data = env.last_event.metadata
+            m_data["pose_discrete"] = env.last_event.pose_discrete
+            meta_data.append(m_data)
 
             it += 1
             save_path_full = os.path.join(

@@ -2,6 +2,7 @@
 data/generated_2.1.0
 data/json_2.1.0
 data/json_feat_2.1.0
+data/*.tar.gz
 data/*.zip
 df_env/
 *.pickle
@@ -11,5 +12,8 @@ __pycache__/
 *.pt
 *.pyc
 logs/*/
-!logs/questioner_rl/
+logs/questioner_rl/
 data/lmdb*
+aws/
+.python-version
+submission/

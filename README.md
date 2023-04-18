@@ -21,8 +21,8 @@ Inherited from the E.T. repo, the package is depending on:
 - filelock
 - networkx
 - termcolor
-- torch==1.7.1
-- torchvision==0.8.2
+- torch==1.7.1?
+- torchvision==0.8.2?
 - tensorboardX==1.8
 - ai2thor==2.1.0
 - stanza
@@ -40,8 +40,9 @@ export PYTHONPATH=$PYTHONPATH:$DF_ROOT
 
 Install requirements:
 ```bash
-virtualenv -p $(which python3.7) df_env
-source df_env/bin/activate
+CONFIGURE_OPTS=--enable-shared pyenv install 3.7.1
+pyenv virtualenv 3.7.1 df_env
+pyenv local df_env
 
 cd $DF_ROOT
 pip install --upgrade pip
@@ -50,7 +51,9 @@ pip install -r requirements.txt
 
 ## Downloading data and checkpoints
 
-Download [ALFRED dataset](https://github.com/askforalfred/alfred):
+Download [ALFRED dataset](https://github.com/askforalfred/alfred) (**about 2h?**):
+
+**You can get `nas07/06DialFRED-Challenge/data/json_2.1.0.tar.gz`, `nas07/06DialFRED-Challenge/data/json_feat_2.1.0.tar.gz` and extract in `DialFRED-Challenge/data/` instead of the following.**
 ```bash
 cd $DATA
 sh download_data.sh json
@@ -64,13 +67,18 @@ unzip et_checkpoints.zip
 mv pretrained $LOGS/
 ```
 
-Render images:
+Render images (**about 22h5m**):
+
+**You can get `nas07/06DialFRED-Challenge/data/generated_2.1.0.tar.gz` and extract in `DialFRED-Challenge/data/` instead of the following.**
 ```bash
 cd $DF_ROOT
 python -m alfred.gen.render_trajs
 ```
 
 ## Prepare dataset
+**2022-04-12 Update: There seems to be a problem with the following file. `nas07/06DialFRED-Challenge/data/lmdb_augmented_human_subgoal.tar.gz` and extract in `DialFRED-Challenge/data/` To obtain the lmdb dataset, start from `export EXP_NAME=augmented_human' (skip augment_data.py and append_data.py)**
+
+**2022-04-10 You can get `nas07/06DialFRED-Challenge/data/lmdb_augmented_human_subgoal.tar.gz` and extract in `DialFRED-Challenge/data/` instead of all the following in this section.**
 
 We provide the code to augment the Alfred data by merging low level actions into subgoals and spliting one subgoal into multiple ones. We also created new instructions to improve language variety. 
 ```bash
@@ -128,12 +136,20 @@ Each line contains one annotation for an augmented sub-goal. The definition of e
 
 ## Questioner and performer evaluation
 
+**If the `aws` command is not available ([reference](https://docs.aws.amazon.com/ja_jp/cli/latest/userguide/getting-started-install.html)):**
+```
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+aws --version
+```
+
 Download checkpoints for finetuned questioner and pretrained performer.
 ```bash
 scripts/fetch_model_checkpt.sh
 
 ```
-For evaluating the pretrained models:
+For evaluating the pretrained models (**about 78m**):
 ```bash
 python train_eval.py --mode eval
 
@@ -141,27 +157,30 @@ python train_eval.py --mode eval
 
 ## Train the questioner and performer from scratch
 
-Given the lmdb dataset, we can pre-train the performer
+Given the lmdb dataset, we can pre-train the performer (**about 3h38m**).
 ```bash
+export EXP_NAME=augmented_human
+export SUBGOAL=subgoal
+
 # train the ET performer
 python -m alfred.model.train with exp.model=transformer exp.name=et_${EXP_NAME}_${SUBGOAL} exp.data.train=lmdb_${EXP_NAME}_${SUBGOAL} train.seed=1 > ./logs/et_${EXP_NAME}_${SUBGOAL}.log 2>&1 &
 
 ```
 
-Given the human QA data we collected via crowd-sourcing, we can pretrain the questioner model.
+Given the human QA data we collected via crowd-sourcing, we can pretrain the questioner model (**about 46m**).
 ```bash
 python seq2seq_questioner_multimodel.py
 
 ```
 
-Given the pretrained questioner and performer, we can finetune the questioner model using RL on valid seen.
+Given the pretrained questioner and performer, we can finetune the questioner model using RL on valid seen (**about 1h2m**).
 ```bash
 # RL anytime: training the questioner to ask questions at anytime of the task
 python train_eval.py --mode train --questioner-path ./logs/questioner_rl/pretrained_questioner.pt
 
 ```
 
-Given the finetuned questioner and pretrained performer, we can evaluate the models on valid unseen.
+Given the finetuned questioner and pretrained performer, we can evaluate the models on valid unseen (**about 1h20m**).
 ```bash
 # RL anytime: training the questioner to ask questions at anytime of the task
 python train_eval.py --mode eval --questioner-path ./logs/questioner_rl/questioner_anytime_seen1.pt

@@ -19,7 +19,7 @@ def cfg_exp():
     # which device to use
     device = 'cuda'
     # number of data loading workers or evaluation processes (0 for main thread)
-    num_workers = 12
+    num_workers = 6
     # we can fine-tune a pre-trained model
     pretrained_path = None
     # run the code on a small chunk of data

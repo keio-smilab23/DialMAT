@@ -88,7 +88,7 @@ def extractFeatureOnline(env, extractor):
 
 def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, n_iters, split_id, max_steps, print_every=1, save_every=100):
     start = time.time()
-    env = ThorEnv(x_display=0)
+    env = ThorEnv(x_display=1)
     obj_predictor = FeatureExtractor(archi='maskrcnn', device=device,
         checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
 
@@ -343,7 +343,7 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
 
 def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, split_id, max_steps, print_every=1, save_every=100):
     start = time.time()
-    env = ThorEnv(x_display=0)
+    env = ThorEnv(x_display=1)
     obj_predictor = FeatureExtractor(archi='maskrcnn', device=device,
         checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
 

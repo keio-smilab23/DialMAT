@@ -25,6 +25,8 @@ from alfred.utils.eval_util import *
 from seq2seq_questioner_multimodel import *
 from utils import *
 
+# c.f. https://github.com/xfgao/DialFRED/issues/2
+def def_value(): return None
 
 class BDataset(TorchDataset):
     def __init__(self, json_paths,  name, partition, args, ann_type):
@@ -336,6 +338,8 @@ REWARD_SUC = 1.0
 SOS_token = 0
 EOS_token = 1
 
+VERBOSE = False
+
 
 # get the ground-truth metadata by running the action sequences
 def setup_scene(env, traj_data):
@@ -469,37 +473,21 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
                 # for location answer, we need to construct a new one using current metadata
                 elif decoded_words[0] == "location":
                     query = "<<loc>> " + decoded_words[1]
-                    # if task_id in loc_ans  and subgoal_idx in loc_ans[task_id] and 0 in loc_ans[task_id][subgoal_idx]:
-                    #     ans_sg = loc_ans[task_id][subgoal_idx][0]
-                    #     if decoded_words[1] in ans_sg:
-                    #         obj_id = ans_sg[decoded_words[1]]["obj_id"]
-                    #         event = env.last_event
-                    #         metadata = event.metadata
-                    #         odata = get_obj_data(metadata, obj_id)
-                    #         if odata is None:
-                    #             ans += "invalid"
-                    #         else:
-                    #             oname = decoded_words[1]
-                    #             recs = odata["parentReceptacles"]
-                    #             rel_ang = get_obj_direction(metadata, odata)
-                    #             ans += objLocAns(oname, rel_ang, recs)
-                    #     else:
-                    #         ans += "invalid"
-                    # else:
-                    #     ans += "invalid"
+                    if task_id in loc_ans  and subgoal_idx in loc_ans[task_id] and 0 in loc_ans[task_id][subgoal_idx]:
+                        ans_sg = loc_ans[task_id][subgoal_idx][0]
+                        if decoded_words[1] in ans_sg:
+                            ans += ans_sg[decoded_words[1]]["ans"]
+                        else:
+                            ans += "invalid"
+                    else:
+                        ans += "invalid"
 
                 elif decoded_words[0] == "direction":
                     query = "<<dir>> "
-                    # if task in dir_ans and trial in dir_ans[task] and subgoal_idx in dir_ans[task][trial]:
-                    #     target_pos = dir_ans[task][trial][subgoal_idx]["target_pos"]
-                    #     event = env.last_event
-                    #     cur_metadata = event.metadata
-                    #     targ_metadata = {'agent': {'position': target_pos}}
-                    #     rel_ang, rel_pos = get_agent_direction(
-                    #         cur_metadata, targ_metadata)
-                    #     ans += dirAns(rel_ang, rel_pos).lower()
-                    # else:
-                    #     ans += "invalid"
+                    if task_id in dir_ans and subgoal_idx in dir_ans[task_id]:
+                        ans += dir_ans[task_id][subgoal_idx]["ans"]
+                    else:
+                        ans += "invalid"
                 elif decoded_words[0] == "none" or decoded_words[0] == "EOS":
                     query = "none"
                 # else:
@@ -523,6 +511,9 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
 
                 current_query.append(query + " " + ans)
                 qa = qa.lower().replace(",", "").replace(".", "")
+                if VERBOSE:
+                    print(query,ans)
+                    print("QA:",qa)
 
                 # performer rollout for some steps
                 with torch.no_grad():
@@ -742,12 +733,14 @@ def test(args, json_paths):
     with open(app_ans_fn, "rb") as f:
         app_ans = pickle.load(f)
     with open(dir_ans_fn, "rb") as f:
-        # dir_ans = pickle.load(f)
-        dir_ans = None
+        dir_ans = pickle.load(f)
+    
+    # print(json.dumps(dir_ans,indent=4))
     all_ans = [loc_ans, app_ans, dir_ans]
 
     iters(json_paths, model_args, lang, dataset, encoder, decoder, critic, performer, extractor,
           all_ans, split_id=data_split + str(train_id), max_steps=1000, print_every=1, save_every=10)
+
 
 
 def main():

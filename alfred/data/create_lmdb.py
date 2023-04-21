@@ -69,7 +69,7 @@ def process_feats(traj_paths, extractor, lock, image_folder, save_path):
         images = data_util.read_traj_images(traj_path, image_folder)
         feat = data_util.extract_features(images, extractor)
         feat_clip = data_util.extract_features_clip(images, extractor)
-        print("feat_clip.shape: ", feat_clip.shape)
+        # print("feat_clip.shape: ", feat_clip.shape)
         # print("len(images)", len(images)) #len(images) ex. 51...
         # print("images[0]: ", images[0]) #images[0]:  <PIL.Image.Image image mode=RGB size=300x300 at 0x7FCC5328E358>
         # print("feat.shape: ", feat.shape) #feat.shape:  torch.Size([51, 512, 7, 7])

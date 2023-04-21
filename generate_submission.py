@@ -341,26 +341,6 @@ EOS_token = 1
 VERBOSE = False
 
 
-# get the ground-truth metadata by running the action sequences
-def setup_scene(env, traj_data):
-    '''
-    intialize the scene and agent from the task info
-    '''
-    # scene setup
-    scene_num = traj_data['scene']['scene_num']
-    object_poses = traj_data['scene']['object_poses']
-    dirty_and_empty = traj_data['scene']['dirty_and_empty']
-    object_toggles = traj_data['scene']['object_toggles']
-
-    scene_name = 'FloorPlan%d' % scene_num
-    env.reset(scene_name)
-    env.restore_scene(object_poses, object_toggles, dirty_and_empty)
-
-    # initialize to start position
-    env.step(dict(traj_data['scene']['init_action']))
-    env.set_task(traj_data, reward_type="dense")
-
-
 def extractFeatureOnline(env, extractor):
     event = env.last_event
     feat = get_observation(event, extractor)

@@ -103,6 +103,7 @@ class LearnedModel(nn.Module):
                             value.item())
                     metrics['train:' + dataset_name]['loss/total'].append(
                         sum_loss.detach().cpu().item())
+
                 gt.stamp('metrics', unique=False)
                 if self.args.profile:
                     print(gt.report(include_itrs=False, include_stats=False))
@@ -111,14 +112,24 @@ class LearnedModel(nn.Module):
             print('Computing train and validation metrics...')
             metrics = {data: {k: sum(v) / len(v) for k, v in metr.items()}
                        for data, metr in metrics.items()}
+            #追加
+            # display metrics
+            # print('metrics for train:', metrics)
+
             # compute metrics for valid_seen
             for loader_id, loader in loaders_valid.items():
                 with torch.no_grad():
                     metrics[loader_id] = self.run_validation(
                         loader, vocabs_in[loader_id.split(':')[-1]],
                         loader_id, info['iters'])
+
+            #追加
+            # display metrics
+            print('metrics :', metrics)
+
             stats = {'epoch': epoch, 'general': {
                 'learning_rate': optimizer.param_groups[0]['lr']}, **metrics}
+            
 
             # save the checkpoint
             print('Saving models...')

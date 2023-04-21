@@ -16,7 +16,6 @@ from alfred.nn.enc_visual import FeatureExtractor
 from alfred.data.preprocessor import Preprocessor
 from alfred.utils import data_util, helper_util, model_util
 
-
 args_ingredient = Ingredient('args')
 ex = Experiment('create_data', ingredients=[args_ingredient])
 
@@ -30,7 +29,7 @@ def cfg_args():
     # whether to overwrite old data in case it exists
     overwrite = True
     # number of processes to run the data processing in (0 for main thread)
-    num_workers = 4
+    num_workers = 1 #default 4
     # debug run with only 16 entries
     fast_epoch = False
 
@@ -69,8 +68,14 @@ def process_feats(traj_paths, extractor, lock, image_folder, save_path):
         # extract features with th extractor
         images = data_util.read_traj_images(traj_path, image_folder)
         feat = data_util.extract_features(images, extractor)
+        feat_clip = data_util.extract_features_clip(images, extractor)
+        print("feat_clip.shape: ", feat_clip.shape)
+        # print("len(images)", len(images)) #len(images) ex. 51...
+        # print("images[0]: ", images[0]) #images[0]:  <PIL.Image.Image image mode=RGB size=300x300 at 0x7FCC5328E358>
+        # print("feat.shape: ", feat.shape) #feat.shape:  torch.Size([51, 512, 7, 7])
+        # print("save_path / 'feats' / filename_new",save_path / 'feats' / filename_new) #save_path / 'feats' / filename_new /home/initial/workspase/CVPR/DialFRED-Challenge/data/lmdb_augmented_human_subgoal_temp/worker00/feats/train:pick_heat_then_place_in_recep-Egg-None-Fridge-19:trial_T20190908_130410_448245.pt
         if feat is not None:
-            torch.save(feat, save_path / 'feats' / filename_new)
+            torch.save([feat,feat_clip], save_path / 'feats' / filename_new)
         with lock:
             with open(save_path.parents[0] / 'processed_feats.txt', 'a') as f:
                 f.write(str(traj_path) + '\n')

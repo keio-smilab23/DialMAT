@@ -11,7 +11,8 @@ from torchvision.transforms import functional as F
 from alfred.gen import constants
 from alfred.nn.transforms import Transforms
 from alfred.utils import data_util
-
+#追加
+import clip
 
 class Resnet18(nn.Module):
     '''
@@ -179,6 +180,12 @@ class FeatureExtractor(nn.Module):
             constants.ET_ROOT, constants.OBJ_CLS_VOCAB)
         self.vocab_obj = torch.load(vocab_obj_path)
 
+
+        #追加
+        self.clip_model, self.clip_preprocess = clip.load("ViT-L/14",device="cuda")
+        for layer in self.clip_model.parameters():
+            layer.requires_grad = False
+
     def featurize(self, images, batch=32):
         feats = []
         with (torch.set_grad_enabled(False) if not self.model.model.training
@@ -191,6 +198,14 @@ class FeatureExtractor(nn.Module):
             feat = data_util.feat_compress(feat, self.compress_type)
         assert self.feat_shape[1:] == feat.shape[1:]
         return feat
+
+    def featurize_clip(self, images):
+        images = [self.clip_preprocess(image).unsqueeze(0).to("cuda:0") for image in images]
+        with torch.no_grad():
+            feats = [self.clip_model.encode_image(image) for image in images]
+            feats = torch.cat(feats, dim=0) # [len(images),768]
+        return feats
+
 
     def predict_objects(self, image, verbose=False):
         with torch.set_grad_enabled(False):

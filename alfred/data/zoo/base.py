@@ -40,7 +40,11 @@ class BaseDataset(TorchDataset):
         # load vocabularies for input language and output actions
         vocab = data_util.load_vocab(name, ann_type)
         self.vocab_in = vocab['word']
+        #追加
+        #vocab_in : Vocab(899)
         out_type = 'action_low' if args.model == 'transformer' else 'action_high'
+        #追加
+        #vocab_out : Vocab(17)
         self.vocab_out = vocab[out_type]
         # if several datasets are used, we will translate outputs to this vocab later
         self.vocab_translate = None
@@ -90,6 +94,10 @@ class BaseDataset(TorchDataset):
         feats_bytes = self.feats.get(key)
         feats_numpy = np.frombuffer(
             feats_bytes, dtype=np.float32).reshape(self.dataset_info['feat_shape'])
+        #追加
+        #feats_numpy: ex. [99, 512, 7, 7]
+        print("feats_numpy.shape",feats_numpy.shape)
+        print("feats_numpy",feats_numpy)
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             frames = torch.tensor(feats_numpy)

@@ -170,12 +170,7 @@ def load_log(dout, stage):
     loading a method json to continue training from the correct place
     '''
     info_path = os.path.join(dout, 'info.json')
-    if os.path.exists(info_path):
-        with open(info_path) as f:
-            info_dicts = json.load(f)
-        info_dict = [el for el in info_dicts if el['stage'] == stage][-1]
-    else:
-        info_dict = {'progress': 0, 'best_loss': {}, 'iters': {}}
+    info_dict = {'progress': 0, 'best_loss': {}, 'iters': {}}
     if isinstance(info_dict['best_loss'], dict):
         info_dict['best_loss'] = collections.defaultdict(
             lambda: 1e10, info_dict['best_loss'])

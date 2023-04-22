@@ -17,3 +17,4 @@ data/lmdb*
 aws/
 .python-version
 submission/
+wandb/

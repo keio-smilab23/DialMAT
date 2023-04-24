@@ -16,11 +16,14 @@ from torchvision import transforms
 from copy import deepcopy
 from vocab import Vocab
 from pathlib import Path
+import clip
 
 from alfred.gen import constants
 from alfred.gen.utils import image_util
 from alfred.utils import helper_util, model_util
 
+#追加
+from .model_util import tokens_to_lang
 
 def read_images(image_path_list):
     images = []
@@ -62,6 +65,14 @@ def extract_features(images, extractor):
     if images is None:
         return None
     feat = extractor.featurize(images, batch=8)
+    return feat.cpu()
+
+
+#追加
+def extract_features_clip(images, extractor):
+    if images is None:
+        return None
+    feat = extractor.featurize_clip(images)
     return feat.cpu()
 
 
@@ -116,7 +127,7 @@ def process_traj(traj_orig, traj_path, r_idx, preprocessor):
     traj['split'] = partition
     traj['repeat_idx'] = r_idx
     # numericalize actions for train/valid splits
-    if 'test' not in partition: # expert actions are not available for the test set
+    if ('test' not in partition) or (partition == 'pseudo_test'): # expert actions are not available for the test set
         preprocessor.process_actions(traj_orig, traj)
     # numericalize language
     preprocessor.process_language(traj_orig, traj, r_idx)
@@ -130,8 +141,12 @@ def gather_feats(files, output_path):
     lmdb_feats = lmdb.open(str(output_path), 700*1024**3, writemap=True)
     with lmdb_feats.begin(write=True) as txn_feats:
         for idx, path in tqdm(enumerate(files)):
-            traj_feats = torch.load(path).numpy()
-            txn_feats.put('{:06}'.format(idx).encode('ascii'), traj_feats.tobytes())
+            #変更
+            # traj_feats = torch.load(path).numpy()
+            # txn_feats.put('{:06}'.format(idx).encode('ascii'), traj_feats.tobytes())
+            traj_feats = torch.load(path)
+            value = pickle.dumps(traj_feats)
+            txn_feats.put('{:06}'.format(idx).encode('ascii'), value)
     lmdb_feats.close()
 
 
@@ -224,9 +239,23 @@ def tensorize_and_pad(batch, device, pad):
             pad_seq = pad_sequence(seqs, batch_first=True, padding_value=pad)
             dict_assign[k] = pad_seq
         elif k in {'frames'}:
+            # 追加
+            # ex. seqs[0]:[44, 512, 7, 7]
             # frames features were loaded from the disk as tensors
-            seqs = [vv.clone().detach().to(device).type(torch.float) for vv in v]
+            # print("v[0][0].shape", v[0][0].shape)# torch.Size([27, 512, 7, 7])
+            # print("v[0][1].shape", v[0][1].shape)#torch.Size([27, 768])
+            # print("v[1][0].shape", v[1][0].shape)#torch.Size([72, 512, 7, 7])
+            # print("v[1][1].shape", v[1][1].shape)#torch.Size([72, 768])
+            seqs = [vv[0].clone().detach().to(device).type(torch.float) for vv in v]
             pad_seq = pad_sequence(seqs, batch_first=True, padding_value=pad)
+            # print("pad_seq.shape",pad_seq.shape)#torch.Size([2, 72, 512, 7, 7])
+            # dict_assign[k] = pad_seq
+            #pad_seqとv[0][1]とv[1][1]を結合
+            if len(v) == 1:
+                pad_seq = [pad_seq, v[0][1]]
+            else:
+                pad_seq = [pad_seq, v[0][1], v[1][1]]
+            # print("pad_seq[0].shape",pad_seq[0].shape)
             dict_assign[k] = pad_seq
             dict_assign['lengths_' + k] = torch.tensor(list(map(len, seqs)))
             dict_assign['length_' + k + '_max'] = max(map(len, seqs))
@@ -261,6 +290,11 @@ def load_vocab(name, ann_type='lang'):
     '''
     path = os.path.join(constants.ET_DATA, name, constants.VOCAB_FILENAME)
     vocab_dict = torch.load(path)
+    #追加
+    #vocab: {'word': Vocab(899), 'action_low': Vocab(17), 'action_high': Vocab(104)}
+    # result = tokens_to_lang([45, 8, 5, 202, 194, 31, 41, 16, 5, 193, 195, 196], vocab_dict['word'])
+    # print("result: {}".format(result))
+    # print("vocab: {}".format(vocab_dict['word'].index2word([45, 8, 5, 202, 194, 31, 41, 16, 5, 193, 195, 196])))
     # set name and annotation types
     for vocab in vocab_dict.values():
         vocab.name = name

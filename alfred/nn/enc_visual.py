@@ -200,7 +200,7 @@ class FeatureExtractor(nn.Module):
         return feat
 
     def featurize_clip(self, images):
-        images = [self.clip_preprocess(image).unsqueeze(0).to("cuda:0") for image in images]
+        images = [self.clip_preprocess(image).unsqueeze(0).to("cuda") for image in images]
         with torch.no_grad():
             feats = [self.clip_model.encode_image(image) for image in images]
             feats = torch.cat(feats, dim=0) # [len(images),768]

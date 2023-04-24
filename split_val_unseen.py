@@ -33,6 +33,8 @@ result = result_pseudo_valid + result_pseudo_test + result_others
 #./valid_unseen以下のディレクトリ一覧を取得()
 dirs = glob.glob(os.path.join(data_dir, 'valid_unseen/*/*'))
 
+# print("result:", result)
+# print("dirs:", dirs)
 #./pseudo_validと./pseudo_testを作成
 if os.path.exists(os.path.join(data_dir, 'pseudo_valid')):
     shutil.rmtree(os.path.join(data_dir, 'pseudo_valid'))
@@ -41,14 +43,18 @@ if os.path.exists(os.path.join(data_dir, 'pseudo_test')):
 os.mkdir(os.path.join(data_dir, 'pseudo_valid'))
 os.mkdir(os.path.join(data_dir, 'pseudo_test'))
 
+print("len(dirs)", len(dirs))
 
+a = []
 for d in dirs:
     if d.split('/')[-2] + '/' + d.split('/')[-1] in pseudo_valid_list:
         if os.path.exists(os.path.join(data_dir, 'pseudo_valid', d.split('/')[-2])):
             shutil.copytree(d, os.path.join(data_dir, 'pseudo_valid', d.split('/')[-2], d.split('/')[-1]))
+            a.append(os.path.join(data_dir, 'pseudo_valid', d.split('/')[-2], d.split('/')[-1]))
         else:
             os.mkdir(os.path.join(data_dir, 'pseudo_valid', d.split('/')[-2]))
             shutil.copytree(d, os.path.join(data_dir, 'pseudo_valid', d.split('/')[-2], d.split('/')[-1]))
+            a.append(os.path.join(data_dir, 'pseudo_valid', d.split('/')[-2], d.split('/')[-1]))
     elif d.split('/')[-2] + '/' +  d.split('/')[-1] in pseudo_test_list:
         if os.path.exists(os.path.join(data_dir, 'pseudo_test', d.split('/')[-2])):
             shutil.copytree(d, os.path.join(data_dir, 'pseudo_test', d.split('/')[-2], d.split('/')[-1]))
@@ -56,8 +62,10 @@ for d in dirs:
             os.mkdir(os.path.join(data_dir, 'pseudo_test', d.split('/')[-2]))
             shutil.copytree(d, os.path.join(data_dir, 'pseudo_test' , d.split('/')[-2], d.split('/')[-1]))
 
+print("len(a):",len(a))
+
 #processed_new.txtに書き込む
-with open(os.path.join(data_dir, 'processed_new.txt'), 'w') as f:
+with open(os.path.join(data_dir, 'processed_temp.txt'), 'w') as f:
     f.writelines(result)
 
 

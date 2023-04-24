@@ -87,24 +87,7 @@ class Model(base.Model):
         return sentences_list
     
     #追加
-    def preprocess_clip(self, images):
-        """
-        Preprocess images with the CLIP model.
-        """
-        images = self.clip_preprocess(images).unsqueeze(0)
-        return images
-    
-    #追加
-    def featurize_clip(self, images):
-        """
-        Featurize images with the CLIP model.
-        """
-        images = self.preprocess_clip(images)
-        image_features = self.clip_model.encode_image(images)
-        return image_features
-    
-    #追加
-    def encode_clip(self, sentences, device="cuda:0"):
+    def encode_clip_text(self, sentences, device="cuda:0"):
         """
         Encode two sentences with the CLIP model.
         """
@@ -125,7 +108,7 @@ class Model(base.Model):
             text_features = self.clip_model.encode_text(tokenized)
             return text_features, torch.tensor([tokenized.shape[0]]).to(device)
     #追加
-    def concat_embeddings(self, emb_lang, lengths_lang, emb_clip, lengths_clip, device="cuda:0"):
+    def concat_embeddings_lang(self, emb_lang, lengths_lang, emb_clip, lengths_clip, device="cuda:0"):
         if len(lengths_lang) == 1:
             temp = torch.cat([emb_lang[0, :lengths_lang[0], :], emb_clip.unsqueeze(1)[0, :lengths_clip[0], :]], dim=0)
             return temp.unsqueeze(0), torch.tensor([temp.shape[0]]).to(device)
@@ -149,26 +132,40 @@ class Model(base.Model):
         # embed language
         output = {}
 
-        emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
-        #emb_lang:[2, max, 768](2つのデータの大きい方をmaxに入れる), lengths_lang:[2](emb_langの2つのデータの長さを持つ.)
-        
-        #追加
-        # token to sentence
-        sentences = self.token_to_sentence_list(inputs['lang'], vocab)
-        
-        # encode clip
-        emb_clip, lengths_clip = self.encode_clip(sentences, device=inputs['lang'].device)
+        #変更(CLIPのtext情報も用いる)
+        if self.args.clip_text:
+            emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
+            #emb_lang:[2, max, 768](2つのデータの大きい方をmaxに入れる), lengths_lang:[2](emb_langの2つのデータの長さを持つ.)
+            
+            #追加
+            # token to sentence
+            sentences = self.token_to_sentence_list(inputs['lang'], vocab)
+            
+            # encode clip
+            emb_clip_text, lengths_clip_text = self.encode_clip_text(sentences, device=inputs['lang'].device)
 
-        # concat clip and lang
-        emb_lang, lengths_lang = self.concat_embeddings(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
+            # concat clip and lang
+            emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip_text, lengths_clip_text, device=inputs['lang'].device)
 
-        emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
+            emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
+        else:
+            emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
+            emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
 
-        # print("inputs['frames'].shape", inputs['frames'].shape)
-        # print("inputs['frames'] type", type(inputs['frames']))
+        #変更(CLIPのimage情報のみを用いる)
+        if self.args.clip_image:
+            if len(inputs['frames']) == 3:
+                emb_frames = pad_sequence([ inputs['frames'][1], inputs['frames'][2]], batch_first=True, padding_value=0).to("cuda")
+            else:
+                emb_frames = inputs['frames'][1].unsqueeze(0).to("cuda")
+            emb_object = emb_frames.clone().to("cuda")
+        else:
+            #元々
+            # embed frames and actions
+            emb_frames, emb_object = self.embed_frames(inputs['frames'][0])
+            # print("emb_frames.shape", emb_frames.shape)#torch.Size([2, 72, 768])
+            # print("emb_object.shape", emb_object.shape)#torch.Size([2, 72, 768])
 
-        # embed frames and actions
-        emb_frames, emb_object = self.embed_frames(inputs['frames'])
         lengths_frames = inputs['lengths_frames']
 
         #emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]

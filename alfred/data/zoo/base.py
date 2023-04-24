@@ -91,17 +91,23 @@ class BaseDataset(TorchDataset):
         if not hasattr(self, 'feats_lmdb'):
             self.feats_lmdb, self.feats = self.load_lmdb(
                 self.feats_lmdb_path)
-        feats_bytes = self.feats.get(key)
-        feats_numpy = np.frombuffer(
-            feats_bytes, dtype=np.float32).reshape(self.dataset_info['feat_shape'])
+        # feats_bytes = self.feats.get(key)
+        # feats_numpy = np.frombuffer(
+        #     feats_bytes, dtype=np.float32).reshape(self.dataset_info['feat_shape'])
+        #変更
+        # feats_list = self.feats.get(key)
+        feats_list = pickle.loads(self.feats.get(key))
+
+        # feats_numpy = np.frombuffer(
+        #     feats_bytes, dtype=np.float32).reshape(self.dataset_info['feat_shape'])
         #追加
         #feats_numpy: ex. [99, 512, 7, 7]
-        print("feats_numpy.shape",feats_numpy.shape)
-        print("feats_numpy",feats_numpy)
+
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            frames = torch.tensor(feats_numpy)
-        return frames
+            #変更
+            # frames = torch.tensor(feats_numpy)
+        return feats_list
 
     def load_lmdb(self, lmdb_path):
         '''

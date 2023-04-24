@@ -29,7 +29,7 @@ def cfg_args():
     # whether to overwrite old data in case it exists
     overwrite = True
     # number of processes to run the data processing in (0 for main thread)
-    num_workers = 1 #default 4
+    num_workers = 4 #default 4
     # debug run with only 16 entries
     fast_epoch = False
 
@@ -206,7 +206,8 @@ def gather_data(output_path, num_workers):
             if link_file:
                 path_symlink.symlink_to(path_file)
 
-    partitions = ('train', 'valid_seen', 'valid_unseen')
+    # partitions = ('pseudo_valid', 'pseudo_test')
+    partitions = ('train', 'valid_seen', 'pseudo_test', 'pseudo_valid')
     if not (output_path / '.deleting_worker_dirs').exists():
         for partition in partitions:
             print('Processing {} trajectories'.format(partition))

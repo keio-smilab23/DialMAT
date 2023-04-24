@@ -117,6 +117,8 @@ class AlfredDataset(BaseDataset):
         '''
         load action as a list of tokens from task_json
         '''
+        if 'action_low' not in task_json['num']:
+            print("task_json['num]",task_json['num'])
         if action_type == 'action_low':
             # load low actions
             lang_action = [

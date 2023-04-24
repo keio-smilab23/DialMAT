@@ -73,6 +73,11 @@ def cfg_eval():
 
 @train_ingredient.config
 def cfg_train():
+    #追加
+    wandb = True
+    wandb_name = 'default'
+    clip_image = True
+    clip_text = True
     # GENERAL TRANING SETTINGS
     # random seed
     seed = 1

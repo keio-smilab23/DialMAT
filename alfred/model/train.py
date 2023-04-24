@@ -111,7 +111,9 @@ def load_data(name, args, ann_type, valid_only=False):
     '''
     load dataset and wrap them into torch loaders
     '''
-    partitions = ([] if valid_only else ['train']) + ['valid_seen', 'valid_unseen']
+    # partitions = ([] if valid_only else ['train']) + ['valid_seen', 'valid_unseen']
+    # partitions = ([] if valid_only else ['train']) + ['valid_seen', 'pseudo_valid']
+    partitions = ([] if valid_only else ['train']) + ['valid_seen','pseudo_valid', 'pseudo_test']
     datasets = []
     for partition in partitions:
         if args.model == 'speaker':

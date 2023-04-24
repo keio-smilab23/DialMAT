@@ -4,6 +4,7 @@ import json
 import collections
 import gtimer as gt
 
+import wandb
 from tqdm import tqdm
 from importlib import import_module
 from torch import nn
@@ -33,6 +34,9 @@ class LearnedModel(nn.Module):
         '''
         training loop
         '''
+        # settings for wandb
+        if self.args.wandb:
+            wandb.init(project='dialfred-challenge', name=self.args.wandb_name)
         # prepare dictionaries
         loaders_train = dict(filter(lambda x: 'train' in x[0], loaders.items()))
         assert len(set([len(loader) for loader in loaders_train.values()])) == 1
@@ -112,9 +116,6 @@ class LearnedModel(nn.Module):
             print('Computing train and validation metrics...')
             metrics = {data: {k: sum(v) / len(v) for k, v in metr.items()}
                        for data, metr in metrics.items()}
-            #追加
-            # display metrics
-            # print('metrics for train:', metrics)
 
             # compute metrics for valid_seen
             for loader_id, loader in loaders_valid.items():
@@ -124,6 +125,8 @@ class LearnedModel(nn.Module):
                         loader_id, info['iters'])
 
             #追加
+            if self.args.wandb:
+                wandb.log(metrics)
             # display metrics
             print('metrics :', metrics)
 

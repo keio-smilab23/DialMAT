@@ -374,10 +374,22 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
 
     # first sample a subgoal and get the instruction and image feature
     for dataset_idx, (path, task_json) in enumerate(tqdm(jsons_data)):
+        print("   ", dataset_idx)
         setup_scene(env, task_json)
+        performer.reset()
         num_subgoal = len(task_json["turk_annotations"]
                           ["anns"][0]["high_descs"])
         meta_data = []
+
+        # initialize environment
+        # traj_data, traj_key = dataset.jsons_and_keys[dataset_idx]
+        # setup_scene(env, traj_data)
+        # performer.reset()
+
+        vocab = {'word': dataset.vocab_in, 'action_low': performer.vocab_out}
+        init_states = (None, vocab, None, False)
+        _, _, _, init_failed = init_states
+
         # execute actions and save the metadata for each subgoal
         for subgoal_idx in range(num_subgoal):
             current_query = []
@@ -390,16 +402,21 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
             # set up the performer for expect actions first
             trial_uid = "pad:" + str(0) + ":" + str(subgoal_idx)
             dataset_idx_qa = 0 + dataset_idx
-            init_states = reset(env, performer, dataset, extractor,
-                                trial_uid, dataset_idx_qa, args, obj_predictor)
-            _, _, _, init_failed = init_states
+            # init_states = reset(env, performer, dataset, extractor,
+            #                     trial_uid, dataset_idx_qa, args, obj_predictor)
+
+            # vocab = {'word': dataset.vocab_in, 'action_low': performer.vocab_out}
+            # init_states = (None, vocab, None, False)
+            # _, _, _, init_failed = init_states
+            
 
             task, trial = task_json["turk_annotations"]["anns"][0]["task_desc"], task_json["turk_annotations"]["anns"][0]["task_desc"]
             sg_pairs.append([task, trial, subgoal_idx])
             # orig_instr = normalizeString(turk_annos[0]["high_descs"][subgoal_idx]).lower().replace(",", "").replace(".", "")
             qa = ""
             reward = 0
-            interm_states = None
+            if subgoal_idx == 0:
+                interm_states = None
             pws = 0.0
             t_agent_old = 0
             orig_instr = normalizeString(task_json["turk_annotations"]["anns"][0]["high_descs"][subgoal_idx]).lower(
@@ -511,7 +528,9 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
                 # a penalty for each time step
                 reward += REWARD_TIME * (t_agent - t_agent_old)
                 t_agent_old = t_agent
+                # print(t_agent, args.max_steps, num_fails, args.max_fails, episode_end)
                 if t_agent > args.max_steps or num_fails > args.max_fails or episode_end or init_failed or len(current_query) > 100:
+                    # print(t_agent, args.max_steps, num_fails, args.max_fails, episode_end)
                     break
 
             all_rewards.append(reward)
@@ -569,7 +588,11 @@ def reset(
     # reset model and setup scene
     model.reset()
     # print(traj_data)
-    setup_scene(env, traj_data)
+
+    if subgoal_idx == 0:
+        setup_scene(env, traj_data)
+    
+        
     vocab = {'word': dataset.vocab_in, 'action_low': model.vocab_out}
     # load language features, expert initialization and task info
     # task_info = eval_util.read_task_data(traj_data, subgoal_idx)
@@ -588,6 +611,7 @@ def reset(
     #         break
 
     init_states = (None, vocab, prev_action, init_failed)
+    
     return init_states
 
 
@@ -630,9 +654,11 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
         # env.task.finished = subgoal_idx - 1
         t_current = 0
         while t_agent < args.max_steps and t_current < num_rollout:
+            # print(t_agent)
             # get an observation and do an agent step
             input_dict['frames'] = eval_util.get_observation(
                 env.last_event, extractor)
+            # print(prev_action, )
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,
                 num_fails, obj_predictor)

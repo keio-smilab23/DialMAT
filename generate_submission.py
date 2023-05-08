@@ -338,6 +338,9 @@ REWARD_SUC = 1.0
 SOS_token = 0
 EOS_token = 1
 
+recent_id = None
+action_idx = None
+
 VERBOSE = False
 
 
@@ -514,7 +517,7 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
                 # performer rollout for some steps
                 with torch.no_grad():
                     interm_states = step(env, performer, dataset, extractor,
-                                         trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, num_rollout=5)
+                                         trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, int(path[-9:-5]), num_rollout=5)
 
                 # if log_entry['success']:
                 #     reward += REWARD_SUC
@@ -614,7 +617,7 @@ def reset(
     return init_states
 
 
-def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, num_rollout=5):
+def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, id, num_rollout=5):
     # modification of evaluate_subgoals: add qa and skip init
 
     # add initial states from expert initialization
@@ -655,8 +658,16 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
         while t_agent < args.max_steps and t_current < num_rollout:
             # print(t_agent)
             # get an observation and do an agent step
+
+            global recent_id, action_idx
+            if recent_id != id:
+                recent_id = id
+                action_idx = 1
+            else:
+                action_idx += 1
+
             input_dict['frames'] = eval_util.get_observation(
-                env.last_event, extractor)
+                env.last_event, extractor, id=id, subgoal_idx=subgoal_idx, action_idx=action_idx)
             # print(prev_action, )
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,

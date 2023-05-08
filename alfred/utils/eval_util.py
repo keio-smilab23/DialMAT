@@ -359,11 +359,18 @@ def expert_step(action, masks, model, input_dict, vocab, prev_action, env, args)
     return False, prev_action
 
 
-def get_observation(event, extractor):
+def get_observation(event, extractor, id=None, subgoal_idx=None, action_idx=None):
     '''
     get environment observation
     '''
     frames = extractor.featurize([Image.fromarray(event.frame)], batch=1)
+
+    if id != None and subgoal_idx != None and action_idx != None:
+        dir = f"./qualitative/test/{id:04}"
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        Image.fromarray(event.frame).save(f"{dir}/{subgoal_idx+1:02}_{action_idx:03}.png")
+
     return frames
 
 

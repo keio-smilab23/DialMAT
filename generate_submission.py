@@ -374,7 +374,6 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
 
     # first sample a subgoal and get the instruction and image feature
     for dataset_idx, (path, task_json) in enumerate(tqdm(jsons_data)):
-        print("   ", dataset_idx)
         setup_scene(env, task_json)
         performer.reset()
         num_subgoal = len(task_json["turk_annotations"]

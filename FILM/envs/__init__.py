@@ -140,7 +140,11 @@ def construct_envs_alfred(args):
         args_list = []
         scene_names_list = [[]]
         dir_path = "new_dialfred_testset_final/"
+        submission_path = "submission_file"
+        already_processed = set(os.listdir(submission_path))
+
         for filename in sorted(os.listdir(dir_path)):
+            if args.resume and filename in already_processed: continue
             if filename.endswith(".json"):
                 scene_names_list[0].append(filename[:4])
         for i in range(args.num_processes):

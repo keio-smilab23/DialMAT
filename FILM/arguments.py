@@ -7,6 +7,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Active-Neural-SLAM')
 
     parser.add_argument('--dialfred', action='store_true', default=False)
+    parser.add_argument('--resume', action='store_true', default=False)
 
     parser.add_argument('--aithor', type=int, default=0)
     parser.add_argument('--alfred', type=int, default=0)

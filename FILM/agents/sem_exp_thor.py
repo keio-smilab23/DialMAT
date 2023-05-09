@@ -184,7 +184,8 @@ class Sem_Exp_Env_Agent_Thor(ThorEnvCode):
 		episode_no = self.args.from_idx + self.scene_pointer* self.args.num_processes + self.rank        
 
 		try:
-			if self.args.dialfred == True:
+			if self.args.dialfred:
+				print(f"LOADING: {self.scene_names[self.scene_pointer]}")
 				# scene_name = "0001"
 				# traj_data = self.load_traj(scene_name)
 				traj_data = self.load_traj(self.scene_names[self.scene_pointer])

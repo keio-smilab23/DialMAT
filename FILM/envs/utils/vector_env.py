@@ -211,8 +211,11 @@ class VectorEnv:
                 elif command == RESET_GOAL_COMMAND:
                     #env.reset_goal_command(data[0], data[1], data[2])
                     #env.reset_goal(data)
-                    infos = env.reset_goal(data[0], data[1], data[2])
-                    connection_write_fn(infos)
+                    try:
+                        infos = env.reset_goal(data[0], data[1], data[2])
+                        connection_write_fn(infos)
+                    except:
+                        print("ERROR: reset_goal_command is failed")
                     
                 elif command == DECOMPRESS_MASK_COMMAND:
                     mask = env.decompress_mask(data)

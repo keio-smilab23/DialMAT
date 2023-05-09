@@ -1,0 +1,3025 @@
+
+===================================================
+episode # is 0
+step #:  0 , list of actions is  [('CounterTop', 'MoveTo'), ('DishSponge', 'PickupObject'), ('CounterTop', 'MoveTo'), ('Cabinet', 'OpenObject'), ('Cabinet', 'PutObject'), ('Cabinet', 'CloseObject')]
+step #:  2 , total cat2idx is  {'Knife': 0, 'SinkBasin': 1, 'ArmChair': 2, 'BathtubBasin': 3, 'Bed': 4, 'Cabinet': 5, 'Cart': 6, 'CoffeeMachine': 7, 'CoffeeTable': 8, 'CounterTop': 9, 'Desk': 10, 'DiningTable': 11, 'Drawer': 12, 'Dresser': 13, 'Fridge': 14, 'GarbageCan': 15, 'Microwave': 16, 'Ottoman': 17, 'Safe': 18, 'Shelf': 19, 'SideTable': 20, 'Sofa': 21, 'StoveBurner': 22, 'TVStand': 23, 'Toilet': 24, 'DishSponge': 25, 'None': 29}
+step #:  2 , None of that
+step #:  2 , planner broken is  False
+step #:  3 , obj type for mask is : CounterTop
+step #:  3 , None of that
+step #:  3 , planner broken is  False
+step #:  4 , obj type for mask is : CounterTop
+step #:  4 , None of that
+step #:  4 , planner broken is  False
+step #:  5 , obj type for mask is : CounterTop
+step #:  5 , None of that
+step #:  5 , planner broken is  False
+step #:  6 , obj type for mask is : CounterTop
+step #:  6 , None of that
+step #:  6 , planner broken is  False
+step #:  7 , obj type for mask is : CounterTop
+step #:  7 , Center done
+step #:  7 , None of that
+step #:  7 , goal found!
+step #:  7 , planner broken is  True
+step #:  7 , Planner broken!
+step #:  7 , Goal found, goal in obstruction
+step #:  7 , Really broken? True
+step #:  7 , dilation is  1
+step #:  7 , Sanity check passed in loop is  False
+step #:  7 , Sanity check passed is  False
+step #:  8 , obj type for mask is : CounterTop
+step #:  8 , step:  8 , err is  Invalid action. Conversion to THOR API failed! (action='MoveTo')
+step #:  8 , action taken in step  8 : 
+step #:  8 , pointer increased goal name  ('DishSponge', 'PickupObject')
+step #:  8 , None of that
+step #:  8 , planner broken is  False
+step #:  9 , obj type for mask is : DishSponge
+step #:  9 , None of that
+step #:  9 , planner broken is  False
+step #:  10 , obj type for mask is : DishSponge
+step #:  10 , None of that
+step #:  10 , planner broken is  False
+step #:  11 , obj type for mask is : DishSponge
+step #:  11 , None of that
+step #:  11 , planner broken is  False
+step #:  12 , obj type for mask is : DishSponge
+step #:  12 , None of that
+step #:  12 , planner broken is  False
+step #:  13 , obj type for mask is : DishSponge
+step #:  13 , None of that
+step #:  13 , planner broken is  False
+step #:  14 , obj type for mask is : DishSponge
+step #:  14 , None of that
+step #:  14 , planner broken is  False
+step #:  15 , obj type for mask is : DishSponge
+step #:  15 , None of that
+step #:  15 , planner broken is  False
+step #:  16 , obj type for mask is : DishSponge
+step #:  16 , None of that
+step #:  16 , planner broken is  False
+step #:  17 , obj type for mask is : DishSponge
+step #:  17 , None of that
+step #:  17 , planner broken is  True
+step #:  17 , Planner broken!
+step #:  17 , Goal in obstruction
+step #:  17 , Really broken? True
+step #:  17 , dilation is  1
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  2
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  3
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  4
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  5
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  6
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  7
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  8
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  9
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  10
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  11
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  12
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  13
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  14
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  15
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  16
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  17
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  18
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  19
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  20
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  21
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  22
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  23
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  24
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  25
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  26
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  27
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  28
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  29
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  30
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  31
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  32
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  33
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  34
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  35
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  36
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  37
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  38
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  39
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  40
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  41
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  42
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  43
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  44
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  45
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  46
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  47
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  48
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  49
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  50
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  51
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  52
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  53
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  54
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  55
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  56
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  57
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  58
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  59
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  60
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , Switched to goal in wall after dilation>45
+step #:  17 , Sanity check passed is  True
+step #:  18 , obj type for mask is : DishSponge
+step #:  18 , wall goal
+step #:  18 , planner broken is  True
+step #:  18 , Planner broken!
+step #:  18 , Goal in obstruction
+step #:  18 , Really broken? True
+step #:  18 , dilation is  1
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  2
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  3
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  4
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  5
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  6
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  7
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  8
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  9
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  10
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  11
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  12
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  13
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  14
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  15
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  16
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  17
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  18
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  19
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  20
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  21
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  22
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  23
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  24
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  25
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  26
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  27
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  28
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  29
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  30
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  31
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  32
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  33
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  34
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  35
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  36
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  37
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  38
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  39
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  40
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  41
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  42
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  43
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  44
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  45
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  46
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  47
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  48
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  49
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  50
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  51
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  52
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  53
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  54
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  55
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  56
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  57
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  58
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  59
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  60
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , Switched to goal in wall after dilation>45
+step #:  18 , Sanity check passed is  False
+step #:  19 , obj type for mask is : DishSponge
+step #:  19 , wall goal
+step #:  19 , planner broken is  False
+step #:  20 , obj type for mask is : DishSponge
+step #:  20 , wall goal
+step #:  20 , planner broken is  False
+step #:  21 , obj type for mask is : DishSponge
+step #:  21 , Center done
+step #:  21 , goal found!
+step #:  21 , planner broken is  True
+step #:  21 , Planner broken!
+step #:  21 , Goal found, goal in obstruction
+step #:  21 , Really broken? True
+step #:  21 , dilation is  1
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  2
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  3
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  4
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  5
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  6
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  7
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  8
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  9
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  10
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  11
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  12
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  13
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  14
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  15
+step #:  21 , Sanity check passed in loop is  False
+step #:  21 , Sanity check passed is  False
+step #:  22 , obj type for mask is : DishSponge
+step #:  22 , step:  22 , err is  Fridge_20d9f82f is blocking Agent 0 from moving 0
+step #:  22 , action taken in step  22 : 
+step #:  22 , Center done
+step #:  22 , dilation added
+step #:  22 , goal found!
+step #:  22 , planner broken is  False
+step #:  23 , obj type for mask is : DishSponge
+step #:  23 , Center done
+step #:  23 , dilation added
+step #:  23 , goal found!
+step #:  23 , planner broken is  False
+step #:  24 , obj type for mask is : DishSponge
+step #:  24 , Center done
+step #:  24 , dilation added
+step #:  24 , goal found!
+step #:  24 , planner broken is  False
+step #:  25 , obj type for mask is : DishSponge
+step #:  25 , Center done
+step #:  25 , dilation added
+step #:  25 , goal found!
+step #:  25 , planner broken is  False
+step #:  26 , obj type for mask is : DishSponge
+step #:  26 , newly goal set
+step #:  26 , Center done
+step #:  26 , None of that
+step #:  26 , goal found!
+step #:  26 , planner broken is  True
+step #:  26 , Planner broken!
+step #:  26 , Goal found, goal in obstruction
+step #:  26 , Really broken? True
+step #:  26 , dilation is  1
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  2
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  3
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  4
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  5
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  6
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  7
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  8
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  9
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  10
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  11
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  12
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  13
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  14
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  15
+step #:  26 , Sanity check passed in loop is  False
+step #:  26 , Sanity check passed is  False
+step #:  27 , obj type for mask is : DishSponge
+step #:  27 , Center done
+step #:  27 , dilation added
+step #:  27 , goal found!
+step #:  27 , planner broken is  False
+step #:  28 , obj type for mask is : DishSponge
+step #:  28 , Center done
+step #:  28 , dilation added
+step #:  28 , goal found!
+step #:  28 , planner broken is  False
+step #:  29 , obj type for mask is : DishSponge
+step #:  30 , pointer increased goal name  ('CounterTop', 'MoveTo')
+step #:  30 , Center done
+step #:  30 , None of that
+step #:  30 , goal found!
+step #:  30 , planner broken is  False
+step #:  31 , obj type for mask is : CounterTop
+step #:  31 , step:  31 , err is  Invalid action. Conversion to THOR API failed! (action='MoveTo')
+step #:  31 , action taken in step  31 : 
+step #:  31 , pointer increased goal name  ('Cabinet', 'OpenObject')
+step #:  31 , Center done
+step #:  31 , None of that
+step #:  31 , goal found!
+step #:  31 , planner broken is  False
+step #:  31 , wd is  250.18210944508522
+step #:  31 , sidestepping to right
+step #:  31 , side step called, order:  0
+step #:  32 , last three side stepped  ['right', None, None]
+step #:  32 , obj type for mask is : Cabinet
+step #:  32 , side step called, order:  1
+step #:  32 , checking consec moving!
+step #:  33 , obj type for mask is : Cabinet
+step #:  33 , side step called, order:  2
+step #:  34 , obj type for mask is : Cabinet
+step #:  34 , moving until visible
+step #:  34 , current horizon is  45.0
+step #:  34 , move until visible order is  0
+step #:  35 , obj type for mask is : Cabinet
+step #:  36 , pointer increased goal name  ('Cabinet', 'PutObject')
+step #:  36 , consec action
+step #:  37 , step:  37 , err is  No valid positions to place object found
+step #:  37 , action taken in step  37 : 
+step #:  37 , Center done
+step #:  37 , None of that
+step #:  37 , goal found!
+step #:  37 , planner broken is  False
+step #:  37 , wd is  117.38508239375543
+step #:  37 , skipping sidestepping
+step #:  38 , last three side stepped  [None, None, None]
+step #:  38 , obj type for mask is : Cabinet
+step #:  38 , moving until visible
+step #:  38 , current horizon is  45.0
+step #:  38 , move until visible order is  1
+step #:  39 , obj type for mask is : Cabinet
+step #:  39 , moving until visible
+step #:  39 , current horizon is  45.0
+step #:  39 , move until visible order is  2
+step #:  40 , obj type for mask is : Cabinet
+step #:  40 , moving until visible
+step #:  40 , current horizon is  45.0
+step #:  40 , move until visible order is  3
+step #:  41 , obj type for mask is : Cabinet
+step #:  41 , moving until visible
+step #:  41 , current horizon is  45.0
+step #:  41 , move until visible order is  4
+step #:  46 , obj type for mask is : Cabinet
+step #:  47 , step:  47 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  47 , action taken in step  47 : 
+step #:  47 , wd is  18.133166794773253
+step #:  47 , sidestepping to left
+step #:  47 , side step called, order:  0
+step #:  48 , last three side stepped  ['left', None, None]
+step #:  48 , obj type for mask is : Cabinet
+step #:  48 , side step called, order:  1
+step #:  48 , checking consec moving!
+step #:  49 , obj type for mask is : Cabinet
+step #:  49 , side step called, order:  2
+step #:  50 , obj type for mask is : Cabinet
+step #:  50 , moving until visible
+step #:  50 , current horizon is  0.0
+step #:  50 , move until visible order is  5
+step #:  53 , move until visible broken!
+step #:  53 , obj type for mask is : Cabinet
+step #:  53 , moving until visible
+step #:  53 , current horizon is  45.0
+step #:  53 , move until visible order is  5
+step #:  56 , obj type for mask is : Cabinet
+step #:  56 , moving until visible
+step #:  56 , current horizon is  45.0
+step #:  56 , move until visible order is  6
+step #:  61 , obj type for mask is : Cabinet
+step #:  61 , moving until visible
+step #:  61 , current horizon is  0.0
+step #:  61 , move until visible order is  7
+step #:  64 , move until visible broken!
+step #:  64 , obj type for mask is : Cabinet
+step #:  64 , moving until visible
+step #:  64 , current horizon is  45.0
+step #:  64 , move until visible order is  7
+step #:  69 , obj type for mask is : Cabinet
+step #:  69 , moving until visible
+step #:  69 , current horizon is  0.0
+step #:  69 , move until visible order is  8
+step #:  72 , move until visible broken!
+step #:  72 , obj type for mask is : Cabinet
+step #:  72 , moving until visible
+step #:  72 , current horizon is  45.0
+step #:  72 , move until visible order is  0
+step #:  73 , obj type for mask is : Cabinet
+step #:  73 , moving until visible
+step #:  73 , current horizon is  45.0
+step #:  73 , move until visible order is  1
+step #:  74 , obj type for mask is : Cabinet
+step #:  74 , moving until visible
+step #:  74 , current horizon is  45.0
+step #:  74 , move until visible order is  2
+step #:  75 , obj type for mask is : Cabinet
+step #:  75 , moving until visible
+step #:  75 , current horizon is  45.0
+step #:  75 , move until visible order is  3
+step #:  76 , obj type for mask is : Cabinet
+step #:  76 , moving until visible
+step #:  76 , current horizon is  45.0
+step #:  76 , move until visible order is  4
+step #:  81 , obj type for mask is : Cabinet
+step #:  81 , moving until visible
+step #:  81 , current horizon is  0.0
+step #:  81 , move until visible order is  5
+step #:  84 , move until visible broken!
+step #:  84 , Went through one cycle of move until visible, step num is  84
+step #:  84 , obj type for mask is : Cabinet
+step #:  84 , Center done
+step #:  84 , None of that
+step #:  84 , goal found!
+step #:  84 , planner broken is  True
+step #:  84 , Planner broken!
+step #:  84 , Goal found, goal in obstruction
+step #:  84 , Really broken? True
+step #:  84 , dilation is  1
+step #:  84 , Sanity check passed in loop is  False
+step #:  84 , Sanity check passed is  False
+step #:  85 , obj type for mask is : Cabinet
+step #:  85 , Center done
+step #:  85 , dilation added
+step #:  85 , goal found!
+step #:  85 , planner broken is  False
+step #:  86 , obj type for mask is : Cabinet
+step #:  86 , Center done
+step #:  86 , dilation added
+step #:  86 , goal found!
+step #:  86 , planner broken is  False
+step #:  87 , obj type for mask is : Cabinet
+step #:  87 , Center done
+step #:  87 , dilation added
+step #:  87 , goal found!
+step #:  87 , planner broken is  False
+step #:  88 , obj type for mask is : Cabinet
+step #:  89 , step:  89 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  89 , action taken in step  89 : 
+step #:  89 , Center done
+step #:  89 , dilation added
+step #:  89 , goal found!
+step #:  89 , planner broken is  False
+step #:  90 , obj type for mask is : Cabinet
+step #:  91 , step:  91 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  91 , action taken in step  91 : 
+step #:  91 , Center done
+step #:  91 , dilation added
+step #:  91 , goal found!
+step #:  91 , planner broken is  False
+step #:  92 , obj type for mask is : Cabinet
+step #:  93 , step:  93 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  93 , action taken in step  93 : 
+step #:  93 , Center done
+step #:  93 , dilation added
+step #:  93 , goal found!
+step #:  93 , planner broken is  False
+step #:  93 , wd is  149.07384970431272
+step #:  93 , skipping sidestepping
+step #:  94 , last three side stepped  [None, None, None]
+step #:  94 , obj type for mask is : Cabinet
+step #:  95 , step:  95 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  95 , action taken in step  95 : 
+
+===================================================
+episode # is 0
+step #:  0 , list of actions is  [('CounterTop', 'MoveTo'), ('DishSponge', 'PickupObject'), ('CounterTop', 'MoveTo'), ('Cabinet', 'OpenObject'), ('Cabinet', 'PutObject'), ('Cabinet', 'CloseObject')]
+step #:  2 , total cat2idx is  {'Knife': 0, 'SinkBasin': 1, 'ArmChair': 2, 'BathtubBasin': 3, 'Bed': 4, 'Cabinet': 5, 'Cart': 6, 'CoffeeMachine': 7, 'CoffeeTable': 8, 'CounterTop': 9, 'Desk': 10, 'DiningTable': 11, 'Drawer': 12, 'Dresser': 13, 'Fridge': 14, 'GarbageCan': 15, 'Microwave': 16, 'Ottoman': 17, 'Safe': 18, 'Shelf': 19, 'SideTable': 20, 'Sofa': 21, 'StoveBurner': 22, 'TVStand': 23, 'Toilet': 24, 'DishSponge': 25, 'None': 29}
+step #:  2 , None of that
+step #:  2 , planner broken is  False
+step #:  3 , obj type for mask is : CounterTop
+step #:  3 , None of that
+step #:  3 , planner broken is  False
+step #:  4 , obj type for mask is : CounterTop
+step #:  4 , None of that
+step #:  4 , planner broken is  False
+step #:  5 , obj type for mask is : CounterTop
+step #:  5 , None of that
+step #:  5 , planner broken is  False
+step #:  6 , obj type for mask is : CounterTop
+step #:  6 , None of that
+step #:  6 , planner broken is  False
+step #:  7 , obj type for mask is : CounterTop
+step #:  7 , Center done
+step #:  7 , None of that
+step #:  7 , goal found!
+step #:  7 , planner broken is  True
+step #:  7 , Planner broken!
+step #:  7 , Goal found, goal in obstruction
+step #:  7 , Really broken? True
+step #:  7 , dilation is  1
+step #:  7 , Sanity check passed in loop is  False
+step #:  7 , Sanity check passed is  False
+step #:  8 , obj type for mask is : CounterTop
+step #:  8 , step:  8 , err is  Invalid action. Conversion to THOR API failed! (action='MoveTo')
+step #:  8 , action taken in step  8 : 
+step #:  8 , pointer increased goal name  ('DishSponge', 'PickupObject')
+step #:  8 , None of that
+step #:  8 , planner broken is  False
+step #:  9 , obj type for mask is : DishSponge
+step #:  9 , None of that
+step #:  9 , planner broken is  False
+step #:  10 , obj type for mask is : DishSponge
+step #:  10 , None of that
+step #:  10 , planner broken is  False
+step #:  11 , obj type for mask is : DishSponge
+step #:  11 , None of that
+step #:  11 , planner broken is  False
+step #:  12 , obj type for mask is : DishSponge
+step #:  12 , None of that
+step #:  12 , planner broken is  False
+step #:  13 , obj type for mask is : DishSponge
+step #:  13 , None of that
+step #:  13 , planner broken is  False
+step #:  14 , obj type for mask is : DishSponge
+step #:  14 , None of that
+step #:  14 , planner broken is  False
+step #:  15 , obj type for mask is : DishSponge
+step #:  15 , None of that
+step #:  15 , planner broken is  False
+step #:  16 , obj type for mask is : DishSponge
+step #:  16 , None of that
+step #:  16 , planner broken is  False
+step #:  17 , obj type for mask is : DishSponge
+step #:  17 , None of that
+step #:  17 , planner broken is  True
+step #:  17 , Planner broken!
+step #:  17 , Goal in obstruction
+step #:  17 , Really broken? True
+step #:  17 , dilation is  1
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  2
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  3
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  4
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  5
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  6
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  7
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  8
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  9
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  10
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  11
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  12
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  13
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  14
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  15
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  16
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  17
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  18
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  19
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  20
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  21
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  22
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  23
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  24
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  25
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  26
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  27
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  28
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  29
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  30
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  31
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  32
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  33
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  34
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  35
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  36
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  37
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  38
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  39
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  40
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  41
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  42
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  43
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  44
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  45
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  46
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  47
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  48
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  49
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  50
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  51
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  52
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  53
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  54
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  55
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  56
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  57
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  58
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  59
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  60
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , Switched to goal in wall after dilation>45
+step #:  17 , Sanity check passed is  True
+step #:  18 , obj type for mask is : DishSponge
+step #:  18 , wall goal
+step #:  18 , planner broken is  True
+step #:  18 , Planner broken!
+step #:  18 , Goal in obstruction
+step #:  18 , Really broken? True
+step #:  18 , dilation is  1
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  2
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  3
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  4
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  5
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  6
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  7
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  8
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  9
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  10
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  11
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  12
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  13
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  14
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  15
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  16
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  17
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  18
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  19
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  20
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  21
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  22
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  23
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  24
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  25
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  26
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  27
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  28
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  29
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  30
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  31
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  32
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  33
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  34
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  35
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  36
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  37
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  38
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  39
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  40
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  41
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  42
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  43
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  44
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  45
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  46
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  47
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  48
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  49
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  50
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  51
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  52
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  53
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  54
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  55
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  56
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  57
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  58
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  59
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  60
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , Switched to goal in wall after dilation>45
+step #:  18 , Sanity check passed is  False
+step #:  19 , obj type for mask is : DishSponge
+step #:  19 , wall goal
+step #:  19 , planner broken is  False
+step #:  20 , obj type for mask is : DishSponge
+step #:  20 , wall goal
+step #:  20 , planner broken is  False
+step #:  21 , obj type for mask is : DishSponge
+step #:  21 , Center done
+step #:  21 , goal found!
+step #:  21 , planner broken is  True
+step #:  21 , Planner broken!
+step #:  21 , Goal found, goal in obstruction
+step #:  21 , Really broken? True
+step #:  21 , dilation is  1
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  2
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  3
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  4
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  5
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  6
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  7
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  8
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  9
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  10
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  11
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  12
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  13
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  14
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  15
+step #:  21 , Sanity check passed in loop is  False
+step #:  21 , Sanity check passed is  False
+step #:  22 , obj type for mask is : DishSponge
+step #:  22 , step:  22 , err is  Fridge_20d9f82f is blocking Agent 0 from moving 0
+step #:  22 , action taken in step  22 : 
+step #:  22 , Center done
+step #:  22 , dilation added
+step #:  22 , goal found!
+step #:  22 , planner broken is  False
+step #:  23 , obj type for mask is : DishSponge
+step #:  23 , Center done
+step #:  23 , dilation added
+step #:  23 , goal found!
+step #:  23 , planner broken is  False
+step #:  24 , obj type for mask is : DishSponge
+step #:  24 , Center done
+step #:  24 , dilation added
+step #:  24 , goal found!
+step #:  24 , planner broken is  False
+step #:  25 , obj type for mask is : DishSponge
+step #:  25 , Center done
+step #:  25 , dilation added
+step #:  25 , goal found!
+step #:  25 , planner broken is  False
+step #:  26 , obj type for mask is : DishSponge
+step #:  26 , newly goal set
+step #:  26 , Center done
+step #:  26 , None of that
+step #:  26 , goal found!
+step #:  26 , planner broken is  True
+step #:  26 , Planner broken!
+step #:  26 , Goal found, goal in obstruction
+step #:  26 , Really broken? True
+step #:  26 , dilation is  1
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  2
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  3
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  4
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  5
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  6
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  7
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  8
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  9
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  10
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  11
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  12
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  13
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  14
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  15
+step #:  26 , Sanity check passed in loop is  False
+step #:  26 , Sanity check passed is  False
+step #:  27 , obj type for mask is : DishSponge
+step #:  27 , Center done
+step #:  27 , dilation added
+step #:  27 , goal found!
+step #:  27 , planner broken is  False
+step #:  28 , obj type for mask is : DishSponge
+step #:  28 , Center done
+step #:  28 , dilation added
+step #:  28 , goal found!
+step #:  28 , planner broken is  False
+step #:  29 , obj type for mask is : DishSponge
+step #:  30 , pointer increased goal name  ('CounterTop', 'MoveTo')
+step #:  30 , Center done
+step #:  30 , None of that
+step #:  30 , goal found!
+step #:  30 , planner broken is  False
+step #:  31 , obj type for mask is : CounterTop
+step #:  31 , step:  31 , err is  Invalid action. Conversion to THOR API failed! (action='MoveTo')
+step #:  31 , action taken in step  31 : 
+step #:  31 , pointer increased goal name  ('Cabinet', 'OpenObject')
+step #:  31 , Center done
+step #:  31 , None of that
+step #:  31 , goal found!
+step #:  31 , planner broken is  False
+step #:  31 , wd is  250.18210944508522
+step #:  31 , sidestepping to right
+step #:  31 , side step called, order:  0
+step #:  32 , last three side stepped  ['right', None, None]
+step #:  32 , obj type for mask is : Cabinet
+step #:  32 , side step called, order:  1
+step #:  32 , checking consec moving!
+step #:  33 , obj type for mask is : Cabinet
+step #:  33 , side step called, order:  2
+step #:  34 , obj type for mask is : Cabinet
+step #:  34 , moving until visible
+step #:  34 , current horizon is  45.0
+step #:  34 , move until visible order is  0
+step #:  35 , obj type for mask is : Cabinet
+step #:  36 , pointer increased goal name  ('Cabinet', 'PutObject')
+step #:  36 , consec action
+step #:  37 , step:  37 , err is  No valid positions to place object found
+step #:  37 , action taken in step  37 : 
+step #:  37 , Center done
+step #:  37 , None of that
+step #:  37 , goal found!
+step #:  37 , planner broken is  False
+step #:  37 , wd is  117.38508239375543
+step #:  37 , skipping sidestepping
+step #:  38 , last three side stepped  [None, None, None]
+step #:  38 , obj type for mask is : Cabinet
+step #:  38 , moving until visible
+step #:  38 , current horizon is  45.0
+step #:  38 , move until visible order is  1
+step #:  39 , obj type for mask is : Cabinet
+step #:  39 , moving until visible
+step #:  39 , current horizon is  45.0
+step #:  39 , move until visible order is  2
+step #:  40 , obj type for mask is : Cabinet
+step #:  40 , moving until visible
+step #:  40 , current horizon is  45.0
+step #:  40 , move until visible order is  3
+step #:  41 , obj type for mask is : Cabinet
+step #:  41 , moving until visible
+step #:  41 , current horizon is  45.0
+step #:  41 , move until visible order is  4
+step #:  46 , obj type for mask is : Cabinet
+step #:  47 , step:  47 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  47 , action taken in step  47 : 
+step #:  47 , wd is  18.133166794773253
+step #:  47 , sidestepping to left
+step #:  47 , side step called, order:  0
+step #:  48 , last three side stepped  ['left', None, None]
+step #:  48 , obj type for mask is : Cabinet
+step #:  48 , side step called, order:  1
+step #:  48 , checking consec moving!
+step #:  49 , obj type for mask is : Cabinet
+step #:  49 , side step called, order:  2
+step #:  50 , obj type for mask is : Cabinet
+step #:  50 , moving until visible
+step #:  50 , current horizon is  0.0
+step #:  50 , move until visible order is  5
+step #:  53 , move until visible broken!
+step #:  53 , obj type for mask is : Cabinet
+step #:  53 , moving until visible
+step #:  53 , current horizon is  45.0
+step #:  53 , move until visible order is  5
+step #:  56 , obj type for mask is : Cabinet
+step #:  56 , moving until visible
+step #:  56 , current horizon is  45.0
+step #:  56 , move until visible order is  6
+step #:  61 , obj type for mask is : Cabinet
+step #:  61 , moving until visible
+step #:  61 , current horizon is  0.0
+step #:  61 , move until visible order is  7
+step #:  64 , move until visible broken!
+step #:  64 , obj type for mask is : Cabinet
+step #:  64 , moving until visible
+step #:  64 , current horizon is  45.0
+step #:  64 , move until visible order is  7
+step #:  69 , obj type for mask is : Cabinet
+step #:  69 , moving until visible
+step #:  69 , current horizon is  0.0
+step #:  69 , move until visible order is  8
+step #:  72 , move until visible broken!
+step #:  72 , obj type for mask is : Cabinet
+step #:  72 , moving until visible
+step #:  72 , current horizon is  45.0
+step #:  72 , move until visible order is  0
+step #:  73 , obj type for mask is : Cabinet
+step #:  73 , moving until visible
+step #:  73 , current horizon is  45.0
+step #:  73 , move until visible order is  1
+step #:  74 , obj type for mask is : Cabinet
+step #:  74 , moving until visible
+step #:  74 , current horizon is  45.0
+step #:  74 , move until visible order is  2
+step #:  75 , obj type for mask is : Cabinet
+step #:  75 , moving until visible
+step #:  75 , current horizon is  45.0
+step #:  75 , move until visible order is  3
+step #:  76 , obj type for mask is : Cabinet
+step #:  76 , moving until visible
+step #:  76 , current horizon is  45.0
+step #:  76 , move until visible order is  4
+step #:  81 , obj type for mask is : Cabinet
+step #:  81 , moving until visible
+step #:  81 , current horizon is  0.0
+step #:  81 , move until visible order is  5
+step #:  84 , move until visible broken!
+step #:  84 , Went through one cycle of move until visible, step num is  84
+step #:  84 , obj type for mask is : Cabinet
+step #:  84 , Center done
+step #:  84 , None of that
+step #:  84 , goal found!
+step #:  84 , planner broken is  True
+step #:  84 , Planner broken!
+step #:  84 , Goal found, goal in obstruction
+step #:  84 , Really broken? True
+step #:  84 , dilation is  1
+step #:  84 , Sanity check passed in loop is  False
+step #:  84 , Sanity check passed is  False
+step #:  85 , obj type for mask is : Cabinet
+step #:  85 , Center done
+step #:  85 , dilation added
+step #:  85 , goal found!
+step #:  85 , planner broken is  False
+step #:  86 , obj type for mask is : Cabinet
+step #:  86 , Center done
+step #:  86 , dilation added
+step #:  86 , goal found!
+step #:  86 , planner broken is  False
+step #:  87 , obj type for mask is : Cabinet
+step #:  87 , Center done
+step #:  87 , dilation added
+step #:  87 , goal found!
+step #:  87 , planner broken is  False
+step #:  88 , obj type for mask is : Cabinet
+step #:  89 , step:  89 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  89 , action taken in step  89 : 
+step #:  89 , Center done
+step #:  89 , dilation added
+step #:  89 , goal found!
+step #:  89 , planner broken is  False
+step #:  90 , obj type for mask is : Cabinet
+step #:  91 , step:  91 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  91 , action taken in step  91 : 
+step #:  91 , Center done
+step #:  91 , dilation added
+step #:  91 , goal found!
+step #:  91 , planner broken is  False
+step #:  92 , obj type for mask is : Cabinet
+step #:  93 , step:  93 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  93 , action taken in step  93 : 
+step #:  93 , Center done
+step #:  93 , dilation added
+step #:  93 , goal found!
+step #:  93 , planner broken is  False
+step #:  93 , wd is  149.07384970431272
+step #:  93 , skipping sidestepping
+step #:  94 , last three side stepped  [None, None, None]
+step #:  94 , obj type for mask is : Cabinet
+step #:  95 , step:  95 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  95 , action taken in step  95 : 
+
+===================================================
+episode # is 0
+step #:  0 , list of actions is  [('CounterTop', 'MoveTo'), ('DishSponge', 'PickupObject'), ('CounterTop', 'MoveTo'), ('Cabinet', 'OpenObject'), ('Cabinet', 'PutObject'), ('Cabinet', 'CloseObject')]
+step #:  2 , total cat2idx is  {'Knife': 0, 'SinkBasin': 1, 'ArmChair': 2, 'BathtubBasin': 3, 'Bed': 4, 'Cabinet': 5, 'Cart': 6, 'CoffeeMachine': 7, 'CoffeeTable': 8, 'CounterTop': 9, 'Desk': 10, 'DiningTable': 11, 'Drawer': 12, 'Dresser': 13, 'Fridge': 14, 'GarbageCan': 15, 'Microwave': 16, 'Ottoman': 17, 'Safe': 18, 'Shelf': 19, 'SideTable': 20, 'Sofa': 21, 'StoveBurner': 22, 'TVStand': 23, 'Toilet': 24, 'DishSponge': 25, 'None': 29}
+step #:  2 , None of that
+step #:  2 , planner broken is  False
+step #:  3 , obj type for mask is : CounterTop
+step #:  3 , None of that
+step #:  3 , planner broken is  False
+step #:  4 , obj type for mask is : CounterTop
+step #:  4 , None of that
+step #:  4 , planner broken is  False
+step #:  5 , obj type for mask is : CounterTop
+step #:  5 , None of that
+step #:  5 , planner broken is  False
+step #:  6 , obj type for mask is : CounterTop
+step #:  6 , None of that
+step #:  6 , planner broken is  False
+step #:  7 , obj type for mask is : CounterTop
+step #:  7 , Center done
+step #:  7 , None of that
+step #:  7 , goal found!
+step #:  7 , planner broken is  True
+step #:  7 , Planner broken!
+step #:  7 , Goal found, goal in obstruction
+step #:  7 , Really broken? True
+step #:  7 , dilation is  1
+step #:  7 , Sanity check passed in loop is  False
+step #:  7 , Sanity check passed is  False
+step #:  8 , obj type for mask is : CounterTop
+step #:  8 , step:  8 , err is  Invalid action. Conversion to THOR API failed! (action='MoveTo')
+step #:  8 , action taken in step  8 : 
+step #:  8 , pointer increased goal name  ('DishSponge', 'PickupObject')
+step #:  8 , None of that
+step #:  8 , planner broken is  False
+step #:  9 , obj type for mask is : DishSponge
+step #:  9 , None of that
+step #:  9 , planner broken is  False
+step #:  10 , obj type for mask is : DishSponge
+step #:  10 , None of that
+step #:  10 , planner broken is  False
+step #:  11 , obj type for mask is : DishSponge
+step #:  11 , None of that
+step #:  11 , planner broken is  False
+step #:  12 , obj type for mask is : DishSponge
+step #:  12 , None of that
+step #:  12 , planner broken is  False
+step #:  13 , obj type for mask is : DishSponge
+step #:  13 , None of that
+step #:  13 , planner broken is  False
+step #:  14 , obj type for mask is : DishSponge
+step #:  14 , None of that
+step #:  14 , planner broken is  False
+step #:  15 , obj type for mask is : DishSponge
+step #:  15 , None of that
+step #:  15 , planner broken is  False
+step #:  16 , obj type for mask is : DishSponge
+step #:  16 , None of that
+step #:  16 , planner broken is  False
+step #:  17 , obj type for mask is : DishSponge
+step #:  17 , None of that
+step #:  17 , planner broken is  True
+step #:  17 , Planner broken!
+step #:  17 , Goal in obstruction
+step #:  17 , Really broken? True
+step #:  17 , dilation is  1
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  2
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  3
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  4
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  5
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  6
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  7
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  8
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  9
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  10
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  11
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  12
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  13
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  14
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  15
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  16
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  17
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  18
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  19
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  20
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  21
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  22
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  23
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  24
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  25
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  26
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  27
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  28
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  29
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  30
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  31
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  32
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  33
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  34
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  35
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  36
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  37
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  38
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  39
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  40
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  41
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  42
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  43
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  44
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  45
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  46
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  47
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  48
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  49
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  50
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  51
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  52
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  53
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  54
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  55
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  56
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  57
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  58
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  59
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  60
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , Switched to goal in wall after dilation>45
+step #:  17 , Sanity check passed is  True
+step #:  18 , obj type for mask is : DishSponge
+step #:  18 , wall goal
+step #:  18 , planner broken is  True
+step #:  18 , Planner broken!
+step #:  18 , Goal in obstruction
+step #:  18 , Really broken? True
+step #:  18 , dilation is  1
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  2
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  3
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  4
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  5
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  6
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  7
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  8
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  9
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  10
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  11
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  12
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  13
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  14
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  15
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  16
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  17
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  18
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  19
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  20
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  21
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  22
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  23
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  24
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  25
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  26
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  27
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  28
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  29
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  30
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  31
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  32
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  33
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  34
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  35
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  36
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  37
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  38
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  39
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  40
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  41
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  42
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  43
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  44
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  45
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  46
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  47
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  48
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  49
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  50
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  51
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  52
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  53
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  54
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  55
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  56
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  57
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  58
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  59
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  60
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , Switched to goal in wall after dilation>45
+step #:  18 , Sanity check passed is  False
+step #:  19 , obj type for mask is : DishSponge
+step #:  19 , wall goal
+step #:  19 , planner broken is  False
+step #:  20 , obj type for mask is : DishSponge
+step #:  20 , wall goal
+step #:  20 , planner broken is  False
+step #:  21 , obj type for mask is : DishSponge
+step #:  21 , Center done
+step #:  21 , goal found!
+step #:  21 , planner broken is  True
+step #:  21 , Planner broken!
+step #:  21 , Goal found, goal in obstruction
+step #:  21 , Really broken? True
+step #:  21 , dilation is  1
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  2
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  3
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  4
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  5
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  6
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  7
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  8
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  9
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  10
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  11
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  12
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  13
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  14
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  15
+step #:  21 , Sanity check passed in loop is  False
+step #:  21 , Sanity check passed is  False
+step #:  22 , obj type for mask is : DishSponge
+step #:  22 , step:  22 , err is  Fridge_20d9f82f is blocking Agent 0 from moving 0
+step #:  22 , action taken in step  22 : 
+step #:  22 , Center done
+step #:  22 , dilation added
+step #:  22 , goal found!
+step #:  22 , planner broken is  False
+step #:  23 , obj type for mask is : DishSponge
+step #:  23 , Center done
+step #:  23 , dilation added
+step #:  23 , goal found!
+step #:  23 , planner broken is  False
+step #:  24 , obj type for mask is : DishSponge
+step #:  24 , Center done
+step #:  24 , dilation added
+step #:  24 , goal found!
+step #:  24 , planner broken is  False
+step #:  25 , obj type for mask is : DishSponge
+step #:  25 , Center done
+step #:  25 , dilation added
+step #:  25 , goal found!
+step #:  25 , planner broken is  False
+step #:  26 , obj type for mask is : DishSponge
+step #:  26 , newly goal set
+step #:  26 , Center done
+step #:  26 , None of that
+step #:  26 , goal found!
+step #:  26 , planner broken is  True
+step #:  26 , Planner broken!
+step #:  26 , Goal found, goal in obstruction
+step #:  26 , Really broken? True
+step #:  26 , dilation is  1
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  2
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  3
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  4
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  5
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  6
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  7
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  8
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  9
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  10
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  11
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  12
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  13
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  14
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  15
+step #:  26 , Sanity check passed in loop is  False
+step #:  26 , Sanity check passed is  False
+step #:  27 , obj type for mask is : DishSponge
+step #:  27 , Center done
+step #:  27 , dilation added
+step #:  27 , goal found!
+step #:  27 , planner broken is  False
+step #:  28 , obj type for mask is : DishSponge
+step #:  28 , Center done
+step #:  28 , dilation added
+step #:  28 , goal found!
+step #:  28 , planner broken is  False
+step #:  29 , obj type for mask is : DishSponge
+step #:  30 , pointer increased goal name  ('CounterTop', 'MoveTo')
+step #:  30 , Center done
+step #:  30 , None of that
+step #:  30 , goal found!
+step #:  30 , planner broken is  False
+step #:  31 , obj type for mask is : CounterTop
+step #:  31 , step:  31 , err is  Invalid action. Conversion to THOR API failed! (action='MoveTo')
+step #:  31 , action taken in step  31 : 
+step #:  31 , pointer increased goal name  ('Cabinet', 'OpenObject')
+step #:  31 , Center done
+step #:  31 , None of that
+step #:  31 , goal found!
+step #:  31 , planner broken is  False
+step #:  31 , wd is  250.18210944508522
+step #:  31 , sidestepping to right
+step #:  31 , side step called, order:  0
+step #:  32 , last three side stepped  ['right', None, None]
+step #:  32 , obj type for mask is : Cabinet
+step #:  32 , side step called, order:  1
+step #:  32 , checking consec moving!
+step #:  33 , obj type for mask is : Cabinet
+step #:  33 , side step called, order:  2
+step #:  34 , obj type for mask is : Cabinet
+step #:  34 , moving until visible
+step #:  34 , current horizon is  45.0
+step #:  34 , move until visible order is  0
+step #:  35 , obj type for mask is : Cabinet
+step #:  36 , pointer increased goal name  ('Cabinet', 'PutObject')
+step #:  36 , consec action
+step #:  37 , step:  37 , err is  No valid positions to place object found
+step #:  37 , action taken in step  37 : 
+step #:  37 , Center done
+step #:  37 , None of that
+step #:  37 , goal found!
+step #:  37 , planner broken is  False
+step #:  37 , wd is  117.38508239375543
+step #:  37 , skipping sidestepping
+step #:  38 , last three side stepped  [None, None, None]
+step #:  38 , obj type for mask is : Cabinet
+step #:  38 , moving until visible
+step #:  38 , current horizon is  45.0
+step #:  38 , move until visible order is  1
+step #:  39 , obj type for mask is : Cabinet
+step #:  39 , moving until visible
+step #:  39 , current horizon is  45.0
+step #:  39 , move until visible order is  2
+step #:  40 , obj type for mask is : Cabinet
+step #:  40 , moving until visible
+step #:  40 , current horizon is  45.0
+step #:  40 , move until visible order is  3
+step #:  41 , obj type for mask is : Cabinet
+step #:  41 , moving until visible
+step #:  41 , current horizon is  45.0
+step #:  41 , move until visible order is  4
+step #:  46 , obj type for mask is : Cabinet
+step #:  47 , step:  47 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  47 , action taken in step  47 : 
+step #:  47 , wd is  18.133166794773253
+step #:  47 , sidestepping to left
+step #:  47 , side step called, order:  0
+step #:  48 , last three side stepped  ['left', None, None]
+step #:  48 , obj type for mask is : Cabinet
+step #:  48 , side step called, order:  1
+step #:  48 , checking consec moving!
+step #:  49 , obj type for mask is : Cabinet
+step #:  49 , side step called, order:  2
+step #:  50 , obj type for mask is : Cabinet
+step #:  50 , moving until visible
+step #:  50 , current horizon is  0.0
+step #:  50 , move until visible order is  5
+step #:  53 , move until visible broken!
+step #:  53 , obj type for mask is : Cabinet
+step #:  53 , moving until visible
+step #:  53 , current horizon is  45.0
+step #:  53 , move until visible order is  5
+step #:  56 , obj type for mask is : Cabinet
+step #:  56 , moving until visible
+step #:  56 , current horizon is  45.0
+step #:  56 , move until visible order is  6
+step #:  61 , obj type for mask is : Cabinet
+step #:  61 , moving until visible
+step #:  61 , current horizon is  0.0
+step #:  61 , move until visible order is  7
+step #:  64 , move until visible broken!
+step #:  64 , obj type for mask is : Cabinet
+step #:  64 , moving until visible
+step #:  64 , current horizon is  45.0
+step #:  64 , move until visible order is  7
+step #:  69 , obj type for mask is : Cabinet
+step #:  69 , moving until visible
+step #:  69 , current horizon is  0.0
+step #:  69 , move until visible order is  8
+step #:  72 , move until visible broken!
+step #:  72 , obj type for mask is : Cabinet
+step #:  72 , moving until visible
+step #:  72 , current horizon is  45.0
+step #:  72 , move until visible order is  0
+step #:  73 , obj type for mask is : Cabinet
+step #:  73 , moving until visible
+step #:  73 , current horizon is  45.0
+step #:  73 , move until visible order is  1
+step #:  74 , obj type for mask is : Cabinet
+step #:  74 , moving until visible
+step #:  74 , current horizon is  45.0
+step #:  74 , move until visible order is  2
+step #:  75 , obj type for mask is : Cabinet
+step #:  75 , moving until visible
+step #:  75 , current horizon is  45.0
+step #:  75 , move until visible order is  3
+step #:  76 , obj type for mask is : Cabinet
+step #:  76 , moving until visible
+step #:  76 , current horizon is  45.0
+step #:  76 , move until visible order is  4
+step #:  81 , obj type for mask is : Cabinet
+step #:  81 , moving until visible
+step #:  81 , current horizon is  0.0
+step #:  81 , move until visible order is  5
+step #:  84 , move until visible broken!
+step #:  84 , Went through one cycle of move until visible, step num is  84
+step #:  84 , obj type for mask is : Cabinet
+step #:  84 , Center done
+step #:  84 , None of that
+step #:  84 , goal found!
+step #:  84 , planner broken is  True
+step #:  84 , Planner broken!
+step #:  84 , Goal found, goal in obstruction
+step #:  84 , Really broken? True
+step #:  84 , dilation is  1
+step #:  84 , Sanity check passed in loop is  False
+step #:  84 , Sanity check passed is  False
+step #:  85 , obj type for mask is : Cabinet
+step #:  85 , Center done
+step #:  85 , dilation added
+step #:  85 , goal found!
+step #:  85 , planner broken is  False
+step #:  86 , obj type for mask is : Cabinet
+step #:  86 , Center done
+step #:  86 , dilation added
+step #:  86 , goal found!
+step #:  86 , planner broken is  False
+step #:  87 , obj type for mask is : Cabinet
+step #:  87 , Center done
+step #:  87 , dilation added
+step #:  87 , goal found!
+step #:  87 , planner broken is  False
+step #:  88 , obj type for mask is : Cabinet
+step #:  89 , step:  89 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  89 , action taken in step  89 : 
+step #:  89 , Center done
+step #:  89 , dilation added
+step #:  89 , goal found!
+step #:  89 , planner broken is  False
+step #:  90 , obj type for mask is : Cabinet
+step #:  91 , step:  91 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  91 , action taken in step  91 : 
+step #:  91 , Center done
+step #:  91 , dilation added
+step #:  91 , goal found!
+step #:  91 , planner broken is  False
+step #:  92 , obj type for mask is : Cabinet
+step #:  93 , step:  93 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  93 , action taken in step  93 : 
+step #:  93 , Center done
+step #:  93 , dilation added
+step #:  93 , goal found!
+step #:  93 , planner broken is  False
+step #:  93 , wd is  149.07384970431272
+step #:  93 , skipping sidestepping
+step #:  94 , last three side stepped  [None, None, None]
+step #:  94 , obj type for mask is : Cabinet
+step #:  95 , step:  95 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  95 , action taken in step  95 : 
+
+===================================================
+episode # is 0
+step #:  0 , list of actions is  [('CounterTop', 'MoveTo'), ('DishSponge', 'PickupObject'), ('CounterTop', 'MoveTo'), ('Cabinet', 'OpenObject'), ('Cabinet', 'PutObject'), ('Cabinet', 'CloseObject')]
+step #:  2 , total cat2idx is  {'Knife': 0, 'SinkBasin': 1, 'ArmChair': 2, 'BathtubBasin': 3, 'Bed': 4, 'Cabinet': 5, 'Cart': 6, 'CoffeeMachine': 7, 'CoffeeTable': 8, 'CounterTop': 9, 'Desk': 10, 'DiningTable': 11, 'Drawer': 12, 'Dresser': 13, 'Fridge': 14, 'GarbageCan': 15, 'Microwave': 16, 'Ottoman': 17, 'Safe': 18, 'Shelf': 19, 'SideTable': 20, 'Sofa': 21, 'StoveBurner': 22, 'TVStand': 23, 'Toilet': 24, 'DishSponge': 25, 'None': 29}
+step #:  2 , None of that
+step #:  2 , planner broken is  False
+step #:  3 , obj type for mask is : CounterTop
+step #:  3 , None of that
+step #:  3 , planner broken is  False
+step #:  4 , obj type for mask is : CounterTop
+step #:  4 , None of that
+step #:  4 , planner broken is  False
+step #:  5 , obj type for mask is : CounterTop
+step #:  5 , None of that
+step #:  5 , planner broken is  False
+step #:  6 , obj type for mask is : CounterTop
+step #:  6 , None of that
+step #:  6 , planner broken is  False
+step #:  7 , obj type for mask is : CounterTop
+step #:  7 , Center done
+step #:  7 , None of that
+step #:  7 , goal found!
+step #:  7 , planner broken is  True
+step #:  7 , Planner broken!
+step #:  7 , Goal found, goal in obstruction
+step #:  7 , Really broken? True
+step #:  7 , dilation is  1
+step #:  7 , Sanity check passed in loop is  False
+step #:  7 , Sanity check passed is  False
+step #:  8 , obj type for mask is : CounterTop
+step #:  8 , step:  8 , err is  Invalid action. Conversion to THOR API failed! (action='MoveTo')
+step #:  8 , action taken in step  8 : 
+step #:  8 , pointer increased goal name  ('DishSponge', 'PickupObject')
+step #:  8 , None of that
+step #:  8 , planner broken is  False
+step #:  9 , obj type for mask is : DishSponge
+step #:  9 , None of that
+step #:  9 , planner broken is  False
+step #:  10 , obj type for mask is : DishSponge
+step #:  10 , None of that
+step #:  10 , planner broken is  False
+step #:  11 , obj type for mask is : DishSponge
+step #:  11 , None of that
+step #:  11 , planner broken is  False
+step #:  12 , obj type for mask is : DishSponge
+step #:  12 , None of that
+step #:  12 , planner broken is  False
+step #:  13 , obj type for mask is : DishSponge
+step #:  13 , None of that
+step #:  13 , planner broken is  False
+step #:  14 , obj type for mask is : DishSponge
+step #:  14 , None of that
+step #:  14 , planner broken is  False
+step #:  15 , obj type for mask is : DishSponge
+step #:  15 , None of that
+step #:  15 , planner broken is  False
+step #:  16 , obj type for mask is : DishSponge
+step #:  16 , None of that
+step #:  16 , planner broken is  False
+step #:  17 , obj type for mask is : DishSponge
+step #:  17 , None of that
+step #:  17 , planner broken is  True
+step #:  17 , Planner broken!
+step #:  17 , Goal in obstruction
+step #:  17 , Really broken? True
+step #:  17 , dilation is  1
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  2
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  3
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  4
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  5
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  6
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  7
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  8
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  9
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  10
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  11
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  12
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  13
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  14
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  15
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  16
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  17
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  18
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  19
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  20
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  21
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  22
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  23
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  24
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  25
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  26
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  27
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  28
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  29
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  30
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  31
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  32
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  33
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  34
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  35
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  36
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  37
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  38
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  39
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  40
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  41
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  42
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  43
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  44
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  45
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  46
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  47
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  48
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  49
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  50
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  51
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  52
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  53
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  54
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  55
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  56
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  57
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  58
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  59
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  60
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , Switched to goal in wall after dilation>45
+step #:  17 , Sanity check passed is  True
+step #:  18 , obj type for mask is : DishSponge
+step #:  18 , wall goal
+step #:  18 , planner broken is  True
+step #:  18 , Planner broken!
+step #:  18 , Goal in obstruction
+step #:  18 , Really broken? True
+step #:  18 , dilation is  1
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  2
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  3
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  4
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  5
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  6
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  7
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  8
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  9
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  10
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  11
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  12
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  13
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  14
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  15
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  16
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  17
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  18
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  19
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  20
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  21
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  22
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  23
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  24
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  25
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  26
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  27
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  28
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  29
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  30
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  31
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  32
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  33
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  34
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  35
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  36
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  37
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  38
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  39
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  40
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  41
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  42
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  43
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  44
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  45
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  46
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  47
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  48
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  49
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  50
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  51
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  52
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  53
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  54
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  55
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  56
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  57
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  58
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  59
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  60
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , Switched to goal in wall after dilation>45
+step #:  18 , Sanity check passed is  False
+step #:  19 , obj type for mask is : DishSponge
+step #:  19 , wall goal
+step #:  19 , planner broken is  False
+step #:  20 , obj type for mask is : DishSponge
+step #:  20 , wall goal
+step #:  20 , planner broken is  False
+step #:  21 , obj type for mask is : DishSponge
+step #:  21 , Center done
+step #:  21 , goal found!
+step #:  21 , planner broken is  True
+step #:  21 , Planner broken!
+step #:  21 , Goal found, goal in obstruction
+step #:  21 , Really broken? True
+step #:  21 , dilation is  1
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  2
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  3
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  4
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  5
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  6
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  7
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  8
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  9
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  10
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  11
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  12
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  13
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  14
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  15
+step #:  21 , Sanity check passed in loop is  False
+step #:  21 , Sanity check passed is  False
+step #:  22 , obj type for mask is : DishSponge
+step #:  22 , step:  22 , err is  Fridge_20d9f82f is blocking Agent 0 from moving 0
+step #:  22 , action taken in step  22 : 
+step #:  22 , Center done
+step #:  22 , dilation added
+step #:  22 , goal found!
+step #:  22 , planner broken is  False
+step #:  23 , obj type for mask is : DishSponge
+step #:  23 , Center done
+step #:  23 , dilation added
+step #:  23 , goal found!
+step #:  23 , planner broken is  False
+step #:  24 , obj type for mask is : DishSponge
+step #:  24 , Center done
+step #:  24 , dilation added
+step #:  24 , goal found!
+step #:  24 , planner broken is  False
+step #:  25 , obj type for mask is : DishSponge
+step #:  25 , Center done
+step #:  25 , dilation added
+step #:  25 , goal found!
+step #:  25 , planner broken is  False
+step #:  26 , obj type for mask is : DishSponge
+step #:  26 , newly goal set
+step #:  26 , Center done
+step #:  26 , None of that
+step #:  26 , goal found!
+step #:  26 , planner broken is  True
+step #:  26 , Planner broken!
+step #:  26 , Goal found, goal in obstruction
+step #:  26 , Really broken? True
+step #:  26 , dilation is  1
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  2
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  3
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  4
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  5
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  6
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  7
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  8
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  9
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  10
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  11
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  12
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  13
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  14
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  15
+step #:  26 , Sanity check passed in loop is  False
+step #:  26 , Sanity check passed is  False
+step #:  27 , obj type for mask is : DishSponge
+step #:  27 , Center done
+step #:  27 , dilation added
+step #:  27 , goal found!
+step #:  27 , planner broken is  False
+step #:  28 , obj type for mask is : DishSponge
+step #:  28 , Center done
+step #:  28 , dilation added
+step #:  28 , goal found!
+step #:  28 , planner broken is  False
+step #:  29 , obj type for mask is : DishSponge
+step #:  30 , pointer increased goal name  ('CounterTop', 'MoveTo')
+step #:  30 , Center done
+step #:  30 , None of that
+step #:  30 , goal found!
+step #:  30 , planner broken is  False
+step #:  31 , obj type for mask is : CounterTop
+step #:  31 , step:  31 , err is  Invalid action. Conversion to THOR API failed! (action='MoveTo')
+step #:  31 , action taken in step  31 : 
+step #:  31 , pointer increased goal name  ('Cabinet', 'OpenObject')
+step #:  31 , Center done
+step #:  31 , None of that
+step #:  31 , goal found!
+step #:  31 , planner broken is  False
+step #:  31 , wd is  250.18210944508522
+step #:  31 , sidestepping to right
+step #:  31 , side step called, order:  0
+step #:  32 , last three side stepped  ['right', None, None]
+step #:  32 , obj type for mask is : Cabinet
+step #:  32 , side step called, order:  1
+step #:  32 , checking consec moving!
+step #:  33 , obj type for mask is : Cabinet
+step #:  33 , side step called, order:  2
+step #:  34 , obj type for mask is : Cabinet
+step #:  34 , moving until visible
+step #:  34 , current horizon is  45.0
+step #:  34 , move until visible order is  0
+step #:  35 , obj type for mask is : Cabinet
+step #:  36 , pointer increased goal name  ('Cabinet', 'PutObject')
+step #:  36 , consec action
+step #:  37 , step:  37 , err is  No valid positions to place object found
+step #:  37 , action taken in step  37 : 
+step #:  37 , Center done
+step #:  37 , None of that
+step #:  37 , goal found!
+step #:  37 , planner broken is  False
+step #:  37 , wd is  117.38508239375543
+step #:  37 , skipping sidestepping
+step #:  38 , last three side stepped  [None, None, None]
+step #:  38 , obj type for mask is : Cabinet
+step #:  38 , moving until visible
+step #:  38 , current horizon is  45.0
+step #:  38 , move until visible order is  1
+step #:  39 , obj type for mask is : Cabinet
+step #:  39 , moving until visible
+step #:  39 , current horizon is  45.0
+step #:  39 , move until visible order is  2
+step #:  40 , obj type for mask is : Cabinet
+step #:  40 , moving until visible
+step #:  40 , current horizon is  45.0
+step #:  40 , move until visible order is  3
+step #:  41 , obj type for mask is : Cabinet
+step #:  41 , moving until visible
+step #:  41 , current horizon is  45.0
+step #:  41 , move until visible order is  4
+step #:  46 , obj type for mask is : Cabinet
+step #:  47 , step:  47 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  47 , action taken in step  47 : 
+step #:  47 , wd is  18.133166794773253
+step #:  47 , sidestepping to left
+step #:  47 , side step called, order:  0
+step #:  48 , last three side stepped  ['left', None, None]
+step #:  48 , obj type for mask is : Cabinet
+step #:  48 , side step called, order:  1
+step #:  48 , checking consec moving!
+step #:  49 , obj type for mask is : Cabinet
+step #:  49 , side step called, order:  2
+step #:  50 , obj type for mask is : Cabinet
+step #:  50 , moving until visible
+step #:  50 , current horizon is  0.0
+step #:  50 , move until visible order is  5
+step #:  53 , move until visible broken!
+step #:  53 , obj type for mask is : Cabinet
+step #:  53 , moving until visible
+step #:  53 , current horizon is  45.0
+step #:  53 , move until visible order is  5
+step #:  56 , obj type for mask is : Cabinet
+step #:  56 , moving until visible
+step #:  56 , current horizon is  45.0
+step #:  56 , move until visible order is  6
+step #:  61 , obj type for mask is : Cabinet
+step #:  61 , moving until visible
+step #:  61 , current horizon is  0.0
+step #:  61 , move until visible order is  7
+step #:  64 , move until visible broken!
+step #:  64 , obj type for mask is : Cabinet
+step #:  64 , moving until visible
+step #:  64 , current horizon is  45.0
+step #:  64 , move until visible order is  7
+step #:  69 , obj type for mask is : Cabinet
+step #:  69 , moving until visible
+step #:  69 , current horizon is  0.0
+step #:  69 , move until visible order is  8
+step #:  72 , move until visible broken!
+step #:  72 , obj type for mask is : Cabinet
+step #:  72 , moving until visible
+step #:  72 , current horizon is  45.0
+step #:  72 , move until visible order is  0
+step #:  73 , obj type for mask is : Cabinet
+step #:  73 , moving until visible
+step #:  73 , current horizon is  45.0
+step #:  73 , move until visible order is  1
+step #:  74 , obj type for mask is : Cabinet
+step #:  74 , moving until visible
+step #:  74 , current horizon is  45.0
+step #:  74 , move until visible order is  2
+step #:  75 , obj type for mask is : Cabinet
+step #:  75 , moving until visible
+step #:  75 , current horizon is  45.0
+step #:  75 , move until visible order is  3
+step #:  76 , obj type for mask is : Cabinet
+step #:  76 , moving until visible
+step #:  76 , current horizon is  45.0
+step #:  76 , move until visible order is  4
+step #:  81 , obj type for mask is : Cabinet
+step #:  81 , moving until visible
+step #:  81 , current horizon is  0.0
+step #:  81 , move until visible order is  5
+step #:  84 , move until visible broken!
+step #:  84 , Went through one cycle of move until visible, step num is  84
+step #:  84 , obj type for mask is : Cabinet
+step #:  84 , Center done
+step #:  84 , None of that
+step #:  84 , goal found!
+step #:  84 , planner broken is  True
+step #:  84 , Planner broken!
+step #:  84 , Goal found, goal in obstruction
+step #:  84 , Really broken? True
+step #:  84 , dilation is  1
+step #:  84 , Sanity check passed in loop is  False
+step #:  84 , Sanity check passed is  False
+step #:  85 , obj type for mask is : Cabinet
+step #:  85 , Center done
+step #:  85 , dilation added
+step #:  85 , goal found!
+step #:  85 , planner broken is  False
+step #:  86 , obj type for mask is : Cabinet
+step #:  86 , Center done
+step #:  86 , dilation added
+step #:  86 , goal found!
+step #:  86 , planner broken is  False
+step #:  87 , obj type for mask is : Cabinet
+step #:  87 , Center done
+step #:  87 , dilation added
+step #:  87 , goal found!
+step #:  87 , planner broken is  False
+step #:  88 , obj type for mask is : Cabinet
+step #:  89 , step:  89 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  89 , action taken in step  89 : 
+step #:  89 , Center done
+step #:  89 , dilation added
+step #:  89 , goal found!
+step #:  89 , planner broken is  False
+step #:  90 , obj type for mask is : Cabinet
+step #:  91 , step:  91 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  91 , action taken in step  91 : 
+step #:  91 , Center done
+step #:  91 , dilation added
+step #:  91 , goal found!
+step #:  91 , planner broken is  False
+step #:  92 , obj type for mask is : Cabinet
+step #:  93 , step:  93 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  93 , action taken in step  93 : 
+step #:  93 , Center done
+step #:  93 , dilation added
+step #:  93 , goal found!
+step #:  93 , planner broken is  False
+step #:  93 , wd is  149.07384970431272
+step #:  93 , skipping sidestepping
+step #:  94 , last three side stepped  [None, None, None]
+step #:  94 , obj type for mask is : Cabinet
+step #:  95 , step:  95 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  95 , action taken in step  95 : 
+
+===================================================
+episode # is 0
+step #:  0 , list of actions is  [('CounterTop', 'MoveTo'), ('DishSponge', 'PickupObject'), ('CounterTop', 'MoveTo'), ('Cabinet', 'OpenObject'), ('Cabinet', 'PutObject'), ('Cabinet', 'CloseObject')]
+step #:  2 , total cat2idx is  {'Knife': 0, 'SinkBasin': 1, 'ArmChair': 2, 'BathtubBasin': 3, 'Bed': 4, 'Cabinet': 5, 'Cart': 6, 'CoffeeMachine': 7, 'CoffeeTable': 8, 'CounterTop': 9, 'Desk': 10, 'DiningTable': 11, 'Drawer': 12, 'Dresser': 13, 'Fridge': 14, 'GarbageCan': 15, 'Microwave': 16, 'Ottoman': 17, 'Safe': 18, 'Shelf': 19, 'SideTable': 20, 'Sofa': 21, 'StoveBurner': 22, 'TVStand': 23, 'Toilet': 24, 'DishSponge': 25, 'None': 29}
+step #:  2 , None of that
+step #:  2 , planner broken is  False
+step #:  3 , obj type for mask is : CounterTop
+step #:  3 , None of that
+step #:  3 , planner broken is  False
+step #:  4 , obj type for mask is : CounterTop
+step #:  4 , None of that
+step #:  4 , planner broken is  False
+step #:  5 , obj type for mask is : CounterTop
+step #:  5 , None of that
+step #:  5 , planner broken is  False
+step #:  6 , obj type for mask is : CounterTop
+step #:  6 , None of that
+step #:  6 , planner broken is  False
+step #:  7 , obj type for mask is : CounterTop
+step #:  7 , Center done
+step #:  7 , None of that
+step #:  7 , goal found!
+step #:  7 , planner broken is  True
+step #:  7 , Planner broken!
+step #:  7 , Goal found, goal in obstruction
+step #:  7 , Really broken? True
+step #:  7 , dilation is  1
+step #:  7 , Sanity check passed in loop is  False
+step #:  7 , Sanity check passed is  False
+step #:  8 , obj type for mask is : CounterTop
+step #:  8 , step:  8 , err is  Invalid action. Conversion to THOR API failed! (action='MoveTo')
+step #:  8 , action taken in step  8 : 
+step #:  8 , pointer increased goal name  ('DishSponge', 'PickupObject')
+step #:  8 , None of that
+step #:  8 , planner broken is  False
+step #:  9 , obj type for mask is : DishSponge
+step #:  9 , None of that
+step #:  9 , planner broken is  False
+step #:  10 , obj type for mask is : DishSponge
+step #:  10 , None of that
+step #:  10 , planner broken is  False
+step #:  11 , obj type for mask is : DishSponge
+step #:  11 , None of that
+step #:  11 , planner broken is  False
+step #:  12 , obj type for mask is : DishSponge
+step #:  12 , None of that
+step #:  12 , planner broken is  False
+step #:  13 , obj type for mask is : DishSponge
+step #:  13 , None of that
+step #:  13 , planner broken is  False
+step #:  14 , obj type for mask is : DishSponge
+step #:  14 , None of that
+step #:  14 , planner broken is  False
+step #:  15 , obj type for mask is : DishSponge
+step #:  15 , None of that
+step #:  15 , planner broken is  False
+step #:  16 , obj type for mask is : DishSponge
+step #:  16 , None of that
+step #:  16 , planner broken is  False
+step #:  17 , obj type for mask is : DishSponge
+step #:  17 , None of that
+step #:  17 , planner broken is  True
+step #:  17 , Planner broken!
+step #:  17 , Goal in obstruction
+step #:  17 , Really broken? True
+step #:  17 , dilation is  1
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  2
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  3
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  4
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  5
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  6
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  7
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  8
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  9
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  10
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  11
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  12
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  13
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  14
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  15
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  16
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  17
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  18
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  19
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  20
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  21
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  22
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  23
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  24
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  25
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  26
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  27
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  28
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  29
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  30
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  31
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  32
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  33
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  34
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  35
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  36
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  37
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  38
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  39
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  40
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  41
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  42
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  43
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  44
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  45
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  46
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  47
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  48
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  49
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  50
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  51
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  52
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  53
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  54
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  55
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  56
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  57
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  58
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  59
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , dilation is  60
+step #:  17 , Sanity check passed in loop is  True
+step #:  17 , Switched to goal in wall after dilation>45
+step #:  17 , Sanity check passed is  True
+step #:  18 , obj type for mask is : DishSponge
+step #:  18 , wall goal
+step #:  18 , planner broken is  True
+step #:  18 , Planner broken!
+step #:  18 , Goal in obstruction
+step #:  18 , Really broken? True
+step #:  18 , dilation is  1
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  2
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  3
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  4
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  5
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  6
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  7
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  8
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  9
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  10
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  11
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  12
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  13
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  14
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  15
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  16
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  17
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  18
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  19
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  20
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  21
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  22
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  23
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  24
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  25
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  26
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  27
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  28
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  29
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  30
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  31
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  32
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  33
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  34
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  35
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  36
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  37
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  38
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  39
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  40
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  41
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  42
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  43
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  44
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  45
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  46
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  47
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  48
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  49
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  50
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  51
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  52
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  53
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  54
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  55
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  56
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  57
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  58
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  59
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , dilation is  60
+step #:  18 , Sanity check passed in loop is  True
+step #:  18 , Switched to goal in wall after dilation>45
+step #:  18 , Sanity check passed is  False
+step #:  19 , obj type for mask is : DishSponge
+step #:  19 , wall goal
+step #:  19 , planner broken is  False
+step #:  20 , obj type for mask is : DishSponge
+step #:  20 , wall goal
+step #:  20 , planner broken is  False
+step #:  21 , obj type for mask is : DishSponge
+step #:  21 , Center done
+step #:  21 , goal found!
+step #:  21 , planner broken is  True
+step #:  21 , Planner broken!
+step #:  21 , Goal found, goal in obstruction
+step #:  21 , Really broken? True
+step #:  21 , dilation is  1
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  2
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  3
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  4
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  5
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  6
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  7
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  8
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  9
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  10
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  11
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  12
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  13
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  14
+step #:  21 , Sanity check passed in loop is  True
+step #:  21 , dilation is  15
+step #:  21 , Sanity check passed in loop is  False
+step #:  21 , Sanity check passed is  False
+step #:  22 , obj type for mask is : DishSponge
+step #:  22 , step:  22 , err is  Fridge_20d9f82f is blocking Agent 0 from moving 0
+step #:  22 , action taken in step  22 : 
+step #:  22 , Center done
+step #:  22 , dilation added
+step #:  22 , goal found!
+step #:  22 , planner broken is  False
+step #:  23 , obj type for mask is : DishSponge
+step #:  23 , Center done
+step #:  23 , dilation added
+step #:  23 , goal found!
+step #:  23 , planner broken is  False
+step #:  24 , obj type for mask is : DishSponge
+step #:  24 , Center done
+step #:  24 , dilation added
+step #:  24 , goal found!
+step #:  24 , planner broken is  False
+step #:  25 , obj type for mask is : DishSponge
+step #:  25 , Center done
+step #:  25 , dilation added
+step #:  25 , goal found!
+step #:  25 , planner broken is  False
+step #:  26 , obj type for mask is : DishSponge
+step #:  26 , newly goal set
+step #:  26 , Center done
+step #:  26 , None of that
+step #:  26 , goal found!
+step #:  26 , planner broken is  True
+step #:  26 , Planner broken!
+step #:  26 , Goal found, goal in obstruction
+step #:  26 , Really broken? True
+step #:  26 , dilation is  1
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  2
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  3
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  4
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  5
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  6
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  7
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  8
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  9
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  10
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  11
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  12
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  13
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  14
+step #:  26 , Sanity check passed in loop is  True
+step #:  26 , dilation is  15
+step #:  26 , Sanity check passed in loop is  False
+step #:  26 , Sanity check passed is  False
+step #:  27 , obj type for mask is : DishSponge
+step #:  27 , Center done
+step #:  27 , dilation added
+step #:  27 , goal found!
+step #:  27 , planner broken is  False
+step #:  28 , obj type for mask is : DishSponge
+step #:  28 , Center done
+step #:  28 , dilation added
+step #:  28 , goal found!
+step #:  28 , planner broken is  False
+step #:  29 , obj type for mask is : DishSponge
+step #:  30 , pointer increased goal name  ('CounterTop', 'MoveTo')
+step #:  30 , Center done
+step #:  30 , None of that
+step #:  30 , goal found!
+step #:  30 , planner broken is  False
+step #:  31 , obj type for mask is : CounterTop
+step #:  31 , step:  31 , err is  Invalid action. Conversion to THOR API failed! (action='MoveTo')
+step #:  31 , action taken in step  31 : 
+step #:  31 , pointer increased goal name  ('Cabinet', 'OpenObject')
+step #:  31 , Center done
+step #:  31 , None of that
+step #:  31 , goal found!
+step #:  31 , planner broken is  False
+step #:  31 , wd is  250.18210944508522
+step #:  31 , sidestepping to right
+step #:  31 , side step called, order:  0
+step #:  32 , last three side stepped  ['right', None, None]
+step #:  32 , obj type for mask is : Cabinet
+step #:  32 , side step called, order:  1
+step #:  32 , checking consec moving!
+step #:  33 , obj type for mask is : Cabinet
+step #:  33 , side step called, order:  2
+step #:  34 , obj type for mask is : Cabinet
+step #:  34 , moving until visible
+step #:  34 , current horizon is  45.0
+step #:  34 , move until visible order is  0
+step #:  35 , obj type for mask is : Cabinet
+step #:  36 , pointer increased goal name  ('Cabinet', 'PutObject')
+step #:  36 , consec action
+step #:  37 , step:  37 , err is  No valid positions to place object found
+step #:  37 , action taken in step  37 : 
+step #:  37 , Center done
+step #:  37 , None of that
+step #:  37 , goal found!
+step #:  37 , planner broken is  False
+step #:  37 , wd is  117.38508239375543
+step #:  37 , skipping sidestepping
+step #:  38 , last three side stepped  [None, None, None]
+step #:  38 , obj type for mask is : Cabinet
+step #:  38 , moving until visible
+step #:  38 , current horizon is  45.0
+step #:  38 , move until visible order is  1
+step #:  39 , obj type for mask is : Cabinet
+step #:  39 , moving until visible
+step #:  39 , current horizon is  45.0
+step #:  39 , move until visible order is  2
+step #:  40 , obj type for mask is : Cabinet
+step #:  40 , moving until visible
+step #:  40 , current horizon is  45.0
+step #:  40 , move until visible order is  3
+step #:  41 , obj type for mask is : Cabinet
+step #:  41 , moving until visible
+step #:  41 , current horizon is  45.0
+step #:  41 , move until visible order is  4
+step #:  46 , obj type for mask is : Cabinet
+step #:  47 , step:  47 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  47 , action taken in step  47 : 
+step #:  47 , wd is  18.133166794773253
+step #:  47 , sidestepping to left
+step #:  47 , side step called, order:  0
+step #:  48 , last three side stepped  ['left', None, None]
+step #:  48 , obj type for mask is : Cabinet
+step #:  48 , side step called, order:  1
+step #:  48 , checking consec moving!
+step #:  49 , obj type for mask is : Cabinet
+step #:  49 , side step called, order:  2
+step #:  50 , obj type for mask is : Cabinet
+step #:  50 , moving until visible
+step #:  50 , current horizon is  0.0
+step #:  50 , move until visible order is  5
+step #:  53 , move until visible broken!
+step #:  53 , obj type for mask is : Cabinet
+step #:  53 , moving until visible
+step #:  53 , current horizon is  45.0
+step #:  53 , move until visible order is  5
+step #:  56 , obj type for mask is : Cabinet
+step #:  56 , moving until visible
+step #:  56 , current horizon is  45.0
+step #:  56 , move until visible order is  6
+step #:  61 , obj type for mask is : Cabinet
+step #:  61 , moving until visible
+step #:  61 , current horizon is  0.0
+step #:  61 , move until visible order is  7
+step #:  64 , move until visible broken!
+step #:  64 , obj type for mask is : Cabinet
+step #:  64 , moving until visible
+step #:  64 , current horizon is  45.0
+step #:  64 , move until visible order is  7
+step #:  69 , obj type for mask is : Cabinet
+step #:  69 , moving until visible
+step #:  69 , current horizon is  0.0
+step #:  69 , move until visible order is  8
+step #:  72 , move until visible broken!
+step #:  72 , obj type for mask is : Cabinet
+step #:  72 , moving until visible
+step #:  72 , current horizon is  45.0
+step #:  72 , move until visible order is  0
+step #:  73 , obj type for mask is : Cabinet
+step #:  73 , moving until visible
+step #:  73 , current horizon is  45.0
+step #:  73 , move until visible order is  1
+step #:  74 , obj type for mask is : Cabinet
+step #:  74 , moving until visible
+step #:  74 , current horizon is  45.0
+step #:  74 , move until visible order is  2
+step #:  75 , obj type for mask is : Cabinet
+step #:  75 , moving until visible
+step #:  75 , current horizon is  45.0
+step #:  75 , move until visible order is  3
+step #:  76 , obj type for mask is : Cabinet
+step #:  76 , moving until visible
+step #:  76 , current horizon is  45.0
+step #:  76 , move until visible order is  4
+step #:  81 , obj type for mask is : Cabinet
+step #:  81 , moving until visible
+step #:  81 , current horizon is  0.0
+step #:  81 , move until visible order is  5
+step #:  84 , move until visible broken!
+step #:  84 , Went through one cycle of move until visible, step num is  84
+step #:  84 , obj type for mask is : Cabinet
+step #:  84 , Center done
+step #:  84 , None of that
+step #:  84 , goal found!
+step #:  84 , planner broken is  True
+step #:  84 , Planner broken!
+step #:  84 , Goal found, goal in obstruction
+step #:  84 , Really broken? True
+step #:  84 , dilation is  1
+step #:  84 , Sanity check passed in loop is  False
+step #:  84 , Sanity check passed is  False
+step #:  85 , obj type for mask is : Cabinet
+step #:  85 , Center done
+step #:  85 , dilation added
+step #:  85 , goal found!
+step #:  85 , planner broken is  False
+step #:  86 , obj type for mask is : Cabinet
+step #:  86 , Center done
+step #:  86 , dilation added
+step #:  86 , goal found!
+step #:  86 , planner broken is  False
+step #:  87 , obj type for mask is : Cabinet
+step #:  87 , Center done
+step #:  87 , dilation added
+step #:  87 , goal found!
+step #:  87 , planner broken is  False
+step #:  88 , obj type for mask is : Cabinet
+step #:  89 , step:  89 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  89 , action taken in step  89 : 
+step #:  89 , Center done
+step #:  89 , dilation added
+step #:  89 , goal found!
+step #:  89 , planner broken is  False
+step #:  90 , obj type for mask is : Cabinet
+step #:  91 , step:  91 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  91 , action taken in step  91 : 
+step #:  91 , Center done
+step #:  91 , dilation added
+step #:  91 , goal found!
+step #:  91 , planner broken is  False
+step #:  92 , obj type for mask is : Cabinet
+step #:  93 , step:  93 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  93 , action taken in step  93 : 
+step #:  93 , Center done
+step #:  93 , dilation added
+step #:  93 , goal found!
+step #:  93 , planner broken is  False
+step #:  93 , wd is  149.07384970431272
+step #:  93 , skipping sidestepping
+step #:  94 , last three side stepped  [None, None, None]
+step #:  94 , obj type for mask is : Cabinet
+step #:  95 , step:  95 , err is  Target openable Receptacle is CLOSED, can't place if target is not open!
+step #:  95 , action taken in step  95 : 

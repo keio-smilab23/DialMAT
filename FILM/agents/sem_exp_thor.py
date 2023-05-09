@@ -29,6 +29,7 @@ from models.instructions_processed_LP.ALFRED_task_helper import get_list_of_high
 from models.segmentation.segmentation_helper import SemgnetationHelper
 #from models.depth.depth_helper import DepthHelper 
 import utils.control_helper as  CH
+from alfred.gen.utils import game_util
 
 class Sem_Exp_Env_Agent_Thor(ThorEnvCode):
 	"""The Sem_Exp environment agent class. A seperate Sem_Exp_Env_Agent class
@@ -77,9 +78,50 @@ class Sem_Exp_Env_Agent_Thor(ThorEnvCode):
 		#Segmentation
 		self.seg = SemgnetationHelper(self)
 
-		#Depth
+		# objects
+		self.cleaned_objects = set()
+		self.cooled_objects = set()
+		self.heated_objects = set()
 
-	
+
+	def step(self, action, smooth_nav=False):
+		'''
+		overrides ai2thor.controller.Controller.step() for smooth navigation and goal_condition updates
+		'''
+		res = super().step(action,smooth_nav)
+		event = self.update_states(action)
+		self.check_post_conditions(action)
+		return res
+
+	def update_states(self, action):
+		# add 'cleaned' to all object that were washed in the sink
+		event = self.last_event
+		if event.metadata['lastActionSuccess']:
+			# clean
+			if action['action'] == 'ToggleObjectOn' and "Faucet" in action['objectId']:
+				sink_basin = game_util.get_obj_of_type_closest_to_obj(
+					'SinkBasin', action['objectId'], event.metadata)
+				cleaned_object_ids = sink_basin['receptacleObjectIds']
+				self.cleaned_objects = self.cleaned_objects | set(cleaned_object_ids) if cleaned_object_ids is not None else set()
+			# heat
+			if action['action'] == 'ToggleObjectOn' and "Microwave" in action['objectId']:
+				microwave = game_util.get_objects_of_type(
+					'Microwave', event.metadata)[0]
+				heated_object_ids = microwave['receptacleObjectIds']
+				self.heated_objects = self.heated_objects | set(heated_object_ids) if heated_object_ids is not None else set()
+			# cool
+			if action['action'] == 'CloseObject' and "Fridge" in action['objectId']:
+				fridge = game_util.get_objects_of_type('Fridge', event.metadata)[0]
+				cooled_object_ids = fridge['receptacleObjectIds']
+				self.cooled_objects = self.cooled_objects | set(cooled_object_ids) if cooled_object_ids is not None else set()
+
+		# save the cleaned/heated/cooled objects to metadata
+		event.metadata["cleaned_objects"] = list(self.cleaned_objects)
+		event.metadata["heated_objects"] = list(self.heated_objects)
+		event.metadata["cooled_objects"] = list(self.cooled_objects)
+
+		return event
+
 	def load_traj(self, scene_name):
 		if self.args.dialfred:
 			json_dir = f'new_dialfred_testset_final/{scene_name}.json'

@@ -11,6 +11,7 @@ import os
 import json
 
 
+
 def make_vec_envs(args):
     envs = construct_envs_alfred(args)
     envs = VecPyTorch(envs, args.device)
@@ -138,7 +139,7 @@ def construct_envs_alfred(args):
     else: # only availabe for 1 process 
         args_list = []
         scene_names_list = [[]]
-        dir_path = "new_dataset_modified/"
+        dir_path = "new_dialfred_testset_final/"
         for filename in sorted(os.listdir(dir_path)):
             if filename.endswith(".json"):
                 scene_names_list[0].append(filename[:4])

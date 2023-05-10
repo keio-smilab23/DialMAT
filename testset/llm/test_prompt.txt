@@ -1,0 +1,23 @@
+This is the list of objects available in an environment. OBJECTS = ["AlarmClock", "Apple", "ArmChair", "BaseballBat", "BasketBall", "Bathtub", "BathtubBasin", "Bed", "Blinds", "Book", "Boots", "Bowl", "Box", "Bread", "ButterKnife", "Cabinet", "Candle", "Cart", "CD", "CellPhone", "Chair", "Cloth", "CoffeeMachine", "CounterTop", "CreditCard", "Cup", "Curtains", "Desk", "DeskLamp", "DishSponge", "Drawer", "Dresser", "Egg", "Faucet", "FloorLamp", "Footstool", "Fork", "Fridge", "GarbageCan", "Glassbottle", "HandTowel", "HandTowelHolder", "HousePlant", "Kettle", "KeyChain", "Knife", "Ladle", "Laptop", "LaundryHamper", "LaundryHamperLid", "Lettuce", "LightSwitch", "Microwave", "Mirror", "Mug", "Newspaper", "Ottoman", "Painting", "Pan", "PaperTowel", "PaperTowelRoll", "Pen", "Pencil", "PepperShaker", "Pillow", "Plate", "Plunger", "Poster", "Pot", "Potato", "RemoteControl", "Safe", "SaltShaker", "ScrubBrush", "Shelf", "ShowerDoor", "ShowerGlass", "Sink", "SinkBasin", "SoapBar", "SoapBottle", "Sofa", "Spatula", "Spoon", "SprayBottle", "Statue", "StoveBurner", "StoveKnob", "DiningTable", "CoffeeTable", "SideTable", "TeddyBear", "Television", "TennisRacket", "TissueBox", "Toaster", "Toilet", "ToiletPaper", "ToiletPaperHanger", "ToiletPaperRoll", "Tomato", "Towel", "TowelHolder", "TVStand", "Vase", "Watch", "WateringCan", "Window", "WineBottle", "<Object>Sliced"]
+This is the list of actions : ACTIONS = ["Open", "Close", "Put-At/In", "Toggle-On", "Toggle-Off", "Move-To", "Pickup", "Clean", "Heat", "Cool", "Slice", "Look-At-In-Light"]
+This is the list of places : PLACES = [ "ArmChair", "Bathtub", "BathtubBasin", "Bed", "Bowl", "Box", "Cabinet", "Cart", "Chair", "CoffeeMachine", "CounterTop",  "Cup", "Curtains", "Desk", "DeskLamp", "Drawer", "Dresser",  "Faucet", "FloorLamp", "Footstool", "Fridge", "GarbageCan", "Glassbottle", "HandTowelHolder", "HousePlant", "Kettle", "Ladle", "Laptop", "LaundryHamper", "LaundryHamperLid", "LightSwitch", "Microwave", "Mirror", "Mug",  "Ottoman",, "Pan",  "Plate",  "Safe", "Shelf", "ShowerDoor", "ShowerGlass", "Sink", "SinkBasin", "Sofa", "DiningTable", "CoffeeTable", "SideTable",  "Television", "Toilet", "TVStand", "Window"]
+Note that objects that are openable or closeable are only OPENABLE_OBJECTS = ["Fridge", "Cabinet", "Microwave", "Drawer", "Safe", "Box"].
+What is the object, action and place for following instructions?  
+XXXXX
+Select from the provided list of objects, action and place. Answer in the following format: 
+{
+  "ID": [ [<ACTION 1>, <OBJECT 1>, <PLACE 1>] ]
+} 
+Examples for the pair of actions, objects and places are as follows:
+["Open", "Door", "Fridge"]
+["Close", "Door", "Microwave"]
+["Put-At/In", "Tomato", "CounterTop"]
+["Toggle-On", "Faucet", "None"]
+["Toggle-Off", "DeskLamp", "None"]
+["Move-To", "None", "Cabinet"]
+["Pickup", "BasketBall", "SideTable"]
+["Clean", "Knife", "Faucet"]
+["Heat", "Egg", "Microwave"]
+["Cool", "Mug", "Fridge"]
+["Slice", "Tomato", "None"]
+["Look-At-In-Light", "AlarmClock", "DeskLamp"]

@@ -1,5 +1,6 @@
 #追加
 import re
+import copy
 
 import torch
 from torch import nn
@@ -7,6 +8,7 @@ from torch.nn import functional as F
 #追加
 import clip
 from torch.nn.utils.rnn import pad_sequence
+from transformers import AutoTokenizer, AutoModel
 
 from alfred.model import base
 from alfred.nn.enc_lang import EncoderLang
@@ -29,6 +31,12 @@ class Model(base.Model):
         self.clip_model, self.clip_preprocess = clip.load("ViT-L/14", device="cuda")
         for params in self.clip_model.parameters():
             params.requires_grad = False
+
+        self.deberta_model = AutoModel.from_pretrained("microsoft/mdeberta-v3-base").cuda()
+        self.deberta_tokenizer = AutoTokenizer.from_pretrained("microsoft/mdeberta-v3-base")
+        for param in self.deberta_model.parameters():
+            param.requires_grad = False
+
 
         # encoder and visual embeddings
         self.encoder_vl = EncoderVL(args)
@@ -86,44 +94,115 @@ class Model(base.Model):
             sentences_list.append(sentences)
         return sentences_list
     
+    def encode_deberta(self, sentences, device="cuda:0"):
+        """
+        Encode two sentences with the deberta model.
+        """
+
+        text_features_list = []
+        lengths_list = []
+
+        for i in range(len(sentences)):
+            sentence = sentences[i]
+            # 全ての文を.で結合
+            sentence = ".".join(sentence)
+
+            tokenized = self.deberta_tokenizer(sentence, return_tensors="pt", padding=True, truncation=True, max_length=1000).input_ids.to(device)
+            text_features = self.deberta_model(tokenized).last_hidden_state.squeeze(0).to(device) #ex. (64, 768)
+            # print("text_features.shape: ", text_features.shape)
+
+            text_features_list.append(text_features)
+            lengths_list.append(text_features.shape[0])
+
+        text_features = pad_sequence(text_features_list, batch_first=True)
+
+        return text_features, torch.tensor(lengths_list).to(device)
+
     #追加
     def encode_clip_text(self, sentences, device="cuda:0"):
         """
         Encode two sentences with the CLIP model.
         """
-        # if len(sentences) != 2:
-        if len(sentences) == 2:
-            # Tokenize the text
-            tokenized1 = clip.tokenize(sentences[0]).to(device)
-            tokenized2 = clip.tokenize(sentences[1]).to(device)
-            
-            # Encode the text
-            text_features1 = self.clip_model.encode_text(tokenized1)
-            text_features2 = self.clip_model.encode_text(tokenized2)
 
-            text_features = pad_sequence([text_features1, text_features2], batch_first=True)
-            return text_features, torch.tensor([tokenized1.shape[0], tokenized2.shape[0]]).to(device)
-        else:
-            tokenized = clip.tokenize(sentences[0]).to(device)
+        text_features_list = []
+        lengths_list = []
+
+        for i in range(len(sentences)):
+            tokenized = clip.tokenize(sentences[i]).to(device)
             text_features = self.clip_model.encode_text(tokenized)
-            return text_features, torch.tensor([tokenized.shape[0]]).to(device)
+            text_features_list.append(text_features)
+            lengths_list.append(tokenized.shape[0])
+
+        text_features = pad_sequence(text_features_list, batch_first=True)
+
+        return text_features, torch.tensor(lengths_list).to(device)
+
+        # if len(sentences) == 2:
+        #     # Tokenize the text
+        #     tokenized1 = clip.tokenize(sentences[0]).to(device)
+        #     tokenized2 = clip.tokenize(sentences[1]).to(device)
+            
+        #     # Encode the text
+        #     text_features1 = self.clip_model.encode_text(tokenized1)
+        #     text_features2 = self.clip_model.encode_text(tokenized2)
+
+        #     text_features = pad_sequence([text_features1, text_features2], batch_first=True)
+        #     return text_features, torch.tensor([tokenized1.shape[0], tokenized2.shape[0]]).to(device)
+        # else:
+        #     tokenized = clip.tokenize(sentences[0]).to(device)
+        #     text_features = self.clip_model.encode_text(tokenized)
+        #     return text_features, torch.tensor([tokenized.shape[0]]).to(device)
+        
+        #上記はsentencesのshapeが[2, max]であることを前提としているが、それを一般化する
+
     #追加
-    def concat_embeddings_lang(self, emb_lang, lengths_lang, emb_clip, lengths_clip, device="cuda:0"):
+    def concat_embeddings_lang(self, emb_lang, lengths_lang, emb_other, lengths_other, device="cuda:0"):
         if len(lengths_lang) == 1:
-            temp = torch.cat([emb_lang[0, :lengths_lang[0], :], emb_clip.unsqueeze(1)[0, :lengths_clip[0], :]], dim=0)
+            # temp = torch.cat([emb_lang[0, :lengths_lang[0], :], emb_other.unsqueeze(1)[0, :lengths_other[0], :]], dim=0)
+            temp = torch.cat([emb_lang[0, :lengths_lang[0], :], emb_other[0, :lengths_other[0], :]], dim=0)
             return temp.unsqueeze(0), torch.tensor([temp.shape[0]]).to(device)
 
-        lang_1 = emb_lang[0, :lengths_lang[0], :]
-        lang_2 = emb_lang[1, :lengths_lang[1], :]
-        clip_1 = emb_clip[0, :lengths_clip[0], :]
-        clip_2 = emb_clip[1, :lengths_clip[1], :]
+        # lang_1 = emb_lang[0, :lengths_lang[0], :]
+        # lang_2 = emb_lang[1, :lengths_lang[1], :]
+        # clip_1 = emb_clip[0, :lengths_clip[0], :]
+        # clip_2 = emb_clip[1, :lengths_clip[1], :]
 
-        temp1 = torch.cat([lang_1, clip_1], dim=0)
-        temp2 = torch.cat([lang_2, clip_2], dim=0)
+        # temp1 = torch.cat([lang_1, clip_1], dim=0)
+        # temp2 = torch.cat([lang_2, clip_2], dim=0)
 
-        emb_lang = pad_sequence([temp1, temp2], batch_first=True, padding_value=0)
+        #上記はemb_langのshapeが[2, max, 768]であることを前提としているが、それを一般化する
+        temp_list = []
+        for i in range(len(lengths_lang)):
+            lang = emb_lang[i, :lengths_lang[i], :]
+            other = emb_other[i, :lengths_other[i], :]
+            temp = torch.cat([lang, other], dim=0)
+            temp_list.append(temp)
+        
+        emb_lang = pad_sequence(temp_list, batch_first=True, padding_value=0)
 
-        return emb_lang, torch.tensor([temp1.shape[0], temp2.shape[0]]).to(device)
+        #make length tensor
+        lengths = torch.tensor([temp.shape[0] for temp in temp_list]).to(device)
+        
+        # emb_lang = pad_sequence([temp1, temp2], batch_first=True, padding_value=0)
+
+        # return emb_lang, torch.tensor([temp1.shape[0], temp2.shape[0]]).to(device)
+
+        return emb_lang, lengths
+
+    def concat_embeddings_frame(self, emb_clip, emb_resnet, lengths_frame):
+        #emb_clip:[batch, max, 768], emb_resnet:[batch, max, 768], lengths:[size * batch]
+        temp_list = []
+        for i in range(len(lengths_frame)):
+            clip = emb_clip[i, :lengths_frame[i], :]
+            resnet = emb_resnet[i, :lengths_frame[i], :]
+            temp = torch.cat([clip, resnet], dim=0)
+            temp_list.append(temp)
+        
+        emb_frame = pad_sequence(temp_list, batch_first=True, padding_value=0)
+
+        lengths = torch.tensor([temp.shape[0] for temp in temp_list]).to(device)
+
+        return emb_frame, lengths
 
     def forward(self, vocab, **inputs):
         '''
@@ -135,49 +214,98 @@ class Model(base.Model):
         #変更(CLIPのtext情報も用いる)
         if self.args.clip_text:
             emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
-            #emb_lang:[2, max, 768](2つのデータの大きい方をmaxに入れる), lengths_lang:[2](emb_langの2つのデータの長さを持つ.)
+            #emb_lang:[batch, max, 768](2つのデータの大きい方をmaxに入れる), lengths_lang:[batch](emb_langのbatch個のデータの長さを持つ.)
             
             #追加
             # token to sentence
             sentences = self.token_to_sentence_list(inputs['lang'], vocab)
             
             # encode clip
-            emb_clip_text, lengths_clip_text = self.encode_clip_text(sentences, device=inputs['lang'].device)
-
+            emb_clip, lengths_clip = self.encode_clip_text(sentences, device=inputs['lang'].device)
+            
             # concat clip and lang
-            emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip_text, lengths_clip_text, device=inputs['lang'].device)
+            emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
 
             emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
+        elif self.args.deberta:
+            emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
+
+            sentences = self.token_to_sentence_list(inputs['lang'], vocab)
+
+            emb_deberta, lengths_deberta = self.encode_deberta(sentences, device=inputs['lang'].device)
+
+            emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device=inputs['lang'].device)
+
         else:
             emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
             emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
 
+
         #変更(CLIPのimage情報のみを用いる)
         if self.args.clip_image:
-            if len(inputs['frames']) == 3:
-                emb_frames = pad_sequence([ inputs['frames'][1], inputs['frames'][2]], batch_first=True, padding_value=0).to("cuda")
-            else:
-                emb_frames = inputs['frames'][1].unsqueeze(0).to("cuda")
-            emb_object = emb_frames.clone().to("cuda")
+            # if len(inputs['frames']) > 2:
+            # emb_frames = pad_sequence([ inputs['frames'][1], inputs['frames'][2]], batch_first=True, padding_value=0).to("cuda")
+            # emb_object = emb_frames.clone().to("cuda")
+            # inputs_frames = concat_embeddings_frame(inputs['frames'][1:], device=inputs['frames'].device)
+
+            #以下は必要、 checkpoint再現のためコメントアウト
+            inputs_frames = [inputs['frames'][i] for i in range(len(inputs['frames'])) if i != 0]
+
+            #以下は必要、 checkpoint再現のためコメントアウト
+            emb_clip = pad_sequence(inputs_frames, batch_first=True, padding_value=0).to("cuda")
+
+            #もしemb_clipが4次元の場合は3次元にする
+            if len(emb_clip.shape) == 4:
+                emb_clip = emb_clip.squeeze(0)
+
+            #以下は必要、 checkpoint再現のためコメントアウト
+            emb_resnet, emb_object = self.embed_frames(inputs['frames'][0])
+
+            #以下は不要
+            # emb_clip = inputs['frames']
+            # emb_object = emb_clip.clone().to("cuda")
+
+            # print("emb_resnet.shape", emb_resnet.shape) #torch.Size([2, 72, 768])
+            # print("emb_clip.shape", emb_clip.shape) #torch.Size([2, 72, 768])
+            # print("inputs['frames'][1].shape", inputs['frames'][1].shape) #torch.Size([27, 768])
+            # print("inputs['frames'][2].shape", inputs['frames'][2].shape) #torch.Size([72, 768])
+            # print("emb_clip.shape", emb_clip.shape) #torch.Size([2, 72, 768])
+
+            # emb_frames, lengths_frames = self.concat_embeddings_frame(emb_clip, emb_resnet, inputs['frames'][0].shape[0])
+
+            #clipとresnetのどちらも使う場合
+            # emb_frames = torch.cat([emb_clip, emb_resnet], dim=1)
+            #clipのみの場合
+            emb_frames = emb_clip
+
         else:
             #元々
             # embed frames and actions
+            # if len(inputs["frames"]) == 1: #推論時
+            #     if len(inputs["frames"].shape) != 5:
+            #         inputs["frames"] = inputs["frames"].unsqueeze(0)
+
+            #     emb_frames, emb_object = self.embed_frames(inputs['frames'])
+
+            # else:
             emb_frames, emb_object = self.embed_frames(inputs['frames'][0])
+            # emb_frames, emb_object = self.embed_frames(inputs['frames'])
             # print("emb_frames.shape", emb_frames.shape)#torch.Size([2, 72, 768])
             # print("emb_object.shape", emb_object.shape)#torch.Size([2, 72, 768])
 
         lengths_frames = inputs['lengths_frames']
-
+        length_frames_max = inputs['length_frames_max']
+        lengths_actions = lengths_frames.clone()
         #emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]
         emb_actions = self.embed_actions(inputs['action'])
-        assert emb_frames.shape == emb_actions.shape
-        lengths_actions = lengths_frames.clone()
-        length_frames_max = inputs['length_frames_max']
+        #変更
+        if not self.args.clip_image:
+            assert emb_frames.shape == emb_actions.shape
 
         # concatenate language, frames and actions and add encodings
         encoder_out, _ = self.encoder_vl(
             emb_lang, emb_frames, emb_actions, lengths_lang,
-            lengths_frames, lengths_actions, length_frames_max)
+            lengths_frames, lengths_actions, length_frames_max, is_clip_resnet=self.args.clip_resnet) #本当はis_clip_frame=self.args.clip_resnet, checkpoint再現のために一時的にFalse
         # use outputs corresponding to visual frames for prediction only
         encoder_out_visual = encoder_out[
             :, lengths_lang.max().item():
@@ -223,12 +351,15 @@ class Model(base.Model):
         '''
         take a list of frames tensors, pad it, apply dropout and extract embeddings
         '''
+        # print("frames_pad.shape", frames_pad.shape) # torch.Size([2, 72, 512, 7, 7])
         self.dropout_vis(frames_pad)
         frames_4d = frames_pad.view(-1, *frames_pad.shape[2:])
         frames_pad_emb = self.vis_feat(frames_4d).view(
             *frames_pad.shape[:2], -1)
         frames_pad_emb_skip = self.object_feat(
             frames_4d).view(*frames_pad.shape[:2], -1)
+        # print("frames_pad_emb.shape", frames_pad_emb.shape) # torch.Size([2, 72, 768])
+        # print("frames_pad_emb_skip.shape", frames_pad_emb_skip.shape) # torch.Size([2, 72, 768])
         return frames_pad_emb, frames_pad_emb_skip
 
     def embed_actions(self, actions):
@@ -246,31 +377,67 @@ class Model(base.Model):
         self.frames_traj = torch.zeros(1, 0, *self.visual_tensor_shape)
         self.action_traj = torch.zeros(1, 0).long()
 
+    def reset_for_clip(self):
+        '''
+        reset internal states (used for real-time execution during eval)
+        '''
+        self.frames_traj = torch.zeros(1, 0, 768)
+        self.action_traj = torch.zeros(1, 0).long()
+
+    def reset_for_both(self):
+        '''
+        reset internal states (used for real-time execution during eval)
+        '''
+        self.frames_traj = [torch.zeros(1, 0, *self.visual_tensor_shape), torch.zeros(1, 0, 768)]
+        self.action_traj = torch.zeros(1, 0).long()
+    
     def step(self, input_dict, vocab, prev_action=None):
         '''
         forward the model for a single time-step (used for real-time execution during eval)
         '''
         frames = input_dict['frames']
-        device = frames.device
+
+        #もともと
+        # device = frames.device
+        #変更(clipとresnet両方を用いる場合)
+        device = frames[0].device
         if prev_action is not None:
             prev_action_int = vocab['action_low'].word2index(prev_action)
             prev_action_tensor = torch.tensor(prev_action_int)[None, None].to(device)
             self.action_traj = torch.cat(
                 (self.action_traj.to(device), prev_action_tensor), dim=1)
-        self.frames_traj = torch.cat(
-            (self.frames_traj.to(device), frames[None]), dim=1)
+        #変更
+        # self.frames_traj = torch.cat(
+        #     (self.frames_traj.to(device), frames[None]), dim=1)
+
+        #変更(clipとresnet両方を用いる場合)
+        if self.args.clip_resnet:
+            self.frames_traj = [torch.cat(
+                (self.frames_traj[0].to(device), frames[0][None]), dim=1), torch.cat(
+                (self.frames_traj[1].to(device), frames[1][None]), dim=1)]
+            frames = copy.deepcopy(self.frames_traj)
+            lengths_frames = torch.tensor([self.frames_traj[0].size(1)])
+            length_frames_max=self.frames_traj[0].size(1)
+        else:
+            self.frames_traj = torch.cat(
+                (self.frames_traj.to(device), frames[None]), dim=1)
+            frames = self.frames_traj.clone()
+            lengths_frames = torch.tensor([self.frames_traj.size(1)])
+            length_frames_max=self.frames_traj.size(1)
+        
         # at timestep t we have t-1 prev actions so we should pad them
         action_traj_pad = torch.cat(
             (self.action_traj.to(device),
              torch.zeros((1, 1)).to(device).long()), dim=1)
+        
         model_out = self.forward(
             vocab=vocab['word'],
             lang=input_dict['lang'],
             lengths_lang=input_dict['lengths_lang'],
             length_lang_max=input_dict['length_lang_max'],
-            frames=self.frames_traj.clone(),
-            lengths_frames=torch.tensor([self.frames_traj.size(1)]),
-            length_frames_max=self.frames_traj.size(1),
+            frames=frames,
+            lengths_frames=lengths_frames,
+            length_frames_max=length_frames_max,
             action=action_traj_pad)
         step_out = {}
         for key, value in model_out.items():

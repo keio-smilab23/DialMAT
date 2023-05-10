@@ -11,6 +11,8 @@ SETTINGS.CONFIG.READ_ONLY_CONFIG = False
 
 @exp_ingredient.config
 def cfg_exp():
+    #追加
+    mode = "valid"
     # HIGH-LEVEL MODEL SETTINGS
     # where to save model and/or logs
     name = 'default'
@@ -40,6 +42,9 @@ def cfg_exp():
 
 @eval_ingredient.config
 def cfg_eval():
+    clip_image = False
+    clip_text = False
+    clip_resnet = False
     # which experiment to evaluate (required)
     exp = None
     # which checkpoint to load ('latest.pth', 'model_**.pth')
@@ -74,10 +79,13 @@ def cfg_eval():
 @train_ingredient.config
 def cfg_train():
     #追加
+    valid = False
     wandb = True
-    wandb_name = 'default'
-    clip_image = True
-    clip_text = True
+    wandb_name = 'deberta'
+    clip_image = False
+    clip_text = False
+    clip_resnet = False
+    deberta = True
     # GENERAL TRANING SETTINGS
     # random seed
     seed = 1

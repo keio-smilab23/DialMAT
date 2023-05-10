@@ -8,6 +8,7 @@ import re
 import sys
 import pprint
 import numpy as np
+import wandb
 from sacred import Experiment
 
 from alfred.config import exp_ingredient, train_ingredient
@@ -113,7 +114,9 @@ def load_data(name, args, ann_type, valid_only=False):
     '''
     # partitions = ([] if valid_only else ['train']) + ['valid_seen', 'valid_unseen']
     # partitions = ([] if valid_only else ['train']) + ['valid_seen', 'pseudo_valid']
-    partitions = ([] if valid_only else ['train']) + ['valid_seen','pseudo_valid', 'pseudo_test']
+    partitions = ([] if valid_only else ['train']) + ['pseudo_valid', 'pseudo_test']
+    # partitions = ([] if valid_only else ['pseudo_valid']) + ['pseudo_test']
+    # partitions = ([] if valid_only else ['train']) + ['pseudo_test']
     datasets = []
     for partition in partitions:
         if args.model == 'speaker':
@@ -180,6 +183,9 @@ def main(train, exp):
     '''
     # parse args
     args = prepare(train, exp)
+    # settings for wandb
+    if args.wandb:
+        wandb.init(project='dialfred-challenge', name=args.wandb_name)
     # load dataset(s) and process vocabs
     datasets = []
     ann_types = iter(args.data['ann_type'])

@@ -94,12 +94,8 @@ class BaseDataset(TorchDataset):
         # feats_bytes = self.feats.get(key)
         # feats_numpy = np.frombuffer(
         #     feats_bytes, dtype=np.float32).reshape(self.dataset_info['feat_shape'])
-        #変更
-        # feats_list = self.feats.get(key)
+        #変更(only clip)
         feats_list = pickle.loads(self.feats.get(key))
-
-        # feats_numpy = np.frombuffer(
-        #     feats_bytes, dtype=np.float32).reshape(self.dataset_info['feat_shape'])
         #追加
         #feats_numpy: ex. [99, 512, 7, 7]
 
@@ -108,6 +104,7 @@ class BaseDataset(TorchDataset):
             #変更
             # frames = torch.tensor(feats_numpy)
         return feats_list
+        # return frames
 
     def load_lmdb(self, lmdb_path):
         '''

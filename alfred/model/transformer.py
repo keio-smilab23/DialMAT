@@ -242,42 +242,23 @@ class Model(base.Model):
 
 
         #変更(CLIPのimage情報のみを用いる)
-        if self.args.clip_image:
-            # if len(inputs['frames']) > 2:
-            # emb_frames = pad_sequence([ inputs['frames'][1], inputs['frames'][2]], batch_first=True, padding_value=0).to("cuda")
-            # emb_object = emb_frames.clone().to("cuda")
-            # inputs_frames = concat_embeddings_frame(inputs['frames'][1:], device=inputs['frames'].device)
-
-            #以下は必要、 checkpoint再現のためコメントアウト
+        if self.args.clip_image or self.args.clip_resnet:
             inputs_frames = [inputs['frames'][i] for i in range(len(inputs['frames'])) if i != 0]
 
-            #以下は必要、 checkpoint再現のためコメントアウト
             emb_clip = pad_sequence(inputs_frames, batch_first=True, padding_value=0).to("cuda")
 
-            #もしemb_clipが4次元の場合は3次元にする
             if len(emb_clip.shape) == 4:
                 emb_clip = emb_clip.squeeze(0)
 
-            #以下は必要、 checkpoint再現のためコメントアウト
             emb_resnet, emb_object = self.embed_frames(inputs['frames'][0])
 
-            #以下は不要
-            # emb_clip = inputs['frames']
-            # emb_object = emb_clip.clone().to("cuda")
-
-            # print("emb_resnet.shape", emb_resnet.shape) #torch.Size([2, 72, 768])
-            # print("emb_clip.shape", emb_clip.shape) #torch.Size([2, 72, 768])
-            # print("inputs['frames'][1].shape", inputs['frames'][1].shape) #torch.Size([27, 768])
-            # print("inputs['frames'][2].shape", inputs['frames'][2].shape) #torch.Size([72, 768])
-            # print("emb_clip.shape", emb_clip.shape) #torch.Size([2, 72, 768])
-
-            # emb_frames, lengths_frames = self.concat_embeddings_frame(emb_clip, emb_resnet, inputs['frames'][0].shape[0])
-
             #clipとresnetのどちらも使う場合
-            # emb_frames = torch.cat([emb_clip, emb_resnet], dim=1)
+            if self.args.clip_resnet:
+                emb_frames = torch.cat([emb_clip, emb_resnet], dim=1)
             #clipのみの場合
-            emb_frames = emb_clip
-
+            else:
+                emb_frames = emb_clip
+        
         else:
             #元々
             # embed frames and actions
@@ -287,11 +268,7 @@ class Model(base.Model):
 
             #     emb_frames, emb_object = self.embed_frames(inputs['frames'])
 
-            # else:
             emb_frames, emb_object = self.embed_frames(inputs['frames'][0])
-            # emb_frames, emb_object = self.embed_frames(inputs['frames'])
-            # print("emb_frames.shape", emb_frames.shape)#torch.Size([2, 72, 768])
-            # print("emb_object.shape", emb_object.shape)#torch.Size([2, 72, 768])
 
         lengths_frames = inputs['lengths_frames']
         length_frames_max = inputs['length_frames_max']

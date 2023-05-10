@@ -16,4 +16,11 @@ logs/questioner_rl/
 data/lmdb*
 aws/
 .python-version
-tips/*
+tips/
+submission/
+submission_test/
+testset/
+wandb/
+submission*.zip
+data/extract_jsons/
+data/lmdb_augmented_human*/

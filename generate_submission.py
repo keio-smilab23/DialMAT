@@ -39,10 +39,8 @@ class BDataset(TorchDataset):
         self.ann_type = ann_type
         self.test_mode = True
         self.pad = 0
-        #変更
-        # self.vocab = data_util.load_vocab("lmdb_augmented_human_subgoal", "tests_seen")
-        # self.vocab = data_util.load_vocab("lmdb_augmented_human_subgoal_temp", "tests_seen")
         self.vocab = data_util.load_vocab("lmdb_augmented_human_subgoal_splited", "tests_seen")
+
 
         # read information about the dataset
         self.dataset_info = data_util.read_dataset_info(name)
@@ -341,6 +339,9 @@ REWARD_SUC = 1.0
 SOS_token = 0
 EOS_token = 1
 
+
+recent_id = None
+action_idx = None
 VERBOSE = False
 
 
@@ -379,9 +380,6 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
     for dataset_idx, (path, task_json) in enumerate(tqdm(jsons_data)):
         print("   ", dataset_idx)
         setup_scene(env, task_json)
-        #変更(for clip)
-        # performer.reset()
-        # performer.reset_for_clip()
         performer.reset_for_both()
         num_subgoal = len(task_json["turk_annotations"]
                           ["anns"][0]["high_descs"])
@@ -521,7 +519,7 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
                 # performer rollout for some steps
                 with torch.no_grad():
                     interm_states = step(env, performer, dataset, extractor,
-                                         trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, num_rollout=5)
+                                         trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, int(path[-9:-5]), num_rollout=5)
 
                 # if log_entry['success']:
                 #     reward += REWARD_SUC
@@ -592,10 +590,7 @@ def reset(
     r_idx, subgoal_idx = int(trial_uid.split(
         ':')[1]), int(trial_uid.split(':')[2])
     # reset model and setup scene
-    #変更
     model.reset()
-    # model.reset_for_clip()
-    # model.reset_for_both()
     # print(traj_data)
 
     if subgoal_idx == 0:
@@ -624,7 +619,7 @@ def reset(
     return init_states
 
 
-def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, num_rollout=5):
+def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, id, num_rollout=5):
     # modification of evaluate_subgoals: add qa and skip init
 
     # add initial states from expert initialization
@@ -665,14 +660,16 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
         while t_agent < args.max_steps and t_current < num_rollout:
             # print(t_agent)
             # get an observation and do an agent step
-            #変更
-            # input_dict['frames'] = eval_util.get_observation(
-            #     env.last_event, extractor)
-            #clip
-            # input_dict['frames'] = eval_util.get_observation_clip(
-            #     env.last_event, extractor)
-            #both
-            input_dict['frames'] = [ eval_util.get_observation(env.last_event, extractor),eval_util.get_observation_clip(env.last_event, extractor)]
+            global recent_id, action_idx
+            if recent_id != id:
+                recent_id = id
+                action_idx = 1
+            else:
+                action_idx += 1
+
+            input_dict['frames'] = eval_util.get_observation(
+                env.last_event, extractor, id=id, subgoal_idx=subgoal_idx, action_idx=action_idx)
+
             # print(prev_action, )
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,
@@ -729,10 +726,8 @@ def test(args, json_paths):
     critic.load_state_dict(checkpt["critic"])
 
     # load dataset and pretrained performer
-    #変更
-    # data_name = "lmdb_augmented_human_subgoal"
-    # data_name = "lmdb_augmented_human_subgoal_temp"
     data_name = "lmdb_augmented_human_subgoal_splited"
+
     model_path = args.performer_path
     model_args = model_util.load_model_args(model_path)
     model_args.debug = False
@@ -747,10 +742,8 @@ def test(args, json_paths):
                       data_split, model_args, "lang")
     performer, extractor = load_agent(model_path, dataset.dataset_info, device)
     dataset.vocab_translate = performer.vocab_out
-    #変更
-    # dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
-    # dataset.vocab_in.name = "lmdb_augmented_human_subgoal_temp"
     dataset.vocab_in.name = "lmdb_augmented_human_subgoal_splited"
+
 
     loc_ans_fn = "testset/loc_testset_final.pkl"
     app_ans_fn = "testset/appear_testset_final.pkl"
@@ -781,7 +774,6 @@ def main():
     args = parser.parse_args()
     # path to testset json file
     input_jsons = [str(path) for path in Path(os.environ['DF_ROOT'] + "/testset/dialfred_testset_final/").glob("*.json")]
-    # input_jsons = ["/home/initial/workspase/CVPR/DialFRED-Challenge/testset/dialfred_testset_final/0001.json"]
     test(args, input_jsons)
 
 

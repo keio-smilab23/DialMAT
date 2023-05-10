@@ -16,11 +16,12 @@ logs/questioner_rl/
 data/lmdb*
 aws/
 .python-version
-tips/
-submission/
-submission_test/
-testset/
+tips/*
+submission/*
 wandb/
-submission*.zip
-data/extract_jsons/
-data/lmdb_augmented_human*/
+submission.zip
+testset/dialfred_testset_final/*
+submission_history/
+tmp/
+qualitative/
+>>>>>>> 8d14bb41bb92b558ad1413e8c24ed5dcf706ef7c

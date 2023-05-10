@@ -13,6 +13,7 @@ import pickle
 from io import open
 import logging
 import argparse
+import wandb
 
 import torch
 import torch.nn as nn
@@ -344,6 +345,10 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
             with open("./logs/questioner_rl/questioner_anytime_"+split_id+".pkl", "wb") as pkl_f:
                 pickle.dump([all_rewards, succ, all_query, all_instr, sg_pairs, num_q, all_pws], pkl_f)
             
+            # save to wandb
+            wandb_log = {"actor loss" : np.mean(actor_losses), "critic loss" : np.mean(critic_losses), "reward": np.mean(all_rewards), "SR": np.mean(succ), "pws": np.mean(all_pws)}
+            wandb.log(wandb_log)
+            
         
     env.stop()
 
@@ -591,6 +596,7 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                 logging.info('%s (%d %d%%) reward %.4f, SR %.4f, pws %.4f' % \
                     (timeSince(start, (it+1) / n_iters), (it+1), (it+1) / n_iters * 100, \
                     np.mean(all_rewards), np.mean(succ), np.mean(all_pws)))
+
             
             if it % save_every == 0:
                 with open("./logs/questioner_rl/eval_questioner_anytime_"+split_id+".pkl", "wb") as pkl_f:
@@ -726,8 +732,12 @@ def main():
     parser.add_argument("--performer-path", dest="performer_path", type=str, default="./logs/pretrained/performer/latest.pth")
     parser.add_argument("--clip_image", dest="clip_image", type=bool, default=False)
     parser.add_argument("--clip_resnet", dest="clip_resnet", type=bool, default=False)
+    parser.add_argument("--wandb_run", type=str, default="tmp_run")
 
     args = parser.parse_args()
+
+    wandb.init(project="DialFRED-2023", name=args.wandb_run)
+
     if args.mode == "train":
         trainModel(args)
     elif args.mode == "eval":

@@ -76,9 +76,9 @@ python -m alfred.gen.render_trajs
 ```
 
 ## Prepare dataset
-**2022-04-12 Update: There seems to be a problem with the following file. `nas07/06DialFRED-Challenge/data/lmdb_augmented_human_subgoal.tar.gz` and extract in `DialFRED-Challenge/data/` To obtain the lmdb dataset, start from `export EXP_NAME=augmented_human' (skip augment_data.py and append_data.py)**
+**2022-04-21 Update: Since `augment_data.py` and `append_data.py` are already executed and `/traj_data.json` and `files/augmented_human.vocab` are already updated in this repository, start from `export EXP_NAME=augmented_human' (skip augment_data.py and append_data.py)**
 
-**2022-04-10 You can get `nas07/06DialFRED-Challenge/data/lmdb_augmented_human_subgoal.tar.gz` and extract in `DialFRED-Challenge/data/` instead of all the following in this section.**
+<!-- **2022-04-10 You can get `nas07/06DialFRED-Challenge/data/lmdb_augmented_human_subgoal.tar.gz` and extract in `DialFRED-Challenge/data/` instead of all the following in this section.** -->
 
 We provide the code to augment the Alfred data by merging low level actions into subgoals and spliting one subgoal into multiple ones. We also created new instructions to improve language variety. 
 ```bash
@@ -186,6 +186,15 @@ Given the finetuned questioner and pretrained performer, we can evaluate the mod
 python train_eval.py --mode eval --questioner-path ./logs/questioner_rl/questioner_anytime_seen1.pt
 
 ```
+
+## Create a submission file for CVPR 2023 DialFRED Challenge
+The testset contains 1092 tasks. For each task, json data and the oracle answers for the 3 types of questions in the paper are provided in `testset/`
+To create a submission file, execute the following command:
+```bash
+python generate_submission.py --mode eval --questioner-path ./logs/questioner_rl/questioner_anytime_seen1.pt
+
+```
+
 
 ## Citation
 

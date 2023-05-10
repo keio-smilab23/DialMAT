@@ -3,7 +3,9 @@ import torch
 import json
 import collections
 import gtimer as gt
-
+import subprocess
+import time
+import wandb
 from tqdm import tqdm
 from importlib import import_module
 from torch import nn
@@ -103,7 +105,9 @@ class LearnedModel(nn.Module):
                             value.item())
                     metrics['train:' + dataset_name]['loss/total'].append(
                         sum_loss.detach().cpu().item())
+
                 gt.stamp('metrics', unique=False)
+                
                 if self.args.profile:
                     print(gt.report(include_itrs=False, include_stats=False))
 
@@ -111,20 +115,53 @@ class LearnedModel(nn.Module):
             print('Computing train and validation metrics...')
             metrics = {data: {k: sum(v) / len(v) for k, v in metr.items()}
                        for data, metr in metrics.items()}
+
             # compute metrics for valid_seen
             for loader_id, loader in loaders_valid.items():
                 with torch.no_grad():
                     metrics[loader_id] = self.run_validation(
                         loader, vocabs_in[loader_id.split(':')[-1]],
                         loader_id, info['iters'])
+
+            #追加
+            # arrange metrics
+            result = {}
+            for k, v in metrics.items():
+                for kk, vv in v.items():
+                    result[k.split(':')[0] + '_' + kk] =  vv
+
+            if self.args.wandb:
+                wandb.log(result)
+            
+            print("metrics: ", result)
+
             stats = {'epoch': epoch, 'general': {
                 'learning_rate': optimizer.param_groups[0]['lr']}, **metrics}
+            
 
             # save the checkpoint
             print('Saving models...')
             model_util.save_model(
                 self, 'model_{:02d}.pth'.format(epoch), stats, optimizer=optimizer)
             model_util.save_model(self, 'latest.pth', stats, symlink=True)
+
+            #追加
+            if self.args.valid:
+                #../../train_eval_each_epoch.pyを実行する
+                command = f"python /home/initial/workspase/CVPR/DialFRED-Challenge/train_eval_each_epoch.py --output_dir {self.args.dout} --epoch {epoch} --mode valid --performer-path {os.path.join(self.args.dout, 'model_{:02d}.pth'.format(epoch))}"
+                subprocess.run(command, shell=True)
+                #上記プロセスが終了するまで待つ
+                #dout{epoch}.txtが作成されたか確認する
+                assert os.path.exists(os.path.join(self.args.dout, 'done{:02d}.txt'.format(epoch)))
+
+                #done{epoch}.txtを削除する
+                os.remove(os.path.join(self.args.dout, 'done{:02d}.txt'.format(epoch)))
+                if epoch ==  self.args.epochs-1:
+                    #doutの中にdone.txtを作成する
+                    with open(os.path.join(self.args.dout, 'done.txt'), 'w') as f:
+                        f.write('done')
+
+
             # write averaged stats
             for loader_id in stats.keys():
                 if isinstance(stats[loader_id], dict):

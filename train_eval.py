@@ -86,6 +86,12 @@ def extractFeatureOnline(env, extractor):
     feat = torch.unsqueeze(torch.squeeze(avg_pool(feat)), 0)
     return feat
 
+#追加
+def extractFeatureOnlineClip(env, extractor):
+    event = env.last_event
+    feat = get_observation_clip(event, extractor)
+    return feat
+
 
 def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, n_iters, split_id, max_steps, print_every=1, save_every=100):
     start = time.time()
@@ -408,10 +414,10 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
             interm_states = None
             pws = 0.0
             t_agent_old = 0
-
             while True:
                 # use online feature extractor instead
                 f_t = extractFeatureOnline(env, extractor)
+                # f_t = extractFeatureOnlineClip(env, extractor)
                 dialog = orig_instr
                 input_tensor = torch.unsqueeze(torch.squeeze(tensorFromSentence(lang, dialog)), 0).to(device)
                 input_length = input_tensor.size(1)
@@ -436,6 +442,53 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                 # set up query and answer
                 repeat_idx = -1
                 ans = ""
+                
+                # query = "<<app>> " + decoded_words[1]
+                # if task in app_ans and trial in app_ans[task] and subgoal_idx in app_ans[task][trial] and 0 in app_ans[task][trial][subgoal_idx]:
+                #     ans_sg = app_ans[task][trial][subgoal_idx][0]
+                #     if decoded_words[1] in ans_sg and ans_sg[decoded_words[1]]["ans"] is not None:
+                #         ans += ans_sg[decoded_words[1]]["ans"]
+                #     else:
+                #         ans += "invalid"
+                # else:
+                #     logging.info("invalid answer for %s, %s, %s" % (task, trial, subgoal_idx))
+                #     ans += "invalid"
+                # qa1 = query + " " + ans
+                # ans = ""
+                # query = "<<loc>> " + decoded_words[1]
+                # if task in loc_ans and trial in loc_ans[task] and subgoal_idx in loc_ans[task][trial] and 0 in loc_ans[task][trial][subgoal_idx]:
+                #     ans_sg = loc_ans[task][trial][subgoal_idx][0]
+                #     if decoded_words[1] in ans_sg:
+                #         obj_id = ans_sg[decoded_words[1]]["obj_id"]
+                #         event = env.last_event
+                #         metadata = event.metadata
+                #         odata = get_obj_data(metadata, obj_id)
+                #         if odata is None:
+                #             ans += "invalid"
+                #         else:
+                #             oname = decoded_words[1]
+                #             recs = odata["parentReceptacles"]
+                #             rel_ang = get_obj_direction(metadata, odata)
+                #             ans += objLocAns(oname, rel_ang, recs)
+                #     else:
+                #         ans += "invalid"
+                # else:
+                #     ans += "invalid"
+                # qa2 = query + " " + ans
+                # ans = ""
+                # query = "<<dir>> "
+                # if task in dir_ans and trial in dir_ans[task] and subgoal_idx in dir_ans[task][trial]:
+                #     target_pos = dir_ans[task][trial][subgoal_idx]["target_pos"]
+                #     event = env.last_event
+                #     cur_metadata = event.metadata
+                #     targ_metadata = {'agent':{'position':target_pos}}
+                #     rel_ang, rel_pos = get_agent_direction(cur_metadata, targ_metadata)
+                #     ans += dirAns(rel_ang, rel_pos).lower()
+                # else:
+                #     ans += "invalid"
+                # qa3 = query + " " + ans
+
+                
                 # for appearance answer, we can directly use the saved ones
                 if decoded_words[0] == "appearance":
                     query = "<<app>> " + decoded_words[1]
@@ -448,7 +501,7 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                     else:
                         logging.info("invalid answer for %s, %s, %s" % (task, trial, subgoal_idx))
                         ans += "invalid"
-                # for location answer, we need to construct a new one using current metadata
+                # # for location answer, we need to construct a new one using current metadata
                 elif decoded_words[0] == "location":
                     query = "<<loc>> " + decoded_words[1]
                     if task in loc_ans and trial in loc_ans[task] and subgoal_idx in loc_ans[task][trial] and 0 in loc_ans[task][trial][subgoal_idx]:
@@ -469,7 +522,7 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                             ans += "invalid"
                     else:
                         ans += "invalid"
-
+                # # for direction answer, we can directly use the saved ones
                 elif decoded_words[0] == "direction":
                     query = "<<dir>> "
                     if task in dir_ans and trial in dir_ans[task] and subgoal_idx in dir_ans[task][trial]:
@@ -497,6 +550,8 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                     current_object_found.append(True)
                     current_num_q += 1
                     qa = query + " " + ans
+                    #変更
+                    # qa = qa1 + " " + qa2 + " " + qa3
                 # for not asking question, there is no penalty
                 else:
                     current_object_found.append(True)
@@ -523,7 +578,7 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                 t_agent_old = t_agent
                 if done or t_agent > args.max_steps or num_fails > args.max_fails or episode_end or init_failed or len(current_query) > 100:
                     break
-        
+
             succ.append(done)
             all_rewards.append(reward)
             all_pws.append(pws)
@@ -573,7 +628,9 @@ def trainModel(args):
     critic = Critic().to(device)
 
     # load dataset and pretrained performer
-    data_name = "lmdb_augmented_human_subgoal"
+    # data_name = "lmdb_augmented_human_subgoal"
+    # data_name = "lmdb_augmented_human_subgoal_temp"
+    data_name = "lmdb_augmented_human_subgoal_splited"
     model_path = args.performer_path
     model_args = model_util.load_model_args(model_path)
     model_args.debug = False
@@ -582,8 +639,14 @@ def trainModel(args):
     model_args.smooth_nav = False
     model_args.max_steps = 1000
     model_args.max_fails = 10
+
+    #追加
+    model_args.clip_image = args.clip_image
+    model_args.clip_resnet = args.clip_resnet
     dataset = AlfredDataset(data_name, "valid_"+data_split, model_args, "lang")
-    dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
+    # dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
+    # dataset.vocab_in.name = "lmdb_augmented_human_subgoal_temp"
+    dataset.vocab_in.name = "lmdb_augmented_human_subgoal_splited"
     performer, extractor = load_agent(model_path, dataset.dataset_info, device)
     dataset.vocab_translate = performer.vocab_out
 
@@ -603,7 +666,9 @@ def trainModel(args):
 
 def evalModel(args):
     np.random.seed(0)
-    data_split = "unseen"
+    # data_split = "unseen"
+    data_split = "pseudo_valid"
+    # data_split = "valid_unseen"
     train_id = 1
     logging.basicConfig(filename='./logs/rl_anytime_eval_'+ data_split + str(train_id) + '.log', level=logging.INFO)
 
@@ -623,7 +688,9 @@ def evalModel(args):
     critic.load_state_dict(checkpt["critic"])
 
     # load dataset and pretrained performer
-    data_name = "lmdb_augmented_human_subgoal"
+    # data_name = "lmdb_augmented_human_subgoal"
+    # data_name = "lmdb_augmented_human_subgoal_temp"
+    data_name = "lmdb_augmented_human_subgoal_splited"
     model_path = args.performer_path
     model_args = model_util.load_model_args(model_path)
     model_args.debug = False
@@ -632,10 +699,17 @@ def evalModel(args):
     model_args.smooth_nav = False
     model_args.max_steps = 1000
     model_args.max_fails = 10
-    dataset = AlfredDataset(data_name, "valid_"+data_split, model_args, "lang")
+    #追加 新しい要素
+    model_args.clip_image = args.clip_image
+    model_args.clip_resnet = args.clip_resnet
+    #変更
+    # dataset = AlfredDataset(data_name, "valid_"+data_split, model_args, "lang")
+    dataset = AlfredDataset(data_name, data_split, model_args, "lang")
     performer, extractor = load_agent(model_path, dataset.dataset_info, device)
     dataset.vocab_translate = performer.vocab_out
-    dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
+    # dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
+    # dataset.vocab_in.name = "lmdb_augmented_human_subgoal_temp"
+    dataset.vocab_in.name = "lmdb_augmented_human_subgoal_splited"
 
     # load answers
     loc_ans_fn = "./data/answers/loc_augmented.pkl"
@@ -656,6 +730,8 @@ def main():
     parser.add_argument("--mode", dest="mode", type=str, default="eval")
     parser.add_argument("--questioner-path", dest="questioner_path", type=str, default="./logs/pretrained/questioner_anytime_finetuned.pt")
     parser.add_argument("--performer-path", dest="performer_path", type=str, default="./logs/pretrained/performer/latest.pth")
+    parser.add_argument("--clip_image", dest="clip_image", type=bool, default=False)
+    parser.add_argument("--clip_resnet", dest="clip_resnet", type=bool, default=False)
     parser.add_argument("--wandb_run", type=str, default="tmp_run")
 
     args = parser.parse_args()

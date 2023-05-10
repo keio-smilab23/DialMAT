@@ -156,7 +156,14 @@ def evaluate_subgoals_start_qa(
         print("r_idx not aligned")
         print(traj_data)
     # reset model and setup scene
-    model.reset()
+    #変更(for clip)
+    if args.clip_image:
+        model.reset_for_clip()
+    elif args.clip_resnet:
+        model.reset_for_both()
+    else:
+        model.reset()
+        
     eval_util.setup_scene(env, traj_data, reward_type='dense')
     vocab = {'word': dataset.vocab_in, 'action_low': model.vocab_out}
     # load language features, expert initialization and task info
@@ -172,7 +179,16 @@ def evaluate_subgoals_start_qa(
 
     # expert teacher-forcing upto subgoal, get expert action
     for a_expert in expert_dict['actions']:
-        input_dict['frames'] = eval_util.get_observation(env.last_event, extractor)
+        #変更(for clip)
+        # if args.clip_image:
+        #     input_dict['frames'] = eval_util.get_observation_clip(env.last_event, extractor)
+        # if args.clip_resnet or args.clip_image:
+        #     input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
+        # else:
+        #     input_dict['frames'] = eval_util.get_observation(env.last_event, extractor)
+
+        input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
+
         init_failed, prev_action = eval_util.expert_step(
             a_expert['action'], expert_dict['masks'], model,
             input_dict, vocab, prev_action, env, args)
@@ -185,7 +201,7 @@ def evaluate_subgoals_start_qa(
 def evaluate_subgoals_middle_qa(
         env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, num_rollout=5):
     # modification of evaluate_subgoals: add qa and skip init
-    
+    # model.reset_for_clip()
     # add initial states from expert initialization
     task_info, vocab, prev_action, init_failed, expert_dict = init_states
     
@@ -221,7 +237,15 @@ def evaluate_subgoals_middle_qa(
         t_current = 0
         while t_agent < args.max_steps and t_current < num_rollout:
             # get an observation and do an agent step
-            input_dict['frames'] = eval_util.get_observation(env.last_event, extractor)
+            # if args.clip_image:
+            #     input_dict['frames'] = eval_util.get_observation_clip(env.last_event, extractor)
+            # if args.clip_resnet or args.clip_image:
+            #     input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
+            # else:
+            #     input_dict['frames'] = eval_util.get_observation(env.last_event, extractor)
+
+            input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
+            
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,
                 num_fails, obj_predictor)

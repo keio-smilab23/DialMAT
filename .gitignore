@@ -16,6 +16,7 @@ logs/questioner_rl/
 data/lmdb*
 aws/
 .python-version
+tips/*
 submission/
 wandb/
 submission.zip

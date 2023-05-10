@@ -1,9 +1,14 @@
 import os
 import torch
 import random
-import shutil
+import shutil    
+import datetime
+import glob
+import re
+import sys
 import pprint
 import numpy as np
+import wandb
 from sacred import Experiment
 
 from alfred.config import exp_ingredient, train_ingredient
@@ -83,12 +88,35 @@ def create_model(args, embs_ann, vocab_out):
         model.model = helper_util.DataParallel(model.model)
     return model, optimizer, prev_train_info
 
+# 追加
+def create_log_dir(dout):
+    """
+    {数字}_yyyymmdd_hhmm形式のディレクトリを作成
+    """
+    dir_pattern = re.compile(r'^(\d+)_(\d{8}_\d{4})$')
+    max_number = 0
+    for name in os.listdir(os.path.join(dout, '.')):
+        match = dir_pattern.match(name)
+        if match:
+            number = int(match.group(1))
+            if number > max_number:
+                max_number = number
+    next_number = max_number + 1
+    now = datetime.datetime.now()
+    dir_name = f'{next_number:02d}_{now.strftime("%Y%m%d_%H%M")}'
+    os.mkdir(os.path.join(dout, dir_name))
+    return os.path.join(dout, dir_name)
+ 
 
 def load_data(name, args, ann_type, valid_only=False):
     '''
     load dataset and wrap them into torch loaders
     '''
-    partitions = ([] if valid_only else ['train']) + ['valid_seen', 'valid_unseen']
+    # partitions = ([] if valid_only else ['train']) + ['valid_seen', 'valid_unseen']
+    # partitions = ([] if valid_only else ['train']) + ['valid_seen', 'pseudo_valid']
+    partitions = ([] if valid_only else ['train']) + ['pseudo_valid', 'pseudo_test']
+    # partitions = ([] if valid_only else ['pseudo_valid']) + ['pseudo_test']
+    # partitions = ([] if valid_only else ['train']) + ['pseudo_test']
     datasets = []
     for partition in partitions:
         if args.model == 'speaker':
@@ -155,6 +183,9 @@ def main(train, exp):
     '''
     # parse args
     args = prepare(train, exp)
+    # settings for wandb
+    if args.wandb:
+        wandb.init(project='dialfred-challenge', name=args.wandb_name)
     # load dataset(s) and process vocabs
     datasets = []
     ann_types = iter(args.data['ann_type'])
@@ -166,6 +197,8 @@ def main(train, exp):
     embs_ann, vocab_out = process_vocabs(datasets, args)
     # wrap datasets with loaders
     loaders = wrap_datasets(datasets, args)
+    # create log directory
+    args.dout = create_log_dir(args.dout)
     # create the model
     model, optimizer, prev_train_info = create_model(args, embs_ann, vocab_out)
     # start train loop

@@ -39,7 +39,8 @@ class BDataset(TorchDataset):
         self.ann_type = ann_type
         self.test_mode = True
         self.pad = 0
-        self.vocab = data_util.load_vocab("lmdb_augmented_human_subgoal", "tests_seen")
+        self.vocab = data_util.load_vocab("lmdb_augmented_human_subgoal_splited", "tests_seen")
+
 
         # read information about the dataset
         self.dataset_info = data_util.read_dataset_info(name)
@@ -338,9 +339,9 @@ REWARD_SUC = 1.0
 SOS_token = 0
 EOS_token = 1
 
+
 recent_id = None
 action_idx = None
-
 VERBOSE = False
 
 
@@ -377,8 +378,9 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
 
     # first sample a subgoal and get the instruction and image feature
     for dataset_idx, (path, task_json) in enumerate(tqdm(jsons_data)):
+        print("   ", dataset_idx)
         setup_scene(env, task_json)
-        performer.reset()
+        performer.reset_for_both()
         num_subgoal = len(task_json["turk_annotations"]
                           ["anns"][0]["high_descs"])
         meta_data = []
@@ -658,7 +660,6 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
         while t_agent < args.max_steps and t_current < num_rollout:
             # print(t_agent)
             # get an observation and do an agent step
-
             global recent_id, action_idx
             if recent_id != id:
                 recent_id = id
@@ -668,6 +669,7 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
 
             input_dict['frames'] = eval_util.get_observation(
                 env.last_event, extractor, id=id, subgoal_idx=subgoal_idx, action_idx=action_idx)
+
             # print(prev_action, )
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,
@@ -724,7 +726,8 @@ def test(args, json_paths):
     critic.load_state_dict(checkpt["critic"])
 
     # load dataset and pretrained performer
-    data_name = "lmdb_augmented_human_subgoal"
+    data_name = "lmdb_augmented_human_subgoal_splited"
+
     model_path = args.performer_path
     model_args = model_util.load_model_args(model_path)
     model_args.debug = False
@@ -739,7 +742,8 @@ def test(args, json_paths):
                       data_split, model_args, "lang")
     performer, extractor = load_agent(model_path, dataset.dataset_info, device)
     dataset.vocab_translate = performer.vocab_out
-    dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
+    dataset.vocab_in.name = "lmdb_augmented_human_subgoal_splited"
+
 
     loc_ans_fn = "testset/loc_testset_final.pkl"
     app_ans_fn = "testset/appear_testset_final.pkl"

@@ -96,11 +96,19 @@ class AlfredDataset(BaseDataset):
         '''
         load numericalized language from task_json
         '''
+        #追加
+        #tips/jsons_pklにあるように、task_jsonsは複数タスクのjsonがキーとともに格納されている。
+        #キーはb'000001'のような形式。言語はそのままエンコードされてしまてちる。
+        # print("task_json",task_json)
+        
         if subgoal_idx is None:
             lang_num_goal = task_json['num']['lang_goal']
             lang_num = lang_num_goal + sum(task_json['num']['lang_instr'], [])
         else:
             lang_num = task_json['num']['lang_instr'][subgoal_idx]
+
+        #追加
+        # print("lang_num",lang_num)
 
         return lang_num
 
@@ -109,6 +117,8 @@ class AlfredDataset(BaseDataset):
         '''
         load action as a list of tokens from task_json
         '''
+        if 'action_low' not in task_json['num']:
+            print("task_json['num]",task_json['num'])
         if action_type == 'action_low':
             # load low actions
             lang_action = [

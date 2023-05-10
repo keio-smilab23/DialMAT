@@ -40,38 +40,60 @@ class EncoderVL(nn.Module):
                 lengths_frames,
                 lengths_actions,
                 length_frames_max,
+                is_clip_resnet=False,
                 attn_masks=True):
         '''
         pass embedded inputs through embeddings and encode them using a transformer
         '''
         # emb_lang is processed on each GPU separately so they size can vary
         length_lang_max = lengths_lang.max().item()
+        length_actions_max = lengths_actions.max().item()
         emb_lang = emb_lang[:, :length_lang_max]
         # create a mask for padded elements
-        length_mask_pad = length_lang_max + length_frames_max * (
-            2 if lengths_actions.max() > 0 else 1)
+        # length_mask_pad = length_lang_max + length_frames_max * (
+        #     2 if lengths_actions.max() > 0 else 1)
+        if is_clip_resnet:
+            length_mask_pad = length_lang_max + length_frames_max * 2 + length_actions_max
+        else:
+            length_mask_pad = length_lang_max + length_frames_max + length_actions_max
+        #もしlengths_actionsがtensor([1, 1])だったら
+        # is_eval_two_action = False
+        # if torch.equal(lengths_actions, torch.tensor([2]).to("cuda:0")):
+        #     length_mask_pad = length_lang_max + length_frames_max * 3
+        #     print("length_mask_pad: ", length_mask_pad)
+        #     is_eval_two_action = True
         mask_pad = torch.zeros(
             (len(emb_lang), length_mask_pad), device=emb_lang.device).bool()
         for i, (len_l, len_f, len_a) in enumerate(
                 zip(lengths_lang, lengths_frames, lengths_actions)):
-            # mask padded words
-            mask_pad[i, len_l: length_lang_max] = True
-            # mask padded frames
-            mask_pad[i, length_lang_max + len_f:
-                      length_lang_max + length_frames_max] = True
-            # mask padded actions
-            mask_pad[i, length_lang_max + length_frames_max + len_a:] = True
+            if is_clip_resnet:
+                # mask padded words
+                mask_pad[i, len_l: length_lang_max] = True
+                # mask padded frames
+                mask_pad[i, length_lang_max + len_f:
+                        length_lang_max + length_frames_max] = True
+                mask_pad[i, length_lang_max + length_frames_max + len_f:
+                        length_lang_max + length_frames_max * 2] = True
+                # mask padded actions
+                mask_pad[i, length_lang_max + length_frames_max * 2 + len_a:] = True
+            else:
+                # mask padded words
+                mask_pad[i, len_l: length_lang_max] = True
+                # mask padded frames
+                mask_pad[i, length_lang_max + len_f:
+                        length_lang_max + length_frames_max] = True
+                # mask padded actions
+                mask_pad[i, length_lang_max + length_frames_max + len_a:] = True
 
         # encode the inputs
         emb_all = self.encode_inputs(
             emb_lang, emb_frames, emb_actions, lengths_lang, lengths_frames, mask_pad)
-
         # create a mask for attention (prediction at t should not see frames at >= t+1)
         if attn_masks:
             # assert length_frames_max == max(lengths_actions)
             mask_attn = model_util.generate_attention_mask(
-                length_lang_max, length_frames_max,
-                emb_all.device, self.num_input_actions)
+                length_lang_max, length_frames_max, length_actions_max,
+                emb_all.device, self.num_input_actions, is_clip_resnet=is_clip_resnet)
         else:
             # allow every token to attend to all others
             mask_attn = torch.zeros(

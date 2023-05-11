@@ -75,7 +75,7 @@ for d in dirs:
 
 
 #processed_new.txtに書き込む
-with open(os.path.join(data_dir, 'processed_new.txt'), 'w') as f:
+with open(os.path.join(data_dir, 'processed.txt'), 'w') as f:
     f.writelines(result)
 
 

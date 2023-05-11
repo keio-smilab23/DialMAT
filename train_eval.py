@@ -665,7 +665,7 @@ def trainModel(args):
 def evalModel(args):
     np.random.seed(0)
     # data_split = "unseen"
-    data_split = "pseudo_valid"
+    data_split = "pseudo_test"
     # data_split = "valid_unseen"
     train_id = 1
     logging.basicConfig(filename='./logs/rl_anytime_eval_'+ data_split + str(train_id) + '.log', level=logging.INFO)

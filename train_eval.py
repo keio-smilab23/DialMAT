@@ -665,8 +665,8 @@ def trainModel(args):
 def evalModel(args):
     np.random.seed(0)
     # data_split = "unseen"
-    data_split = "pseudo_test"
-    # data_split = "valid_unseen"
+    # data_split = "pseudo_valid"
+    data_split = "valid_seen"
     train_id = 1
     logging.basicConfig(filename='./logs/rl_anytime_eval_'+ data_split + str(train_id) + '.log', level=logging.INFO)
 
@@ -686,8 +686,9 @@ def evalModel(args):
     critic.load_state_dict(checkpt["critic"])
 
     # load dataset and pretrained performer
-    # data_name = "lmdb_augmented_human_subgoal"
     data_name = "lmdb_augmented_human_subgoal_fixed"
+    # data_name = "lmdb_augmented_human_subgoal_temp"
+    # data_name = "lmdb_augmented_human_subgoal_splited"
     model_path = args.performer_path
     model_args = model_util.load_model_args(model_path)
     model_args.debug = False
@@ -702,8 +703,9 @@ def evalModel(args):
     dataset = AlfredDataset(data_name, data_split, model_args, "lang")
     performer, extractor = load_agent(model_path, dataset.dataset_info, device)
     dataset.vocab_translate = performer.vocab_out
-    # dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
-    dataset.vocab_in.name = "lmdb_augmented_human_subgoal_fixed"
+    dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
+    # dataset.vocab_in.name = "lmdb_augmented_human_subgoal_temp"
+    # dataset.vocab_in.name = "lmdb_augmented_human_subgoal_splited"
 
     # load answers
     loc_ans_fn = "./data/answers/loc_augmented.pkl"

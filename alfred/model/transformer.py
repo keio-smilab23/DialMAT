@@ -276,7 +276,7 @@ class Model(base.Model):
         #emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]
         emb_actions = self.embed_actions(inputs['action'])
         #変更
-        if not self.args.clip_image:
+        if not (self.args.clip_image or self.args.clip_resnet):
             assert emb_frames.shape == emb_actions.shape
 
         # concatenate language, frames and actions and add encodings

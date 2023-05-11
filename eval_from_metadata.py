@@ -352,8 +352,8 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
 def evalModel(args):
     np.random.seed(0)
     # data_split = "unseen"
-    # data_split = "pseudo_valid"
-    data_split = "valid_seen"
+    data_split = "pseudo_test"
+    # data_split = "valid_seen"
     train_id = 1
     logging.basicConfig(filename='./logs/rl_anytime_eval_'+ data_split + str(train_id) + '.log', level=logging.INFO)
 

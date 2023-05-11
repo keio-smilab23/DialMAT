@@ -95,6 +95,12 @@ To answer these questions, we build an oracle to extract ground-truth informatio
 ``` bash
 python append_data.py
 ```
+You can split the data of valid_unseen into pseudo_valid and pseudo_test for model evaluation by the following command.
+
+```bash
+python split_val_unseen.py
+```
+
 
 Following the ET pipeline, we can create the lmdb dataset 
 ``` bash

@@ -372,9 +372,7 @@ class Model(base.Model):
         '''
         forward the model for a single time-step (used for real-time execution during eval)
         '''
-        if self.args.clip_image:
-            frames = input_dict['frames'][1]
-        elif self.args.clip_resnet:
+        if self.args.clip_image or self.args.clip_resnet:
             frames = input_dict['frames']
         else:
             frames = input_dict['frames'][0]
@@ -389,18 +387,19 @@ class Model(base.Model):
             prev_action_tensor = torch.tensor(prev_action_int)[None, None].to(device)
             self.action_traj = torch.cat(
                 (self.action_traj.to(device), prev_action_tensor), dim=1)
-        #変更
-        # self.frames_traj = torch.cat(
-        #     (self.frames_traj.to(device), frames[None]), dim=1)
 
-        #変更(clipとresnet両方を用いる場合)
-        if self.args.clip_resnet:
+        #変更
+        if self.args.clip_image or self.args.clip_resnet:
             self.frames_traj = [torch.cat(
                 (self.frames_traj[0].to(device), frames[0][None]), dim=1), torch.cat(
                 (self.frames_traj[1].to(device), frames[1][None]), dim=1)]
             frames = copy.deepcopy(self.frames_traj)
-            lengths_frames = torch.tensor([self.frames_traj[0].size(1)])
-            length_frames_max=self.frames_traj[0].size(1)
+            if self.args.clip_resnet:
+                lengths_frames = torch.tensor([self.frames_traj[0].size(1)])
+                length_frames_max=self.frames_traj[0].size(1)
+            else:
+                lengths_frames = torch.tensor([self.frames_traj[1].size(1)])
+                length_frames_max=self.frames_traj[1].size(1)
         else:
             self.frames_traj = torch.cat(
                 (self.frames_traj.to(device), frames[None]), dim=1)

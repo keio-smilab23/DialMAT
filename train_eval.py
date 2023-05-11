@@ -629,7 +629,6 @@ def trainModel(args):
 
     # load dataset and pretrained performer
     # data_name = "lmdb_augmented_human_subgoal"
-    # data_name = "lmdb_augmented_human_subgoal_temp"
     data_name = "lmdb_augmented_human_subgoal_fixed"
     model_path = args.performer_path
     model_args = model_util.load_model_args(model_path)
@@ -645,7 +644,6 @@ def trainModel(args):
     # model_args.clip_resnet = args.clip_resnet
     dataset = AlfredDataset(data_name, "valid_"+data_split, model_args, "lang")
     # dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
-    # dataset.vocab_in.name = "lmdb_augmented_human_subgoal_temp"
     dataset.vocab_in.name = "lmdb_augmented_human_subgoal_fixed"
     performer, extractor = load_agent(model_path, dataset.dataset_info, device)
     dataset.vocab_translate = performer.vocab_out
@@ -689,7 +687,6 @@ def evalModel(args):
 
     # load dataset and pretrained performer
     # data_name = "lmdb_augmented_human_subgoal"
-    # data_name = "lmdb_augmented_human_subgoal_temp"
     data_name = "lmdb_augmented_human_subgoal_fixed"
     model_path = args.performer_path
     model_args = model_util.load_model_args(model_path)
@@ -699,19 +696,14 @@ def evalModel(args):
     model_args.smooth_nav = False
     model_args.max_steps = 1000
     model_args.max_fails = 10
-    #追加 新しい要素
-    model_args.clip_image = args.clip_image
-    model_args.clip_resnet = args.clip_resnet
-    model_args.clip_text = args.clip_text
-    model_args.deberta = args.deberta
+
     #変更
     # dataset = AlfredDataset(data_name, "valid_"+data_split, model_args, "lang")
     dataset = AlfredDataset(data_name, data_split, model_args, "lang")
     performer, extractor = load_agent(model_path, dataset.dataset_info, device)
     dataset.vocab_translate = performer.vocab_out
     # dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
-    # dataset.vocab_in.name = "lmdb_augmented_human_subgoal_temp"
-    dataset.vocab_in.name = "lmdb_augmented_human_subgoal_splited"
+    dataset.vocab_in.name = "lmdb_augmented_human_subgoal_fixed"
 
     # load answers
     loc_ans_fn = "./data/answers/loc_augmented.pkl"

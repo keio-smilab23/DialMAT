@@ -5,13 +5,11 @@ import os
 
 data_dir = os.path.join(os.environ['DATA'], 'generated_2.1.0')
 #processed.txtを読み込む
-with open(os.path.join(data_dir, 'processed_original.txt'), 'r') as f:
+with open(os.path.join(data_dir, 'processed.txt'), 'r') as f:
     lines = f.readlines()
 
 #./valid_unseen以下のディレクトリ一覧を取得()
 dirs = glob.glob(os.path.join(data_dir, 'valid_unseen/*/*'))
-
-# task_dirs = glob.glob(os.path.join(data_dir, ' valid_unseen/*'))
 
 data_path = os.path.join(data_dir, 'valid_unseen')
 task_dirs = [name for name in os.listdir(data_path) if os.path.isdir(os.path.join(data_path, name))]
@@ -52,9 +50,6 @@ for index, line in enumerate(lines):
 
 result = result_pseudo_valid + result_pseudo_test + result_others
 
-# print("result:", result)
-# print("dirs:", dirs)
-#./pseudo_validと./pseudo_testを作成
 if os.path.exists(os.path.join(data_dir, 'pseudo_valid')):
     shutil.rmtree(os.path.join(data_dir, 'pseudo_valid'))
 if os.path.exists(os.path.join(data_dir, 'pseudo_test')):
@@ -80,7 +75,7 @@ for d in dirs:
 
 
 #processed_new.txtに書き込む
-with open(os.path.join(data_dir, 'processed_temp.txt'), 'w') as f:
+with open(os.path.join(data_dir, 'processed_new.txt'), 'w') as f:
     f.writelines(result)
 
 

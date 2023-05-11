@@ -262,13 +262,13 @@ class Model(base.Model):
         else:
             #元々
             # embed frames and actions
-            # if len(inputs["frames"]) == 1: #推論時
-            #     if len(inputs["frames"].shape) != 5:
-            #         inputs["frames"] = inputs["frames"].unsqueeze(0)
-
-            #     emb_frames, emb_object = self.embed_frames(inputs['frames'])
-
-            emb_frames, emb_object = self.embed_frames(inputs['frames'][0])
+            if len(inputs["frames"]) == 1: #推論時
+                if len(inputs["frames"].shape) != 5:
+                    inputs["frames"] = inputs["frames"].unsqueeze(0)
+                emb_frames, emb_object = self.embed_frames(inputs['frames'])
+            
+            else:
+                emb_frames, emb_object = self.embed_frames(inputs['frames'][0])
 
         lengths_frames = inputs['lengths_frames']
         length_frames_max = inputs['length_frames_max']
@@ -372,7 +372,13 @@ class Model(base.Model):
         '''
         forward the model for a single time-step (used for real-time execution during eval)
         '''
-        frames = input_dict['frames']
+        if self.args.clip_image:
+            frames = input_dict['frames'][1]
+        elif self.args.clip_resnet:
+            frames = input_dict['frames']
+        else:
+            frames = input_dict['frames'][0]
+
 
         #もともと
         # device = frames.device

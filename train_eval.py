@@ -346,8 +346,8 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
                 pickle.dump([all_rewards, succ, all_query, all_instr, sg_pairs, num_q, all_pws], pkl_f)
             
             # save to wandb
-            wandb_log = {"actor loss" : np.mean(actor_losses), "critic loss" : np.mean(critic_losses), "reward": np.mean(all_rewards), "SR": np.mean(succ), "pws": np.mean(all_pws)}
-            wandb.log(wandb_log)
+            # wandb_log = {"actor loss" : np.mean(actor_losses), "critic loss" : np.mean(critic_losses), "reward": np.mean(all_rewards), "SR": np.mean(succ), "pws": np.mean(all_pws)}
+            # wandb.log(wandb_log)
             
         
     env.stop()
@@ -630,7 +630,7 @@ def trainModel(args):
     # load dataset and pretrained performer
     # data_name = "lmdb_augmented_human_subgoal"
     # data_name = "lmdb_augmented_human_subgoal_temp"
-    data_name = "lmdb_augmented_human_subgoal_splited"
+    data_name = "lmdb_augmented_human_subgoal_fixed"
     model_path = args.performer_path
     model_args = model_util.load_model_args(model_path)
     model_args.debug = False
@@ -640,13 +640,13 @@ def trainModel(args):
     model_args.max_steps = 1000
     model_args.max_fails = 10
 
-    #追加
-    model_args.clip_image = args.clip_image
-    model_args.clip_resnet = args.clip_resnet
+    # #追加
+    # model_args.clip_image = args.clip_image
+    # model_args.clip_resnet = args.clip_resnet
     dataset = AlfredDataset(data_name, "valid_"+data_split, model_args, "lang")
     # dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
     # dataset.vocab_in.name = "lmdb_augmented_human_subgoal_temp"
-    dataset.vocab_in.name = "lmdb_augmented_human_subgoal_splited"
+    dataset.vocab_in.name = "lmdb_augmented_human_subgoal_fixed"
     performer, extractor = load_agent(model_path, dataset.dataset_info, device)
     dataset.vocab_translate = performer.vocab_out
 
@@ -690,7 +690,7 @@ def evalModel(args):
     # load dataset and pretrained performer
     # data_name = "lmdb_augmented_human_subgoal"
     # data_name = "lmdb_augmented_human_subgoal_temp"
-    data_name = "lmdb_augmented_human_subgoal_splited"
+    data_name = "lmdb_augmented_human_subgoal_fixed"
     model_path = args.performer_path
     model_args = model_util.load_model_args(model_path)
     model_args.debug = False
@@ -702,6 +702,8 @@ def evalModel(args):
     #追加 新しい要素
     model_args.clip_image = args.clip_image
     model_args.clip_resnet = args.clip_resnet
+    model_args.clip_text = args.clip_text
+    model_args.deberta = args.deberta
     #変更
     # dataset = AlfredDataset(data_name, "valid_"+data_split, model_args, "lang")
     dataset = AlfredDataset(data_name, data_split, model_args, "lang")
@@ -730,13 +732,15 @@ def main():
     parser.add_argument("--mode", dest="mode", type=str, default="eval")
     parser.add_argument("--questioner-path", dest="questioner_path", type=str, default="./logs/pretrained/questioner_anytime_finetuned.pt")
     parser.add_argument("--performer-path", dest="performer_path", type=str, default="./logs/pretrained/performer/latest.pth")
-    parser.add_argument("--clip_image", dest="clip_image", type=bool, default=False)
-    parser.add_argument("--clip_resnet", dest="clip_resnet", type=bool, default=False)
-    parser.add_argument("--wandb_run", type=str, default="tmp_run")
+    # parser.add_argument("--clip_image", action='store_false')
+    # parser.add_argument("--clip_resnet", action='store_false')
+    # parser.add_argument("--clip_text", action='store_false')
+    # parser.add_argument("--deberta", action='store_false')
+    # parser.add_argument("--wandb_run", type=str, default="tmp_run")
 
     args = parser.parse_args()
 
-    wandb.init(project="DialFRED-2023", name=args.wandb_run)
+    # wandb.init(project="DialFRED-2023", name=args.wandb_run)
 
     if args.mode == "train":
         trainModel(args)

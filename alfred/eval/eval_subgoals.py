@@ -188,7 +188,6 @@ def evaluate_subgoals_start_qa(
         #     input_dict['frames'] = eval_util.get_observation(env.last_event, extractor)
 
         input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
-
         init_failed, prev_action = eval_util.expert_step(
             a_expert['action'], expert_dict['masks'], model,
             input_dict, vocab, prev_action, env, args)

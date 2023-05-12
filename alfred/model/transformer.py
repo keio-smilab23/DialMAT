@@ -28,16 +28,16 @@ class Model(base.Model):
         super().__init__(args, embs_ann, vocab_out, pad, seg)
 
         #追加
-        if args.clip_image or args.clip_text or args.clip_resnet:
-            self.clip_model, self.clip_preprocess = clip.load("ViT-L/14", device="cuda")
-            for params in self.clip_model.parameters():
-                params.requires_grad = False
+        # if args.clip_image or args.clip_text or args.clip_resnet:
+        self.clip_model, self.clip_preprocess = clip.load("ViT-L/14", device="cuda")
+        for params in self.clip_model.parameters():
+            params.requires_grad = False
 
-        if args.deberta:
-            self.deberta_model = AutoModel.from_pretrained("microsoft/mdeberta-v3-base").cuda()
-            self.deberta_tokenizer = AutoTokenizer.from_pretrained("microsoft/mdeberta-v3-base")
-            for param in self.deberta_model.parameters():
-                param.requires_grad = False
+        # if args.deberta:
+        self.deberta_model = AutoModel.from_pretrained("microsoft/mdeberta-v3-base").cuda()
+        self.deberta_tokenizer = AutoTokenizer.from_pretrained("microsoft/mdeberta-v3-base")
+        for param in self.deberta_model.parameters():
+            param.requires_grad = False
 
 
         # encoder and visual embeddings

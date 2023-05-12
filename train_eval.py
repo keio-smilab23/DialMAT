@@ -93,7 +93,7 @@ def extractFeatureOnlineClip(env, extractor):
     return feat
 
 
-def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, n_iters, split_id, max_steps, print_every=1, save_every=100, use_qa_everytime=False):
+def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, n_iters, split_id, max_steps, print_every=1, save_every=100):
     start = time.time()
     env = ThorEnv(x_display=1)
     obj_predictor = FeatureExtractor(archi='maskrcnn', device=device,
@@ -203,7 +203,8 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
             ans = ""
             current_d_words.append(decoded_words)
 
-            if use_qa_everytime:
+            # for appearance answer, we can directly use the saved ones
+            if decoded_words[0] == "appearance":
                 query = "<<app>> " + decoded_words[1]
                 if task in app_ans and trial in app_ans[task] and subgoal_idx in app_ans[task][trial] and 0 in app_ans[task][trial][subgoal_idx]:
                     ans_sg = app_ans[task][trial][subgoal_idx][0]
@@ -214,8 +215,8 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
                 else:
                     logging.info("invalid answer for %s, %s, %s" % (task, trial, subgoal_idx))
                     ans += "invalid"
-                qa1 = query + " " + ans
-                ans = ""
+            # for location answer, we need to construct a new one using current metadata
+            elif decoded_words[0] == "location":
                 query = "<<loc>> " + decoded_words[1]
                 if task in loc_ans and trial in loc_ans[task] and subgoal_idx in loc_ans[task][trial] and 0 in loc_ans[task][trial][subgoal_idx]:
                     ans_sg = loc_ans[task][trial][subgoal_idx][0]
@@ -235,8 +236,8 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
                         ans += "invalid"
                 else:
                     ans += "invalid"
-                qa2 = query + " " + ans
-                ans = ""
+
+            elif decoded_words[0] == "direction":
                 query = "<<dir>> "
                 if task in dir_ans and trial in dir_ans[task] and subgoal_idx in dir_ans[task][trial]:
                     target_pos = dir_ans[task][trial][subgoal_idx]["target_pos"]
@@ -244,62 +245,14 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
                     cur_metadata = event.metadata
                     targ_metadata = {'agent':{'position':target_pos}}
                     rel_ang, rel_pos = get_agent_direction(cur_metadata, targ_metadata)
-                    ans += dirAns(rel_ang, rel_pos).lower()
+                    ans += dirAns(rel_ang, rel_pos)
                 else:
                     ans += "invalid"
-                qa3 = query + " " + ans
-
+            elif decoded_words[0] == "none":
+                query = "none"
             else:
-                # for appearance answer, we can directly use the saved ones
-                if decoded_words[0] == "appearance":
-                    query = "<<app>> " + decoded_words[1]
-                    if task in app_ans and trial in app_ans[task] and subgoal_idx in app_ans[task][trial] and 0 in app_ans[task][trial][subgoal_idx]:
-                        ans_sg = app_ans[task][trial][subgoal_idx][0]
-                        if decoded_words[1] in ans_sg and ans_sg[decoded_words[1]]["ans"] is not None:
-                            ans += ans_sg[decoded_words[1]]["ans"]
-                        else:
-                            ans += "invalid"
-                    else:
-                        logging.info("invalid answer for %s, %s, %s" % (task, trial, subgoal_idx))
-                        ans += "invalid"
-                # for location answer, we need to construct a new one using current metadata
-                elif decoded_words[0] == "location":
-                    query = "<<loc>> " + decoded_words[1]
-                    if task in loc_ans and trial in loc_ans[task] and subgoal_idx in loc_ans[task][trial] and 0 in loc_ans[task][trial][subgoal_idx]:
-                        ans_sg = loc_ans[task][trial][subgoal_idx][0]
-                        if decoded_words[1] in ans_sg:
-                            obj_id = ans_sg[decoded_words[1]]["obj_id"]
-                            event = env.last_event
-                            metadata = event.metadata
-                            odata = get_obj_data(metadata, obj_id)
-                            if odata is None:
-                                ans += "invalid"
-                            else:
-                                oname = decoded_words[1]
-                                recs = odata["parentReceptacles"]
-                                rel_ang = get_obj_direction(metadata, odata)
-                                ans += objLocAns(oname, rel_ang, recs)
-                        else:
-                            ans += "invalid"
-                    else:
-                        ans += "invalid"
-
-                elif decoded_words[0] == "direction":
-                    query = "<<dir>> "
-                    if task in dir_ans and trial in dir_ans[task] and subgoal_idx in dir_ans[task][trial]:
-                        target_pos = dir_ans[task][trial][subgoal_idx]["target_pos"]
-                        event = env.last_event
-                        cur_metadata = event.metadata
-                        targ_metadata = {'agent':{'position':target_pos}}
-                        rel_ang, rel_pos = get_agent_direction(cur_metadata, targ_metadata)
-                        ans += dirAns(rel_ang, rel_pos)
-                    else:
-                        ans += "invalid"
-                elif decoded_words[0] == "none":
-                    query = "none"
-                else:
-                    query = "<<invalid>>"
-                
+                query = "<<invalid>>"
+            
             # for invalid query, give a negative reward and use the instruction only
             if "invalid" in query or "invalid" in ans:
                 reward += REWARD_INVALID
@@ -316,11 +269,7 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
                 current_object_found.append(True)
                 qa = ""
 
-            if use_qa_everytime:
-                qa = qa1 + " " + qa2 + " " + qa3
-                current_query.append(qa)
-            else:
-                current_query.append(query + " " + ans)
+            current_query.append(query + " " + ans)
 
             # a penalty for each time step
             qa = qa.lower().replace(",", "").replace(".", "")
@@ -468,81 +417,98 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
             pws = 0.0
             t_agent_old = 0
             while True:
-                # use online feature extractor instead
-                f_t = extractFeatureOnline(env, extractor)
-                # f_t = extractFeatureOnlineClip(env, extractor)
-                dialog = orig_instr
-                input_tensor = torch.unsqueeze(torch.squeeze(tensorFromSentence(lang, dialog)), 0).to(device)
-                input_length = input_tensor.size(1)
-
-                # infer question based on the instruction
-                encoder.init_state(input_tensor)
-                seq_lengths = torch.from_numpy(np.array([input_length]))
-                ctx, h_t, c_t = encoder(input_tensor, seq_lengths)
-                decoder_input = torch.tensor([[SOS_token]], device=device)
-                decoded_words = []
-
-                # decode the question
-                for di in range(MAX_LENGTH):
-                    h_t, c_t, alpha, logit = decoder(decoder_input, f_t, h_t, c_t, ctx)
-                    # record the value V(s)
-                    value = critic(h_t)
-                    dist = Categorical(F.softmax(logit, dim=-1))
-                    selected_word = dist.sample()
-                    decoded_words.append(lang.index2word[selected_word.item()])
-                    decoder_input = selected_word.detach().to(device)
-
-                # set up query and answer
-                repeat_idx = -1
-                ans = ""
-                
+                #questionerを用いない場合.全てのQAを使う.
                 if use_qa_everytime:
-                    query = "<<app>> " + decoded_words[1]
                     if task in app_ans and trial in app_ans[task] and subgoal_idx in app_ans[task][trial] and 0 in app_ans[task][trial][subgoal_idx]:
                         ans_sg = app_ans[task][trial][subgoal_idx][0]
-                        if decoded_words[1] in ans_sg and ans_sg[decoded_words[1]]["ans"] is not None:
-                            ans += ans_sg[decoded_words[1]]["ans"]
+                        if len(ans_sg) > 0:
+                            for key, value in ans_sg.items():
+                                if "ans" in value.keys():
+                                    query = "<<app>> " + key
+                                    ans = value["ans"]
+                                    qa1 = query + " " + ans
+                                else:
+                                    qa1 = ""
                         else:
-                            ans += "invalid"
+                            qa1 = ""
                     else:
                         logging.info("invalid answer for %s, %s, %s" % (task, trial, subgoal_idx))
-                        ans += "invalid"
-                    qa1 = query + " " + ans
-                    ans = ""
-                    query = "<<loc>> " + decoded_words[1]
+                        qa1 = ""
+
                     if task in loc_ans and trial in loc_ans[task] and subgoal_idx in loc_ans[task][trial] and 0 in loc_ans[task][trial][subgoal_idx]:
                         ans_sg = loc_ans[task][trial][subgoal_idx][0]
-                        if decoded_words[1] in ans_sg:
-                            obj_id = ans_sg[decoded_words[1]]["obj_id"]
-                            event = env.last_event
-                            metadata = event.metadata
-                            odata = get_obj_data(metadata, obj_id)
-                            if odata is None:
-                                ans += "invalid"
-                            else:
-                                oname = decoded_words[1]
-                                recs = odata["parentReceptacles"]
-                                rel_ang = get_obj_direction(metadata, odata)
-                                ans += objLocAns(oname, rel_ang, recs)
+                        if len(ans_sg) > 0:
+                            for key, value in ans_sg.items():
+                                if "ans" in value.keys() and "obj_id" in value.keys():
+                                    query = "<<loc>> " + key
+                                    obj_id = value["obj_id"]
+                                    event = env.last_event
+                                    metadata = event.metadata
+                                    odata = get_obj_data(metadata, obj_id)
+                                    if odata is None:
+                                        qa2 = ""
+                                    else:
+                                        oname = key
+                                        recs = odata["parentReceptacles"]
+                                        rel_ang = get_obj_direction(metadata, odata)
+                                        ans = objLocAns(oname, rel_ang, recs)
+                                        qa2 = query + " " + ans
+                                else:
+                                    qa2 = ""
                         else:
-                            ans += "invalid"
+                            qa2 = ""
                     else:
-                        ans += "invalid"
-                    qa2 = query + " " + ans
-                    ans = ""
-                    query = "<<dir>> "
+                        qa2 = ""
+
                     if task in dir_ans and trial in dir_ans[task] and subgoal_idx in dir_ans[task][trial]:
+                        query = "<<dir>> "
                         target_pos = dir_ans[task][trial][subgoal_idx]["target_pos"]
                         event = env.last_event
                         cur_metadata = event.metadata
                         targ_metadata = {'agent':{'position':target_pos}}
                         rel_ang, rel_pos = get_agent_direction(cur_metadata, targ_metadata)
-                        ans += dirAns(rel_ang, rel_pos).lower()
+                        ans = dirAns(rel_ang, rel_pos).lower()
+                        qa3 = query + " " + ans
                     else:
-                        ans += "invalid"
-                    qa3 = query + " " + ans
+                        qa3 = ""
 
+                    reward += REWARD_QUESTION
+                    current_object_found.append(True)
+                    current_num_q += 1
+
+                    qa = qa1 + " " + qa2 + " " + qa3
+                    current_query.append(qa)
+
+                #questionerを用いた場合
                 else:
+                    # use online feature extractor instead
+                    f_t = extractFeatureOnline(env, extractor)
+                    # f_t = extractFeatureOnlineClip(env, extractor)
+                    dialog = orig_instr
+                    input_tensor = torch.unsqueeze(torch.squeeze(tensorFromSentence(lang, dialog)), 0).to(device)
+                    input_length = input_tensor.size(1)
+
+                    # infer question based on the instruction
+                    encoder.init_state(input_tensor)
+                    seq_lengths = torch.from_numpy(np.array([input_length]))
+                    ctx, h_t, c_t = encoder(input_tensor, seq_lengths)
+                    decoder_input = torch.tensor([[SOS_token]], device=device)
+                    decoded_words = []
+
+                    # decode the question
+                    for di in range(MAX_LENGTH):
+                        h_t, c_t, alpha, logit = decoder(decoder_input, f_t, h_t, c_t, ctx)
+                        # record the value V(s)
+                        value = critic(h_t)
+                        dist = Categorical(F.softmax(logit, dim=-1))
+                        selected_word = dist.sample()
+                        decoded_words.append(lang.index2word[selected_word.item()])
+                        decoder_input = selected_word.detach().to(device)
+
+                    # set up query and answer
+                    repeat_idx = -1
+                    ans = ""
+
                     # for appearance answer, we can directly use the saved ones
                     if decoded_words[0] == "appearance":
                         query = "<<app>> " + decoded_words[1]
@@ -592,27 +558,23 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                         query = "none"
                     else:
                         query = "<<invalid>>"
-                    
-                # for invalid query, give a negative reward and use the instruction only
-                if "invalid" in query or "invalid" in ans:
-                    reward += REWARD_INVALID
-                    current_object_found.append(False)
-                    qa = ""
-                # for asking each question, we add a small negative reward
-                elif not query == "none":
-                    reward += REWARD_QUESTION
-                    current_object_found.append(True)
-                    current_num_q += 1
-                    qa = query + " " + ans
-                # for not asking question, there is no penalty
-                else:
-                    current_object_found.append(True)
-                    qa = ""
 
-                if use_qa_everytime:
-                    qa = qa1 + " " + qa2 + " " + qa3
-                    current_query.append(qa)
-                else:
+                    # for invalid query, give a negative reward and use the instruction only
+                    if "invalid" in query or "invalid" in ans:
+                        reward += REWARD_INVALID
+                        current_object_found.append(False)
+                        qa = ""
+                    # for asking each question, we add a small negative reward
+                    elif not query == "none":
+                        reward += REWARD_QUESTION
+                        current_object_found.append(True)
+                        current_num_q += 1
+                        qa = query + " " + ans
+                    # for not asking question, there is no penalty
+                    else:
+                        current_object_found.append(True)
+                        qa = ""
+
                     current_query.append(query + " " + ans)
 
                 qa = qa.lower().replace(",", "").replace(".", "")
@@ -695,8 +657,6 @@ def trainModel(args):
     model_args.max_steps = 1000
     model_args.max_fails = 10
 
-    use_qa_everytime = args.use_qa_everytime
-
     dataset = AlfredDataset(data_name, "valid_"+data_split, model_args, "lang")
     dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
     performer, extractor = load_agent(model_path, dataset.dataset_info, device)
@@ -713,7 +673,7 @@ def trainModel(args):
     with open(dir_ans_fn, "rb") as f:
         dir_ans = pickle.load(f)
     all_ans = [loc_ans, app_ans, dir_ans]
-    trainIters(model_args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, 1000, split_id=data_split+str(train_id), max_steps=1000, print_every=1, save_every=10, use_qa_everytime=use_qa_everytime)
+    trainIters(model_args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, 1000, split_id=data_split+str(train_id), max_steps=1000, print_every=1, save_every=10)
 
 
 def evalModel(args):
@@ -724,21 +684,29 @@ def evalModel(args):
     train_id = 1
     logging.basicConfig(filename='./logs/rl_anytime_eval_'+ data_split + str(train_id) + '.log', level=logging.INFO)
 
-    # load pretrained questioner
-    test_csv_fn = "./data/hdc_input_augmented.csv"
-    lang = prepareDataTest(test_csv_fn)
-    enc_hidden_size = HIDDEN_SIZE//2 if BIDIRECTIONAL else HIDDEN_SIZE
-    encoder = EncoderLSTM(lang.n_words, WORD_EMBEDDING_SIZE, enc_hidden_size, \
-        DROPOUT_RATIO, bidirectional=BIDIRECTIONAL).to(device)
-    decoder = AttnDecoderLSTM(lang.n_words, lang.n_words, \
-        ACTION_EMBEDDING_SIZE, HIDDEN_SIZE, DROPOUT_RATIO).to(device)
-    critic = Critic().to(device)
-    finetune_questioner_fn = args.questioner_path
-    checkpt = torch.load(finetune_questioner_fn)
-    encoder.load_state_dict(checkpt["encoder"])
-    decoder.load_state_dict(checkpt["decoder"])
-    critic.load_state_dict(checkpt["critic"])
+    use_qa_everytime = args.use_qa_everytime
 
+    if use_qa_everytime:
+        encoder = None
+        decoder = None
+        critic = None
+        lang = None
+    else:   
+        # load pretrained questioner
+        test_csv_fn = "./data/hdc_input_augmented.csv"
+        lang = prepareDataTest(test_csv_fn)
+        enc_hidden_size = HIDDEN_SIZE//2 if BIDIRECTIONAL else HIDDEN_SIZE
+        encoder = EncoderLSTM(lang.n_words, WORD_EMBEDDING_SIZE, enc_hidden_size, \
+            DROPOUT_RATIO, bidirectional=BIDIRECTIONAL).to(device)
+        decoder = AttnDecoderLSTM(lang.n_words, lang.n_words, \
+            ACTION_EMBEDDING_SIZE, HIDDEN_SIZE, DROPOUT_RATIO).to(device)
+        critic = Critic().to(device)
+        finetune_questioner_fn = args.questioner_path
+        checkpt = torch.load(finetune_questioner_fn)
+        encoder.load_state_dict(checkpt["encoder"])
+        decoder.load_state_dict(checkpt["decoder"])
+        critic.load_state_dict(checkpt["critic"])
+        
     # load dataset and pretrained performer
     data_name = "lmdb_augmented_human_subgoal"
     model_path = args.performer_path
@@ -749,8 +717,6 @@ def evalModel(args):
     model_args.smooth_nav = False
     model_args.max_steps = 1000
     model_args.max_fails = 10
-
-    use_qa_everytime = args.use_qa_everytime
 
     dataset = AlfredDataset(data_name, data_split, model_args, "lang")
     performer, extractor = load_agent(model_path, dataset.dataset_info, device)

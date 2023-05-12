@@ -93,7 +93,7 @@ def extractFeatureOnlineClip(env, extractor):
     return feat
 
 
-def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, n_iters, split_id, max_steps, print_every=1, save_every=100):
+def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, n_iters, split_id, max_steps, print_every=1, save_every=100, use_qa_everytime=False):
     start = time.time()
     env = ThorEnv(x_display=1)
     obj_predictor = FeatureExtractor(archi='maskrcnn', device=device,
@@ -202,8 +202,8 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
             repeat_idx = -1
             ans = ""
             current_d_words.append(decoded_words)
-            # for appearance answer, we can directly use the saved ones
-            if decoded_words[0] == "appearance":
+
+            if use_qa_everytime:
                 query = "<<app>> " + decoded_words[1]
                 if task in app_ans and trial in app_ans[task] and subgoal_idx in app_ans[task][trial] and 0 in app_ans[task][trial][subgoal_idx]:
                     ans_sg = app_ans[task][trial][subgoal_idx][0]
@@ -214,8 +214,8 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
                 else:
                     logging.info("invalid answer for %s, %s, %s" % (task, trial, subgoal_idx))
                     ans += "invalid"
-            # for location answer, we need to construct a new one using current metadata
-            elif decoded_words[0] == "location":
+                qa1 = query + " " + ans
+                ans = ""
                 query = "<<loc>> " + decoded_words[1]
                 if task in loc_ans and trial in loc_ans[task] and subgoal_idx in loc_ans[task][trial] and 0 in loc_ans[task][trial][subgoal_idx]:
                     ans_sg = loc_ans[task][trial][subgoal_idx][0]
@@ -235,8 +235,8 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
                         ans += "invalid"
                 else:
                     ans += "invalid"
-
-            elif decoded_words[0] == "direction":
+                qa2 = query + " " + ans
+                ans = ""
                 query = "<<dir>> "
                 if task in dir_ans and trial in dir_ans[task] and subgoal_idx in dir_ans[task][trial]:
                     target_pos = dir_ans[task][trial][subgoal_idx]["target_pos"]
@@ -244,14 +244,62 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
                     cur_metadata = event.metadata
                     targ_metadata = {'agent':{'position':target_pos}}
                     rel_ang, rel_pos = get_agent_direction(cur_metadata, targ_metadata)
-                    ans += dirAns(rel_ang, rel_pos)
+                    ans += dirAns(rel_ang, rel_pos).lower()
                 else:
                     ans += "invalid"
-            elif decoded_words[0] == "none":
-                query = "none"
+                qa3 = query + " " + ans
+
             else:
-                query = "<<invalid>>"
-            
+                # for appearance answer, we can directly use the saved ones
+                if decoded_words[0] == "appearance":
+                    query = "<<app>> " + decoded_words[1]
+                    if task in app_ans and trial in app_ans[task] and subgoal_idx in app_ans[task][trial] and 0 in app_ans[task][trial][subgoal_idx]:
+                        ans_sg = app_ans[task][trial][subgoal_idx][0]
+                        if decoded_words[1] in ans_sg and ans_sg[decoded_words[1]]["ans"] is not None:
+                            ans += ans_sg[decoded_words[1]]["ans"]
+                        else:
+                            ans += "invalid"
+                    else:
+                        logging.info("invalid answer for %s, %s, %s" % (task, trial, subgoal_idx))
+                        ans += "invalid"
+                # for location answer, we need to construct a new one using current metadata
+                elif decoded_words[0] == "location":
+                    query = "<<loc>> " + decoded_words[1]
+                    if task in loc_ans and trial in loc_ans[task] and subgoal_idx in loc_ans[task][trial] and 0 in loc_ans[task][trial][subgoal_idx]:
+                        ans_sg = loc_ans[task][trial][subgoal_idx][0]
+                        if decoded_words[1] in ans_sg:
+                            obj_id = ans_sg[decoded_words[1]]["obj_id"]
+                            event = env.last_event
+                            metadata = event.metadata
+                            odata = get_obj_data(metadata, obj_id)
+                            if odata is None:
+                                ans += "invalid"
+                            else:
+                                oname = decoded_words[1]
+                                recs = odata["parentReceptacles"]
+                                rel_ang = get_obj_direction(metadata, odata)
+                                ans += objLocAns(oname, rel_ang, recs)
+                        else:
+                            ans += "invalid"
+                    else:
+                        ans += "invalid"
+
+                elif decoded_words[0] == "direction":
+                    query = "<<dir>> "
+                    if task in dir_ans and trial in dir_ans[task] and subgoal_idx in dir_ans[task][trial]:
+                        target_pos = dir_ans[task][trial][subgoal_idx]["target_pos"]
+                        event = env.last_event
+                        cur_metadata = event.metadata
+                        targ_metadata = {'agent':{'position':target_pos}}
+                        rel_ang, rel_pos = get_agent_direction(cur_metadata, targ_metadata)
+                        ans += dirAns(rel_ang, rel_pos)
+                    else:
+                        ans += "invalid"
+                elif decoded_words[0] == "none":
+                    query = "none"
+                else:
+                    query = "<<invalid>>"
+                
             # for invalid query, give a negative reward and use the instruction only
             if "invalid" in query or "invalid" in ans:
                 reward += REWARD_INVALID
@@ -268,7 +316,12 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
                 current_object_found.append(True)
                 qa = ""
 
-            current_query.append(query + " " + ans)
+            if use_qa_everytime:
+                qa = qa1 + " " + qa2 + " " + qa3
+                current_query.append(qa)
+            else:
+                current_query.append(query + " " + ans)
+
             # a penalty for each time step
             qa = qa.lower().replace(",", "").replace(".", "")
             dialog += " " + qa 
@@ -489,57 +542,57 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                         ans += "invalid"
                     qa3 = query + " " + ans
 
-                
-                # for appearance answer, we can directly use the saved ones
-                if decoded_words[0] == "appearance":
-                    query = "<<app>> " + decoded_words[1]
-                    if task in app_ans and trial in app_ans[task] and subgoal_idx in app_ans[task][trial] and 0 in app_ans[task][trial][subgoal_idx]:
-                        ans_sg = app_ans[task][trial][subgoal_idx][0]
-                        if decoded_words[1] in ans_sg and ans_sg[decoded_words[1]]["ans"] is not None:
-                            ans += ans_sg[decoded_words[1]]["ans"]
-                        else:
-                            ans += "invalid"
-                    else:
-                        logging.info("invalid answer for %s, %s, %s" % (task, trial, subgoal_idx))
-                        ans += "invalid"
-                # # for location answer, we need to construct a new one using current metadata
-                elif decoded_words[0] == "location":
-                    query = "<<loc>> " + decoded_words[1]
-                    if task in loc_ans and trial in loc_ans[task] and subgoal_idx in loc_ans[task][trial] and 0 in loc_ans[task][trial][subgoal_idx]:
-                        ans_sg = loc_ans[task][trial][subgoal_idx][0]
-                        if decoded_words[1] in ans_sg:
-                            obj_id = ans_sg[decoded_words[1]]["obj_id"]
-                            event = env.last_event
-                            metadata = event.metadata
-                            odata = get_obj_data(metadata, obj_id)
-                            if odata is None:
-                                ans += "invalid"
-                            else:
-                                oname = decoded_words[1]
-                                recs = odata["parentReceptacles"]
-                                rel_ang = get_obj_direction(metadata, odata)
-                                ans += objLocAns(oname, rel_ang, recs)
-                        else:
-                            ans += "invalid"
-                    else:
-                        ans += "invalid"
-                # # for direction answer, we can directly use the saved ones
-                elif decoded_words[0] == "direction":
-                    query = "<<dir>> "
-                    if task in dir_ans and trial in dir_ans[task] and subgoal_idx in dir_ans[task][trial]:
-                        target_pos = dir_ans[task][trial][subgoal_idx]["target_pos"]
-                        event = env.last_event
-                        cur_metadata = event.metadata
-                        targ_metadata = {'agent':{'position':target_pos}}
-                        rel_ang, rel_pos = get_agent_direction(cur_metadata, targ_metadata)
-                        ans += dirAns(rel_ang, rel_pos).lower()
-                    else:
-                        ans += "invalid"
-                elif decoded_words[0] == "none" or decoded_words[0] == "EOS":
-                    query = "none"
                 else:
-                    query = "<<invalid>>"
-                
+                    # for appearance answer, we can directly use the saved ones
+                    if decoded_words[0] == "appearance":
+                        query = "<<app>> " + decoded_words[1]
+                        if task in app_ans and trial in app_ans[task] and subgoal_idx in app_ans[task][trial] and 0 in app_ans[task][trial][subgoal_idx]:
+                            ans_sg = app_ans[task][trial][subgoal_idx][0]
+                            if decoded_words[1] in ans_sg and ans_sg[decoded_words[1]]["ans"] is not None:
+                                ans += ans_sg[decoded_words[1]]["ans"]
+                            else:
+                                ans += "invalid"
+                        else:
+                            logging.info("invalid answer for %s, %s, %s" % (task, trial, subgoal_idx))
+                            ans += "invalid"
+                    # # for location answer, we need to construct a new one using current metadata
+                    elif decoded_words[0] == "location":
+                        query = "<<loc>> " + decoded_words[1]
+                        if task in loc_ans and trial in loc_ans[task] and subgoal_idx in loc_ans[task][trial] and 0 in loc_ans[task][trial][subgoal_idx]:
+                            ans_sg = loc_ans[task][trial][subgoal_idx][0]
+                            if decoded_words[1] in ans_sg:
+                                obj_id = ans_sg[decoded_words[1]]["obj_id"]
+                                event = env.last_event
+                                metadata = event.metadata
+                                odata = get_obj_data(metadata, obj_id)
+                                if odata is None:
+                                    ans += "invalid"
+                                else:
+                                    oname = decoded_words[1]
+                                    recs = odata["parentReceptacles"]
+                                    rel_ang = get_obj_direction(metadata, odata)
+                                    ans += objLocAns(oname, rel_ang, recs)
+                            else:
+                                ans += "invalid"
+                        else:
+                            ans += "invalid"
+                    # # for direction answer, we can directly use the saved ones
+                    elif decoded_words[0] == "direction":
+                        query = "<<dir>> "
+                        if task in dir_ans and trial in dir_ans[task] and subgoal_idx in dir_ans[task][trial]:
+                            target_pos = dir_ans[task][trial][subgoal_idx]["target_pos"]
+                            event = env.last_event
+                            cur_metadata = event.metadata
+                            targ_metadata = {'agent':{'position':target_pos}}
+                            rel_ang, rel_pos = get_agent_direction(cur_metadata, targ_metadata)
+                            ans += dirAns(rel_ang, rel_pos).lower()
+                        else:
+                            ans += "invalid"
+                    elif decoded_words[0] == "none" or decoded_words[0] == "EOS":
+                        query = "none"
+                    else:
+                        query = "<<invalid>>"
+                    
                 # for invalid query, give a negative reward and use the instruction only
                 if "invalid" in query or "invalid" in ans:
                     reward += REWARD_INVALID
@@ -551,14 +604,17 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                     current_object_found.append(True)
                     current_num_q += 1
                     qa = query + " " + ans
-                    #変更
-                    # qa = qa1 + " " + qa2 + " " + qa3
                 # for not asking question, there is no penalty
                 else:
                     current_object_found.append(True)
                     qa = ""
 
-                current_query.append(query + " " + ans)
+                if use_qa_everytime:
+                    qa = qa1 + " " + qa2 + " " + qa3
+                    current_query.append(qa)
+                else:
+                    current_query.append(query + " " + ans)
+
                 qa = qa.lower().replace(",", "").replace(".", "")
 
                 # performer rollout for some steps
@@ -639,6 +695,8 @@ def trainModel(args):
     model_args.max_steps = 1000
     model_args.max_fails = 10
 
+    use_qa_everytime = args.use_qa_everytime
+
     dataset = AlfredDataset(data_name, "valid_"+data_split, model_args, "lang")
     dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
     performer, extractor = load_agent(model_path, dataset.dataset_info, device)
@@ -655,7 +713,7 @@ def trainModel(args):
     with open(dir_ans_fn, "rb") as f:
         dir_ans = pickle.load(f)
     all_ans = [loc_ans, app_ans, dir_ans]
-    trainIters(model_args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, 1000, split_id=data_split+str(train_id), max_steps=1000, print_every=1, save_every=10)
+    trainIters(model_args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, 1000, split_id=data_split+str(train_id), max_steps=1000, print_every=1, save_every=10, use_qa_everytime=use_qa_everytime)
 
 
 def evalModel(args):

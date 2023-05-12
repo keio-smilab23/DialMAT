@@ -32,6 +32,7 @@ from alfred.eval.eval_subgoals import *
 from seq2seq_questioner_multimodel import *
 from utils import *
 from dataclasses import dataclass
+from tqdm import tqdm
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 N_ITER = 1000
@@ -129,7 +130,7 @@ def evaluate_from_metadata(original_subgoal_idx, env, model, dataset, extractor,
 
     subgoal_success = False
     traj_key_str = traj_key.decode("utf-8") 
-    print("traj_key",traj_key_str,dataset_idx)
+    # print("traj_key",traj_key_str,original_subgoal_idx)
     if not init_failed:
         with open(f"submission_file/{traj_key_str}.json","r") as f: # TODO: ここにjsonを渡してあげてください (for koreさん)
             metadata_list = json.load(f)
@@ -172,13 +173,14 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
     n_iters = len(data_instruct_list) * 4
 
     # first sample a subgoal and get the instruction and image feature
-    for dataset_idx in data_instruct_list:
+    pbar = tqdm(data_instruct_list)
+    for dataset_idx in (pbar):
         task_json = dataset.jsons_and_keys[dataset_idx]
         turk_annos = task_json[0]["turk_annotations"]["anns"]
         subgoal_idxs = [sg['high_idx'] for sg in task_json[0]['plan']['high_pddl']]
         # ignore the last subgoal which is often the padding one
         subgoal_idxs = subgoal_idxs[:-1]
-        print("subgoal_idxs:",subgoal_idxs)
+        # print("subgoal_idxs:",subgoal_idxs)
         for subgoal_idx in subgoal_idxs:
             current_query = []
             current_object_found = []
@@ -243,7 +245,7 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                     else:
                         ans += "invalid"
                 else:
-                    logging.info("invalid answer for %s, %s, %s" % (task, trial, subgoal_idx))
+                    print("invalid answer for %s, %s, %s" % (task, trial, subgoal_idx))
                     ans += "invalid"
             # # for location answer, we need to construct a new one using current metadata
             elif decoded_words[0] == "location":
@@ -330,15 +332,9 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
             all_query.append(current_query)
             num_q.append(current_num_q)
 
-            if it % print_every == 0:
-                logging.info("task, trial, subgoals: %s" % sg_pairs[-1])
-                logging.info("instruction: %s" % all_instr[-1])
-                logging.info("questions: %s" % all_query[-1])
-                logging.info("number of questions: %s" % num_q[-1])
-                logging.info('%s (%d %d%%) reward %.4f, SR %.4f, pws %.4f' % \
-                    (timeSince(start, (it+1) / n_iters), (it+1), (it+1) / n_iters * 100, \
-                    np.mean(all_rewards), np.mean(succ), np.mean(all_pws)))
-
+            # print("task, trial, subgoals: %s" % sg_pairs[-1])
+            # print("SR",np.mean(succ))
+            pbar.set_postfix({"SR" : np.mean(succ)})
             
             if it % save_every == 0:
                 with open("./logs/questioner_rl/eval_questioner_anytime_"+split_id+".pkl", "wb") as pkl_f:
@@ -346,6 +342,7 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
             
             it += 1
         
+    print("SR",np.mean(succ))
     env.stop()
 
 

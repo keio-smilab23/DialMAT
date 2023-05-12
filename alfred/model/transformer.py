@@ -19,9 +19,11 @@ from alfred.nn.dec_object import ObjectClassifier
 from alfred.utils import model_util
 from alfred.utils.data_util import tokens_to_lang
 
+#追加
+from alfred.model import mat
 
 class Model(base.Model):
-    def __init__(self, args, embs_ann, vocab_out, pad, seg):
+    def __init__(self, args, embs_ann, vocab_out, pad, seg, dim_size: int=768, rho1=0.9, rho2=0.999, lr_reduce=2e-3 / 8e-5, step_size=4):
         '''
         transformer agent
         '''
@@ -39,6 +41,8 @@ class Model(base.Model):
             for param in self.deberta_model.parameters():
                 param.requires_grad = False
 
+        if args.mat:
+            self.mat = mat.AdversarialPerturbationAdder(dim_size)
 
         # encoder and visual embeddings
         self.encoder_vl = EncoderVL(args)
@@ -90,7 +94,7 @@ class Model(base.Model):
             self.reset_for_both()
         else:
             self.reset()
-        
+
 
     #追加
     def token_to_sentence_list(self, tokens, vocab):
@@ -296,6 +300,11 @@ class Model(base.Model):
 
         #emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]
         emb_actions = self.embed_actions(inputs['action'])
+        print("emb_actions", emb_actions.shape)
+        if self.args.mat:
+            emb_actions = self.mat(emb_actions)
+        print("emb_actions mat", emb_actions.shape)
+
         #変更
         if not (self.args.clip_image or self.args.clip_resnet):
             assert emb_frames.shape == emb_actions.shape

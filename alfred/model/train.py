@@ -198,7 +198,7 @@ def main(train, exp):
     # wrap datasets with loaders
     loaders = wrap_datasets(datasets, args)
     # create log directory
-    args.dout = create_log_dir(args.dout)
+    # args.dout = create_log_dir(args.dout)
     # create the model
     model, optimizer, prev_train_info = create_model(args, embs_ann, vocab_out)
     # start train loop

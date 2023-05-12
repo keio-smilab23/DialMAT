@@ -28,14 +28,16 @@ class Model(base.Model):
         super().__init__(args, embs_ann, vocab_out, pad, seg)
 
         #追加
-        self.clip_model, self.clip_preprocess = clip.load("ViT-L/14", device="cuda")
-        for params in self.clip_model.parameters():
-            params.requires_grad = False
+        if args.clip_image or args.clip_text or args.clip_resnet:
+            self.clip_model, self.clip_preprocess = clip.load("ViT-L/14", device="cuda")
+            for params in self.clip_model.parameters():
+                params.requires_grad = False
 
-        self.deberta_model = AutoModel.from_pretrained("microsoft/mdeberta-v3-base").cuda()
-        self.deberta_tokenizer = AutoTokenizer.from_pretrained("microsoft/mdeberta-v3-base")
-        for param in self.deberta_model.parameters():
-            param.requires_grad = False
+        if args.deberta:
+            self.deberta_model = AutoModel.from_pretrained("microsoft/mdeberta-v3-base").cuda()
+            self.deberta_tokenizer = AutoTokenizer.from_pretrained("microsoft/mdeberta-v3-base")
+            for param in self.deberta_model.parameters():
+                param.requires_grad = False
 
 
         # encoder and visual embeddings
@@ -58,8 +60,13 @@ class Model(base.Model):
 
         # decoder parts
         encoder_output_size = args.demb
+        # if self.args.clip_resnet:
+        #     self.dec_action = nn.Linear(
+        #         encoder_output_size, args.demb)
+        # else:
         self.dec_action = nn.Linear(
             encoder_output_size, args.demb)
+        
         self.dec_object = ObjectClassifier(encoder_output_size)
 
         # skip connection for object predictions
@@ -75,7 +82,15 @@ class Model(base.Model):
 
         # final touch
         self.init_weights()
-        self.reset()
+
+        # self.reset()
+        if args.clip_image:
+            self.reset_for_clip()
+        elif args.clip_resnet:
+            self.reset_for_both()
+        else:
+            self.reset()
+        
 
     #追加
     def token_to_sentence_list(self, tokens, vocab):
@@ -189,7 +204,7 @@ class Model(base.Model):
 
         return emb_lang, lengths
 
-    def concat_embeddings_frame(self, emb_clip, emb_resnet, lengths_frame):
+    def concat_embeddings_frame(self, emb_clip, emb_resnet, lengths_frame, device):
         #emb_clip:[batch, max, 768], emb_resnet:[batch, max, 768], lengths:[size * batch]
         temp_list = []
         for i in range(len(lengths_frame)):
@@ -254,10 +269,16 @@ class Model(base.Model):
 
             #clipとresnetのどちらも使う場合
             if self.args.clip_resnet:
-                emb_frames = torch.cat([emb_clip, emb_resnet], dim=1)
+                # emb_frames = torch.cat([emb_clip, emb_resnet], dim=1)
+                emb_frames, lengths_frames = self.concat_embeddings_frame(emb_clip, emb_resnet, inputs['lengths_frames'], device=inputs['frames'][0].device)
+                length_frames_max = lengths_frames.max().item()
+                lengths_actions = inputs['lengths_frames'].clone()
             #clipのみの場合
             else:
                 emb_frames = emb_clip
+                lengths_frames = inputs['lengths_frames']
+                length_frames_max = inputs['length_frames_max']
+                lengths_actions = lengths_frames.clone()
         
         else:
             #元々
@@ -269,10 +290,10 @@ class Model(base.Model):
             
             else:
                 emb_frames, emb_object = self.embed_frames(inputs['frames'][0])
+            lengths_frames = inputs['lengths_frames']
+            length_frames_max = inputs['length_frames_max']
+            lengths_actions = lengths_frames.clone()
 
-        lengths_frames = inputs['lengths_frames']
-        length_frames_max = inputs['length_frames_max']
-        lengths_actions = lengths_frames.clone()
         #emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]
         emb_actions = self.embed_actions(inputs['action'])
         #変更
@@ -282,7 +303,7 @@ class Model(base.Model):
         # concatenate language, frames and actions and add encodings
         encoder_out, _ = self.encoder_vl(
             emb_lang, emb_frames, emb_actions, lengths_lang,
-            lengths_frames, lengths_actions, length_frames_max, is_clip_resnet=self.args.clip_resnet) #本当はis_clip_frame=self.args.clip_resnet, checkpoint再現のために一時的にFalse
+            lengths_frames, lengths_actions, length_frames_max, is_clip_resnet=self.args.clip_resnet)
         # use outputs corresponding to visual frames for prediction only
         encoder_out_visual = encoder_out[
             :, lengths_lang.max().item():
@@ -297,7 +318,13 @@ class Model(base.Model):
 
         # get the output objects
         emb_object_flat = emb_object.view(-1, self.args.demb)
-        decoder_input = decoder_input + emb_object_flat
+        if self.args.clip_resnet:
+            #decoder_inputを前半と後半に分ける
+            input_shape = decoder_input.shape[0]
+            decoder_input = decoder_input[:input_shape//2,:] + decoder_input[input_shape//2:,:] + emb_object_flat
+        else:
+            decoder_input = decoder_input + emb_object_flat
+        
         object_flat = self.dec_object(decoder_input)
         objects = object_flat.view(
             *encoder_out_visual.shape[:2], *object_flat.shape[1:])
@@ -381,7 +408,7 @@ class Model(base.Model):
         #もともと
         # device = frames.device
         #変更(clipとresnet両方を用いる場合)
-        device = frames[0].device
+        device = frames.device
         if prev_action is not None:
             prev_action_int = vocab['action_low'].word2index(prev_action)
             prev_action_tensor = torch.tensor(prev_action_int)[None, None].to(device)

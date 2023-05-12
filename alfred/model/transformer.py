@@ -300,10 +300,9 @@ class Model(base.Model):
 
         #emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]
         emb_actions = self.embed_actions(inputs['action'])
-        print("emb_actions", emb_actions.shape)
+
         if self.args.mat:
             emb_actions = self.mat(emb_actions)
-        print("emb_actions mat", emb_actions.shape)
 
         #変更
         if not (self.args.clip_image or self.args.clip_resnet):

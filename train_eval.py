@@ -426,7 +426,10 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                                 if "ans" in value.keys():
                                     query = "<<app>> " + key
                                     ans = value["ans"]
-                                    qa1 = query + " " + ans
+                                    if isinstance(query, str) and isinstance(ans, str):
+                                        qa1 = query + " " + ans
+                                    else:
+                                        qa1 = ""
                                 else:
                                     qa1 = ""
                         else:
@@ -452,7 +455,10 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                                         recs = odata["parentReceptacles"]
                                         rel_ang = get_obj_direction(metadata, odata)
                                         ans = objLocAns(oname, rel_ang, recs)
-                                        qa2 = query + " " + ans
+                                        if isinstance(query, str) and isinstance(ans, str):
+                                            qa2 = query + " " + ans
+                                        else:
+                                            qa2 = ""
                                 else:
                                     qa2 = ""
                         else:
@@ -468,7 +474,10 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                         targ_metadata = {'agent':{'position':target_pos}}
                         rel_ang, rel_pos = get_agent_direction(cur_metadata, targ_metadata)
                         ans = dirAns(rel_ang, rel_pos).lower()
-                        qa3 = query + " " + ans
+                        if isinstance(query, str) and isinstance(ans, str):
+                            qa3 = query + " " + ans
+                        else:
+                            qa3 = ""
                     else:
                         qa3 = ""
 

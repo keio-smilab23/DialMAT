@@ -41,6 +41,7 @@ class BDataset(TorchDataset):
         self.pad = 0
         self.vocab = data_util.load_vocab("lmdb_augmented_human_subgoal", "tests_seen")
 
+
         # read information about the dataset
         self.dataset_info = data_util.read_dataset_info(name)
         if self.dataset_info['visual_checkpoint']:
@@ -338,27 +339,10 @@ REWARD_SUC = 1.0
 SOS_token = 0
 EOS_token = 1
 
+
+recent_id = None
+action_idx = None
 VERBOSE = False
-
-
-# get the ground-truth metadata by running the action sequences
-def setup_scene(env, traj_data):
-    '''
-    intialize the scene and agent from the task info
-    '''
-    # scene setup
-    scene_num = traj_data['scene']['scene_num']
-    object_poses = traj_data['scene']['object_poses']
-    dirty_and_empty = traj_data['scene']['dirty_and_empty']
-    object_toggles = traj_data['scene']['object_toggles']
-
-    scene_name = 'FloorPlan%d' % scene_num
-    env.reset(scene_name)
-    env.restore_scene(object_poses, object_toggles, dirty_and_empty)
-
-    # initialize to start position
-    env.step(dict(traj_data['scene']['init_action']))
-    env.set_task(traj_data, reward_type="dense")
 
 
 def extractFeatureOnline(env, extractor):
@@ -394,10 +378,29 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
 
     # first sample a subgoal and get the instruction and image feature
     for dataset_idx, (path, task_json) in enumerate(tqdm(jsons_data)):
+        print("   ", dataset_idx)
         setup_scene(env, task_json)
+        # performer.reset_for_both()
+        args.clip_
+        if args.clip_image:
+            performer.reset_for_clip()
+        elif args.clip_resnet:
+            performer.reset_for_both()
+        else:
+            performer.reset()
         num_subgoal = len(task_json["turk_annotations"]
                           ["anns"][0]["high_descs"])
         meta_data = []
+
+        # initialize environment
+        # traj_data, traj_key = dataset.jsons_and_keys[dataset_idx]
+        # setup_scene(env, traj_data)
+        # performer.reset()
+
+        vocab = {'word': dataset.vocab_in, 'action_low': performer.vocab_out}
+        init_states = (None, vocab, None, False)
+        _, _, _, init_failed = init_states
+
         # execute actions and save the metadata for each subgoal
         for subgoal_idx in range(num_subgoal):
             current_query = []
@@ -410,16 +413,21 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
             # set up the performer for expect actions first
             trial_uid = "pad:" + str(0) + ":" + str(subgoal_idx)
             dataset_idx_qa = 0 + dataset_idx
-            init_states = reset(env, performer, dataset, extractor,
-                                trial_uid, dataset_idx_qa, args, obj_predictor)
-            _, _, _, init_failed = init_states
+            # init_states = reset(env, performer, dataset, extractor,
+            #                     trial_uid, dataset_idx_qa, args, obj_predictor)
+
+            # vocab = {'word': dataset.vocab_in, 'action_low': performer.vocab_out}
+            # init_states = (None, vocab, None, False)
+            # _, _, _, init_failed = init_states
+            
 
             task, trial = task_json["turk_annotations"]["anns"][0]["task_desc"], task_json["turk_annotations"]["anns"][0]["task_desc"]
             sg_pairs.append([task, trial, subgoal_idx])
             # orig_instr = normalizeString(turk_annos[0]["high_descs"][subgoal_idx]).lower().replace(",", "").replace(".", "")
             qa = ""
             reward = 0
-            interm_states = None
+            if subgoal_idx == 0:
+                interm_states = None
             pws = 0.0
             t_agent_old = 0
             orig_instr = normalizeString(task_json["turk_annotations"]["anns"][0]["high_descs"][subgoal_idx]).lower(
@@ -518,7 +526,7 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
                 # performer rollout for some steps
                 with torch.no_grad():
                     interm_states = step(env, performer, dataset, extractor,
-                                         trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, num_rollout=5)
+                                         trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, int(path[-9:-5]), num_rollout=5)
 
                 # if log_entry['success']:
                 #     reward += REWARD_SUC
@@ -531,7 +539,9 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
                 # a penalty for each time step
                 reward += REWARD_TIME * (t_agent - t_agent_old)
                 t_agent_old = t_agent
+                # print(t_agent, args.max_steps, num_fails, args.max_fails, episode_end)
                 if t_agent > args.max_steps or num_fails > args.max_fails or episode_end or init_failed or len(current_query) > 100:
+                    # print(t_agent, args.max_steps, num_fails, args.max_fails, episode_end)
                     break
 
             all_rewards.append(reward)
@@ -587,9 +597,20 @@ def reset(
     r_idx, subgoal_idx = int(trial_uid.split(
         ':')[1]), int(trial_uid.split(':')[2])
     # reset model and setup scene
-    model.reset()
+    if args.clip_image:
+        model.reset_for_clip()
+    elif args.clip_resnet:
+        model.reset_for_both()
+    else:
+        model.reset()
+        
+    # model.reset()
     # print(traj_data)
-    setup_scene(env, traj_data)
+
+    if subgoal_idx == 0:
+        setup_scene(env, traj_data)
+    
+        
     vocab = {'word': dataset.vocab_in, 'action_low': model.vocab_out}
     # load language features, expert initialization and task info
     # task_info = eval_util.read_task_data(traj_data, subgoal_idx)
@@ -608,10 +629,11 @@ def reset(
     #         break
 
     init_states = (None, vocab, prev_action, init_failed)
+    
     return init_states
 
 
-def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, num_rollout=5):
+def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, id, num_rollout=5):
     # modification of evaluate_subgoals: add qa and skip init
 
     # add initial states from expert initialization
@@ -650,9 +672,18 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
         # env.task.finished = subgoal_idx - 1
         t_current = 0
         while t_agent < args.max_steps and t_current < num_rollout:
+            # print(t_agent)
             # get an observation and do an agent step
-            input_dict['frames'] = eval_util.get_observation(
-                env.last_event, extractor)
+            global recent_id, action_idx
+            if recent_id != id:
+                recent_id = id
+                action_idx = 1
+            else:
+                action_idx += 1
+
+            input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
+
+            # print(prev_action, )
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,
                 num_fails, obj_predictor)
@@ -709,6 +740,7 @@ def test(args, json_paths):
 
     # load dataset and pretrained performer
     data_name = "lmdb_augmented_human_subgoal"
+
     model_path = args.performer_path
     model_args = model_util.load_model_args(model_path)
     model_args.debug = False
@@ -724,6 +756,7 @@ def test(args, json_paths):
     performer, extractor = load_agent(model_path, dataset.dataset_info, device)
     dataset.vocab_translate = performer.vocab_out
     dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
+
 
     loc_ans_fn = "testset/loc_testset_final.pkl"
     app_ans_fn = "testset/appear_testset_final.pkl"

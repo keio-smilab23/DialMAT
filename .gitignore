@@ -16,4 +16,11 @@ logs/questioner_rl/
 data/lmdb*
 aws/
 .python-version
-submission/
+tips/*
+submission/*
+wandb/
+submission.zip
+testset/dialfred_testset_final/*
+submission_history/
+tmp/
+qualitative/

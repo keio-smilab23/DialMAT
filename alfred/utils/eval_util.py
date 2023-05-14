@@ -249,7 +249,6 @@ def agent_step_mc(
     with torch.no_grad():
         m_out = model.step(input_dict, vocab, prev_action=prev_action)
     
-    
     mc_array = torch.nn.functional.softmax(m_out['action'], 2).topk(2)[0][0][0].cpu().detach().numpy()
 
     m_pred = model_util.extract_action_preds(
@@ -359,11 +358,29 @@ def expert_step(action, masks, model, input_dict, vocab, prev_action, env, args)
     return False, prev_action
 
 
-def get_observation(event, extractor):
+def get_observation(event, extractor, id=None, subgoal_idx=None, action_idx=None):
     '''
     get environment observation
     '''
     frames = extractor.featurize([Image.fromarray(event.frame)], batch=1)
+
+    if id != None and subgoal_idx != None and action_idx != None:
+        dir = f"./qualitative/test/{id:04}"
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        Image.fromarray(event.frame).save(f"{dir}/{subgoal_idx+1:02}_{action_idx:03}.png")
+
+    return frames
+
+#追加
+def get_observation_clip(event, extractor):
+    '''
+    get environment observation
+    '''
+    frames = extractor.featurize_clip([Image.fromarray(event.frame)])
+    #変更
+    # feat = data_util.extract_features(images, extractor)
+    # feat_clip = data_util.extract_features_clip(images, extractor)
     return frames
 
 

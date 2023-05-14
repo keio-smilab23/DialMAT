@@ -39,7 +39,7 @@ class BDataset(TorchDataset):
         self.ann_type = ann_type
         self.test_mode = True
         self.pad = 0
-        self.vocab = data_util.load_vocab("lmdb_augmented_human_subgoal_splited", "tests_seen")
+        self.vocab = data_util.load_vocab("lmdb_augmented_human_subgoal", "tests_seen")
 
 
         # read information about the dataset
@@ -380,7 +380,14 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
     for dataset_idx, (path, task_json) in enumerate(tqdm(jsons_data)):
         print("   ", dataset_idx)
         setup_scene(env, task_json)
-        performer.reset_for_both()
+        # performer.reset_for_both()
+        args.clip_
+        if args.clip_image:
+            performer.reset_for_clip()
+        elif args.clip_resnet:
+            performer.reset_for_both()
+        else:
+            performer.reset()
         num_subgoal = len(task_json["turk_annotations"]
                           ["anns"][0]["high_descs"])
         meta_data = []
@@ -590,7 +597,14 @@ def reset(
     r_idx, subgoal_idx = int(trial_uid.split(
         ':')[1]), int(trial_uid.split(':')[2])
     # reset model and setup scene
-    model.reset()
+    if args.clip_image:
+        model.reset_for_clip()
+    elif args.clip_resnet:
+        model.reset_for_both()
+    else:
+        model.reset()
+        
+    # model.reset()
     # print(traj_data)
 
     if subgoal_idx == 0:
@@ -667,8 +681,7 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
             else:
                 action_idx += 1
 
-            input_dict['frames'] = eval_util.get_observation(
-                env.last_event, extractor, id=id, subgoal_idx=subgoal_idx, action_idx=action_idx)
+            input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
 
             # print(prev_action, )
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
@@ -726,7 +739,7 @@ def test(args, json_paths):
     critic.load_state_dict(checkpt["critic"])
 
     # load dataset and pretrained performer
-    data_name = "lmdb_augmented_human_subgoal_splited"
+    data_name = "lmdb_augmented_human_subgoal"
 
     model_path = args.performer_path
     model_args = model_util.load_model_args(model_path)
@@ -742,7 +755,7 @@ def test(args, json_paths):
                       data_split, model_args, "lang")
     performer, extractor = load_agent(model_path, dataset.dataset_info, device)
     dataset.vocab_translate = performer.vocab_out
-    dataset.vocab_in.name = "lmdb_augmented_human_subgoal_splited"
+    dataset.vocab_in.name = "lmdb_augmented_human_subgoal"
 
 
     loc_ans_fn = "testset/loc_testset_final.pkl"

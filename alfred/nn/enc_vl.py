@@ -50,40 +50,30 @@ class EncoderVL(nn.Module):
         length_actions_max = lengths_actions.max().item()
         emb_lang = emb_lang[:, :length_lang_max]
         # create a mask for padded elements
-        # length_mask_pad = length_lang_max + length_frames_max * (
-        #     2 if lengths_actions.max() > 0 else 1)
-        if is_clip_resnet:
-            length_mask_pad = length_lang_max + length_frames_max * 2 + length_actions_max
-        else:
-            length_mask_pad = length_lang_max + length_frames_max + length_actions_max
-        #もしlengths_actionsがtensor([1, 1])だったら
-        # is_eval_two_action = False
-        # if torch.equal(lengths_actions, torch.tensor([2]).to("cuda:0")):
-        #     length_mask_pad = length_lang_max + length_frames_max * 3
-        #     print("length_mask_pad: ", length_mask_pad)
-        #     is_eval_two_action = True
+
+        length_mask_pad = length_lang_max + length_frames_max + length_actions_max
+            
         mask_pad = torch.zeros(
             (len(emb_lang), length_mask_pad), device=emb_lang.device).bool()
         for i, (len_l, len_f, len_a) in enumerate(
                 zip(lengths_lang, lengths_frames, lengths_actions)):
-            if is_clip_resnet:
-                # mask padded words
-                mask_pad[i, len_l: length_lang_max] = True
-                # mask padded frames
-                mask_pad[i, length_lang_max + len_f:
-                        length_lang_max + length_frames_max] = True
-                mask_pad[i, length_lang_max + length_frames_max + len_f:
-                        length_lang_max + length_frames_max * 2] = True
-                # mask padded actions
-                mask_pad[i, length_lang_max + length_frames_max * 2 + len_a:] = True
-            else:
-                # mask padded words
-                mask_pad[i, len_l: length_lang_max] = True
-                # mask padded frames
-                mask_pad[i, length_lang_max + len_f:
-                        length_lang_max + length_frames_max] = True
-                # mask padded actions
-                mask_pad[i, length_lang_max + length_frames_max + len_a:] = True
+                # # mask padded words
+                # mask_pad[i, len_l: length_lang_max] = True
+                # # mask padded frames
+                # mask_pad[i, length_lang_max + len_f:
+                #         length_lang_max + length_frames_max] = True
+                # mask_pad[i, length_lang_max + length_frames_max + len_f:
+                #         length_lang_max + length_frames_max * 2] = True
+                # # mask padded actions
+                # mask_pad[i, length_lang_max + length_frames_max * 2 + len_a:] = True
+                
+            # mask padded words
+            mask_pad[i, len_l: length_lang_max] = True
+            # mask padded frames
+            mask_pad[i, length_lang_max + len_f:
+                    length_lang_max + length_frames_max] = True
+            # mask padded actions
+            mask_pad[i, length_lang_max + length_frames_max + len_a:] = True
 
         # encode the inputs
         emb_all = self.encode_inputs(
@@ -99,7 +89,7 @@ class EncoderVL(nn.Module):
             mask_attn = torch.zeros(
                 (mask_pad.shape[1], mask_pad.shape[1]),
                 device=mask_pad.device).float()
-
+            
         # encode the inputs
         output = self.enc_transformer(
             emb_all.transpose(0, 1), mask_attn, mask_pad).transpose(0, 1)

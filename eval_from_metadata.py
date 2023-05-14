@@ -33,6 +33,7 @@ from seq2seq_questioner_multimodel import *
 from utils import *
 from dataclasses import dataclass
 from tqdm import tqdm
+from pathlib import Path
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 N_ITER = 1000
@@ -132,11 +133,22 @@ def evaluate_from_metadata(original_subgoal_idx, env, model, dataset, extractor,
     traj_key_str = traj_key.decode("utf-8") 
     # print("traj_key",traj_key_str,original_subgoal_idx)
     if not init_failed:
-        with open(f"submission_file/{traj_key_str}.json","r") as f: # TODO: ここにjsonを渡してあげてください (for koreさん)
-            metadata_list = json.load(f)
-            metadata = metadata_list[original_subgoal_idx]
-            state = extract_state(metadata)
-            subgoal_success = env.task.check_subgoal_is_done(state)
+        target_path = Path(f"submission_file/{traj_key_str}.json")
+        if not target_path.exists():
+            subgoal_success = False
+            print(f"Not found: '{target_path}'")
+        else:
+            with open(target_path,"r") as f:
+                metadata_list = json.load(f)
+                if original_subgoal_idx >= len(metadata_list): # TODO: 修正
+                    subgoal_success = False
+                else:
+                    metadata = metadata_list[original_subgoal_idx]
+                    state = extract_state(metadata)
+                    try:
+                        subgoal_success = env.task.check_subgoal_is_done(state)
+                    except:
+                        subgoal_success = False
 
     interm_states = [t_agent, t_expert, num_fails, reward, mc_lists, episode_end, prev_action]
     return subgoal_success, interm_states

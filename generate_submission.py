@@ -681,7 +681,8 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
             else:
                 action_idx += 1
 
-            input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
+            input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor, id=id, subgoal_idx=subgoal_idx, action_idx=action_idx), 
+                                    eval_util.get_observation_clip(env.last_event, extractor)]
 
             # print(prev_action, )
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(

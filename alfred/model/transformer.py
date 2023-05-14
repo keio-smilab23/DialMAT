@@ -30,19 +30,19 @@ class Model(base.Model):
         super().__init__(args, embs_ann, vocab_out, pad, seg)
 
         #追加
-        if args.clip_image or args.clip_text or args.clip_resnet:
-            self.clip_model, self.clip_preprocess = clip.load("ViT-L/14", device="cuda")
-            for params in self.clip_model.parameters():
-                params.requires_grad = False
+        # if args.clip_image or args.clip_text or args.clip_resnet:
+        self.clip_model, self.clip_preprocess = clip.load("ViT-L/14", device="cuda")
+        for params in self.clip_model.parameters():
+            params.requires_grad = False
 
-        if args.deberta:
-            self.deberta_model = AutoModel.from_pretrained("microsoft/mdeberta-v3-base").cuda()
-            self.deberta_tokenizer = AutoTokenizer.from_pretrained("microsoft/mdeberta-v3-base")
-            for param in self.deberta_model.parameters():
-                param.requires_grad = False
+        # if args.deberta:
+        self.deberta_model = AutoModel.from_pretrained("microsoft/mdeberta-v3-base").cuda()
+        self.deberta_tokenizer = AutoTokenizer.from_pretrained("microsoft/mdeberta-v3-base")
+        for param in self.deberta_model.parameters():
+            param.requires_grad = False
 
-        if args.mat:
-            self.mat = mat.AdversarialPerturbationAdder(dim_size)
+        # if args.mat_action:
+        self.mat = mat.AdversarialPerturbationAdder(dim_size)
 
         # encoder and visual embeddings
         self.encoder_vl = EncoderVL(args)
@@ -89,7 +89,8 @@ class Model(base.Model):
 
         # self.reset()
         if args.clip_image:
-            self.reset_for_clip()
+            # self.reset_for_clip()
+            self.reset_for_both()
         elif args.clip_resnet:
             self.reset_for_both()
         else:
@@ -181,14 +182,6 @@ class Model(base.Model):
             temp = torch.cat([emb_lang[0, :lengths_lang[0], :], emb_other[0, :lengths_other[0], :]], dim=0)
             return temp.unsqueeze(0), torch.tensor([temp.shape[0]]).to(device)
 
-        # lang_1 = emb_lang[0, :lengths_lang[0], :]
-        # lang_2 = emb_lang[1, :lengths_lang[1], :]
-        # clip_1 = emb_clip[0, :lengths_clip[0], :]
-        # clip_2 = emb_clip[1, :lengths_clip[1], :]
-
-        # temp1 = torch.cat([lang_1, clip_1], dim=0)
-        # temp2 = torch.cat([lang_2, clip_2], dim=0)
-
         #上記はemb_langのshapeが[2, max, 768]であることを前提としているが、それを一般化する
         temp_list = []
         for i in range(len(lengths_lang)):
@@ -201,10 +194,6 @@ class Model(base.Model):
 
         #make length tensor
         lengths = torch.tensor([temp.shape[0] for temp in temp_list]).to(device)
-        
-        # emb_lang = pad_sequence([temp1, temp2], batch_first=True, padding_value=0)
-
-        # return emb_lang, torch.tensor([temp1.shape[0], temp2.shape[0]]).to(device)
 
         return emb_lang, lengths
 
@@ -235,7 +224,6 @@ class Model(base.Model):
             emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
             #emb_lang:[batch, max, 768](2つのデータの大きい方をmaxに入れる), lengths_lang:[batch](emb_langのbatch個のデータの長さを持つ.)
             
-            #追加
             # token to sentence
             sentences = self.token_to_sentence_list(inputs['lang'], vocab)
             
@@ -246,6 +234,7 @@ class Model(base.Model):
             emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
 
             emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
+
         elif self.args.deberta:
             emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
 
@@ -255,9 +244,33 @@ class Model(base.Model):
 
             emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device=inputs['lang'].device)
 
+            emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
+       
+        elif self.args.clip_deberta:
+            emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
+
+            sentences = self.token_to_sentence_list(inputs['lang'], vocab)
+
+            # encode clip
+            emb_clip, lengths_clip = self.encode_clip_text(sentences, device=inputs['lang'].device)
+
+            # encode deberta
+            emb_deberta, lengths_deberta = self.encode_deberta(sentences, device=inputs['lang'].device)
+
+            # concat clip and lang
+            emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
+
+            # concat deberta and lang
+            emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device=inputs['lang'].device)
+
+            emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
+
+
         else:
             emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
+
             emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
+
 
 
         #変更(CLIPのimage情報のみを用いる)
@@ -301,8 +314,14 @@ class Model(base.Model):
         #emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]
         emb_actions = self.embed_actions(inputs['action'])
 
-        if self.args.mat:
+        if self.args.mat_text:
+            emb_lang = self.mat(emb_lang)
+        if self.args.mat_image:
+            emb_frames = self.mat(emb_frames)
+        if self.args.mat_action:
             emb_actions = self.mat(emb_actions)
+        # if self.args.mat_object:
+        #     emb_object = self.mat(emb_object)
 
         #変更
         if not (self.args.clip_image or self.args.clip_resnet):
@@ -317,23 +336,25 @@ class Model(base.Model):
             :, lengths_lang.max().item():
             lengths_lang.max().item() + length_frames_max]
 
+        if self.args.clip_resnet:
+            #encoder_out_visualを半分にして足し合わせる
+            middle_shape = encoder_out_visual.shape[1]
+            encoder_out_visual = encoder_out_visual[:, :middle_shape//2, :] + encoder_out_visual[:, middle_shape//2:,:]
+
         # get the output actions
         decoder_input = encoder_out_visual.reshape(-1, self.args.demb)
         action_emb_flat = self.dec_action(decoder_input)
         action_flat = action_emb_flat.mm(self.emb_action.weight.t())
         action = action_flat.view(
             *encoder_out_visual.shape[:2], *action_flat.shape[1:])
-
+        
         # get the output objects
         emb_object_flat = emb_object.view(-1, self.args.demb)
-        if self.args.clip_resnet:
-            #decoder_inputを前半と後半に分ける
-            input_shape = decoder_input.shape[0]
-            decoder_input = decoder_input[:input_shape//2,:] + decoder_input[input_shape//2:,:] + emb_object_flat
-        else:
-            decoder_input = decoder_input + emb_object_flat
+
+        decoder_input = decoder_input + emb_object_flat
         
         object_flat = self.dec_object(decoder_input)
+
         objects = object_flat.view(
             *encoder_out_visual.shape[:2], *object_flat.shape[1:])
         output.update({'action': action, 'object': objects})
@@ -409,14 +430,15 @@ class Model(base.Model):
         '''
         if self.args.clip_image or self.args.clip_resnet:
             frames = input_dict['frames']
+            device = frames[0].device
         else:
             frames = input_dict['frames'][0]
+            device = frames.device
 
 
         #もともと
         # device = frames.device
         #変更(clipとresnet両方を用いる場合)
-        device = frames.device
         if prev_action is not None:
             prev_action_int = vocab['action_low'].word2index(prev_action)
             prev_action_tensor = torch.tensor(prev_action_int)[None, None].to(device)

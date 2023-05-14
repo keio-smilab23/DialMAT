@@ -158,7 +158,8 @@ def evaluate_subgoals_start_qa(
     # reset model and setup scene
     #変更(for clip)
     if args.clip_image:
-        model.reset_for_clip()
+        # model.reset_for_clip()
+        model.reset_for_both()
     elif args.clip_resnet:
         model.reset_for_both()
     else:
@@ -179,13 +180,6 @@ def evaluate_subgoals_start_qa(
 
     # expert teacher-forcing upto subgoal, get expert action
     for a_expert in expert_dict['actions']:
-        #変更(for clip)
-        # if args.clip_image:
-        #     input_dict['frames'] = eval_util.get_observation_clip(env.last_event, extractor)
-        # if args.clip_resnet or args.clip_image:
-        #     input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
-        # else:
-        #     input_dict['frames'] = eval_util.get_observation(env.last_event, extractor)
 
         input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
         init_failed, prev_action = eval_util.expert_step(

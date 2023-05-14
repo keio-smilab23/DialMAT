@@ -80,12 +80,18 @@ def cfg_eval():
 def cfg_train():
     #追加
     valid = False
-    wandb = True
+    wandb = False
     wandb_name = 'deberta'
     clip_image = False
     clip_text = False
     clip_resnet = False
-    deberta = True
+    clip_deberta = False
+    deberta = False
+    mat_text = False
+    mat_image = False
+    mat_action = False
+    # mat_object = False
+
     # GENERAL TRANING SETTINGS
     # random seed
     seed = 1

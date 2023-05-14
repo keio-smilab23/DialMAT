@@ -201,6 +201,15 @@ python generate_submission.py --mode eval --questioner-path ./logs/questioner_rl
 
 ```
 
+## Evaluate your model from any metadata
+
+As Eval.AI evaluates metrics from metadata, we have prepared a script to compute SR from arbitrary metadata.
+This script evaluates the SR from `submission_file/{traj_key_str}.json`.
+
+```
+python eval_from_metadata.py --mode eval  --performer-path model_09.pth --questioner-path questioner_anytime_seen1.pt  --clip_resnet=true
+```
+
 
 ## Citation
 

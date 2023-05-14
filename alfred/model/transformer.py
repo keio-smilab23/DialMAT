@@ -320,8 +320,8 @@ class Model(base.Model):
             emb_frames = self.mat(emb_frames)
         if self.args.mat_action:
             emb_actions = self.mat(emb_actions)
-        # if self.args.mat_object:
-        #     emb_object = self.mat(emb_object)
+        if self.args.mat_object:
+            emb_object = self.mat(emb_object)
 
         #変更
         if not (self.args.clip_image or self.args.clip_resnet):

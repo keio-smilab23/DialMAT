@@ -705,6 +705,24 @@ def reset(
     return init_states
 
 
+def draw_bbox(roi_list, image):
+    import cv2
+    image = copy.deepcopy(image)
+    for roi in roi_list:
+        box, label, score = roi.box, roi.label, roi.score
+        c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
+        display_txt = "%s: %.1f%%" % (label, 100 * score)
+        tl = 2
+        color = (0, 0, 255)
+        cv2.rectangle(image, c1, c2, color, thickness=tl)
+        tf = max(tl - 1, 1)  # font thickness
+        t_size = cv2.getTextSize(display_txt, 0, fontScale=tl / 3, thickness=tf)[0]
+        c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
+        cv2.rectangle(image, c1, c2, color, -1)  # filled
+        cv2.putText(image, display_txt, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+    return image
+
+
 def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, id, num_rollout=5):
     # modification of evaluate_subgoals: add qa and skip init
 
@@ -755,6 +773,17 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
 
             input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor, id=id, subgoal_idx=subgoal_idx, action_idx=action_idx), 
                                     eval_util.get_observation_clip(env.last_event, extractor)]
+
+            # save image
+            if id != None and subgoal_idx != None and action_idx != None:
+                dir = f"./qualitative/test/{id:04}"
+                if not os.path.exists(dir):
+                    os.makedirs(dir)
+                frame = Image.fromarray(env.last_event.frame)
+                rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
+                frame_np = draw_bbox(rcnn_pred,np.array(frame))
+                frame = Image.fromarray(frame_np)
+                frame.save(f"{dir}/{subgoal_idx+1:02}_{action_idx:03}.png")
 
             # print(prev_action, )
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(

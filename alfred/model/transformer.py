@@ -296,6 +296,9 @@ class Model(base.Model):
                 lengths_frames = inputs['lengths_frames']
                 length_frames_max = inputs['length_frames_max']
                 lengths_actions = lengths_frames.clone()
+            
+            emb_frames, lengths_frames = self.concat_embeddings_frame(inputs['region_feats'], emb_frames, inputs['lengths_frames'], device=inputs['frames'][0].device)
+            
         
         else:
             #元々
@@ -435,6 +438,7 @@ class Model(base.Model):
             frames = input_dict['frames'][0]
             device = frames.device
 
+        region_feats = input_dict['regions']
 
         #もともと
         # device = frames.device
@@ -472,6 +476,7 @@ class Model(base.Model):
         model_out = self.forward(
             vocab=vocab['word'],
             lang=input_dict['lang'],
+            region_feats=region_feats,
             lengths_lang=input_dict['lengths_lang'],
             length_lang_max=input_dict['length_lang_max'],
             frames=frames,

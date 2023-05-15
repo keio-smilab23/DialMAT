@@ -5,6 +5,7 @@ import torch
 import shutil
 import filelock
 import numpy as np
+import copy
 
 from PIL import Image
 from termcolor import colored
@@ -377,6 +378,27 @@ def get_observation_clip(event, extractor):
     # feat_clip = data_util.extract_features_clip(images, extractor)
     return frames
 
+
+def get_region_feats(event, extractor, obj_predictor):
+    '''
+    get environment observation
+    '''
+    frame = Image.fromarray(event.frame)
+    rcnn_pred = obj_predictor.predict_objects(frame)
+    regions = []
+    for pred in rcnn_pred:
+        box = pred.box
+        c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
+        region = copy.deepcopy(event.frame)
+        region = region[c1[0]:c1[1], c2[0]:c2[1],:]
+        if region.shape[0] * region.shape[1] > 0:
+            regions.append(Image.fromarray(region))
+    
+    if len(regions) > 0:
+        feats = extractor.featurize_clip(regions)
+    else:
+        feats = torch.zeros((0,768))
+    return feats
 
 def load_language(
         dataset, task, dataset_key, model_args, extractor, subgoal_idx=None,

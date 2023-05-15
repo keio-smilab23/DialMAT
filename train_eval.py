@@ -32,6 +32,7 @@ from alfred.data.zoo.alfred import AlfredDataset
 from alfred.eval.eval_subgoals import *
 from seq2seq_questioner_multimodel import *
 from utils import *
+from tqdm import tqdm
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 N_ITER = 1000
@@ -126,7 +127,7 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
             data_instruct_list.append(i)
     print("dataset length", len(data_instruct_list))
 
-    for it in range(0, n_iters):
+    for it in tqdm(range(n_iters)):
         log_probs = []
         log_prob = 0
         values = []

@@ -24,3 +24,4 @@ testset/dialfred_testset_final/*
 submission_history/
 tmp/
 qualitative/
+logs/id120.pth

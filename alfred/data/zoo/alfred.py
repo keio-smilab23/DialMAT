@@ -98,7 +98,7 @@ class AlfredDataset(BaseDataset):
         '''
         #追加
         #tips/jsons_pklにあるように、task_jsonsは複数タスクのjsonがキーとともに格納されている。
-        #キーはb'000001'のような形式。言語はそのままエンコードされてしまてちる。
+        #キーはb'000001'のような形式。言語はそのままエンコードされてしまっている.
         # print("task_json",task_json)
         
         if subgoal_idx is None:

@@ -86,6 +86,7 @@ def cfg_train():
     clip_text = False
     clip_resnet = False
     clip_deberta = False
+    clip_object = False
     deberta = False
     mat_text = False
     mat_image = False

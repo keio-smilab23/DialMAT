@@ -52,7 +52,7 @@ def cfg_args():
     vocab_path = 'files/base.vocab'
 
 
-def process_feats(traj_paths, extractor, lock, image_folder, save_path):
+def process_feats(traj_paths, extractor, obj_predictor, lock, image_folder, save_path):
     (save_path / 'feats').mkdir(exist_ok=True)
     if str(save_path).endswith('/worker00'):
         with lock:
@@ -68,12 +68,14 @@ def process_feats(traj_paths, extractor, lock, image_folder, save_path):
         # extract features with th extractor
         images = data_util.read_traj_images(traj_path, image_folder)
         feat = data_util.extract_features(images, extractor)
-        feat_clip = data_util.extract_features_clip(images, extractor)
-        # print("feat_clip.shape: ", feat_clip.shape)
+        feat_clip = data_util.extract_clip_features(images, extractor)
+        feat_region = data_util.extract_region_features(images, extractor, obj_predictor)
+        
+        # print("feat_region.shape: ", feat_region.shape)
+        # print("feat.shape: ", feat.shape)
         # print("len(images)", len(images)) #len(images) ex. 51...
         # print("images[0]: ", images[0]) #images[0]:  <PIL.Image.Image image mode=RGB size=300x300 at 0x7FCC5328E358>
         # print("feat.shape: ", feat.shape) #feat.shape:  torch.Size([51, 512, 7, 7])
-        # print("save_path / 'feats' / filename_new",save_path / 'feats' / filename_new) #save_path / 'feats' / filename_new /home/initial/workspase/CVPR/DialFRED-Challenge/data/lmdb_augmented_human_subgoal_temp/worker00/feats/train:pick_heat_then_place_in_recep-Egg-None-Fridge-19:trial_T20190908_130410_448245.pt
         if feat is not None:
             torch.save([feat,feat_clip], save_path / 'feats' / filename_new)
         with lock:
@@ -288,13 +290,17 @@ def main(args):
     extractor = FeatureExtractor(
         args.visual_archi, args.device, args.visual_checkpoint,
         share_memory=True, compress_type=args.compress_type)
+    
+    obj_predictor = FeatureExtractor(archi='maskrcnn', device=args.device,
+        checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
+    
     if len(trajs_list) > 0:
         manager = torch.multiprocessing.Manager()
         lock = manager.Lock()
         trajs_queue = manager.Queue()
         for path in trajs_list:
             trajs_queue.put(path)
-        args_process_feats = [trajs_queue, extractor, lock, args.image_folder]
+        args_process_feats = [trajs_queue, extractor, obj_predictor, lock, args.image_folder]
         run_in_parallel(
             process_feats, args.num_workers, output_path,
             args=args_process_feats, use_processes=True)

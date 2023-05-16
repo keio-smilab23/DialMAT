@@ -197,13 +197,13 @@ class Model(base.Model):
 
         return emb_lang, lengths
 
-    def concat_embeddings_frame(self, emb_clip, emb_resnet, lengths_frame, device):
-        #emb_clip:[batch, max, 768], emb_resnet:[batch, max, 768], lengths:[size * batch]
+    def concat_embeddings_frames(self, emb_frames, emb_other, lengths_frames, lengths_other, device):
+        #emb_frames:[batch, max, 768], emb_other:[batch, max, 768], lengths_frames:[size * batch], lengths_other:[size * batch]
         temp_list = []
-        for i in range(len(lengths_frame)):
-            clip = emb_clip[i, :lengths_frame[i], :]
-            resnet = emb_resnet[i, :lengths_frame[i], :]
-            temp = torch.cat([clip, resnet], dim=0)
+        for i in range(len(lengths_frames)):
+            frames = emb_frames[i, :lengths_frames[i], :]
+            other = emb_other[i, :lengths_other[i], :]
+            temp = torch.cat([frames, other], dim=0)
             temp_list.append(temp)
         
         emb_frame = pad_sequence(temp_list, batch_first=True, padding_value=0)
@@ -286,17 +286,22 @@ class Model(base.Model):
 
             #clipとresnetのどちらも使う場合
             if self.args.clip_resnet:
-                # emb_frames = torch.cat([emb_clip, emb_resnet], dim=1)
-                emb_frames, lengths_frames = self.concat_embeddings_frame(emb_clip, emb_resnet, inputs['lengths_frames'], device=inputs['frames'][0].device)
-                length_frames_max = lengths_frames.max().item()
+                emb_frames = torch.cat([emb_clip, emb_resnet], dim=1)
+                # emb_frames, lengths_frames = self.concat_embeddings_frames(emb_clip, emb_resnet, inputs['lengths_frames'], inputs['lengths_frames'], device=inputs['frames'][0].device)
+                lengths_frames = torch.tensor([inputs['length_frames_max'], inputs['length_frames_max']])
+                length_frames_max = inputs['length_frames_max']
                 lengths_actions = inputs['lengths_frames'].clone()
+                if self.args.clip_object:
+                    emb_object = emb_clip
             #clipのみの場合
             else:
                 emb_frames = emb_clip
                 lengths_frames = inputs['lengths_frames']
                 length_frames_max = inputs['length_frames_max']
                 lengths_actions = lengths_frames.clone()
-        
+
+
+            # emb_frames, lengths_frames = self.concat_embeddings_frames(emb_frames, inputs['region_feats'], inputs['lengths_frames'],device=inputs['frames'][0].device)
         else:
             #元々
             # embed frames and actions
@@ -332,14 +337,19 @@ class Model(base.Model):
             emb_lang, emb_frames, emb_actions, lengths_lang,
             lengths_frames, lengths_actions, length_frames_max, is_clip_resnet=self.args.clip_resnet)
         # use outputs corresponding to visual frames for prediction only
-        encoder_out_visual = encoder_out[
-            :, lengths_lang.max().item():
-            lengths_lang.max().item() + length_frames_max]
-
+        if self.args.clip_resnet:
+            encoder_out_visual = encoder_out[
+                :, lengths_lang.max().item():
+                lengths_lang.max().item() + length_frames_max * 2]
+        else:
+            encoder_out_visual = encoder_out[
+                :, lengths_lang.max().item():
+                lengths_lang.max().item() + length_frames_max]
+            
         if self.args.clip_resnet:
             #encoder_out_visualを半分にして足し合わせる
-            middle_shape = encoder_out_visual.shape[1]
-            encoder_out_visual = encoder_out_visual[:, :middle_shape//2, :] + encoder_out_visual[:, middle_shape//2:,:]
+            middle_shape = encoder_out_visual.shape[1] // 2
+            encoder_out_visual = encoder_out_visual[:, :middle_shape, :] + encoder_out_visual[:, middle_shape:,:]
 
         # get the output actions
         decoder_input = encoder_out_visual.reshape(-1, self.args.demb)
@@ -435,6 +445,7 @@ class Model(base.Model):
             frames = input_dict['frames'][0]
             device = frames.device
 
+        region_feats = input_dict['regions']
 
         #もともと
         # device = frames.device
@@ -472,6 +483,7 @@ class Model(base.Model):
         model_out = self.forward(
             vocab=vocab['word'],
             lang=input_dict['lang'],
+            region_feats=region_feats,
             lengths_lang=input_dict['lengths_lang'],
             length_lang_max=input_dict['length_lang_max'],
             frames=frames,

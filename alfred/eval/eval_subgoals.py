@@ -182,6 +182,7 @@ def evaluate_subgoals_start_qa(
     for a_expert in expert_dict['actions']:
 
         input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
+        input_dict['regions'] = eval_util.get_region_feats(env.last_event,extractor,obj_predictor)
         init_failed, prev_action = eval_util.expert_step(
             a_expert['action'], expert_dict['masks'], model,
             input_dict, vocab, prev_action, env, args)
@@ -238,6 +239,7 @@ def evaluate_subgoals_middle_qa(
             #     input_dict['frames'] = eval_util.get_observation(env.last_event, extractor)
 
             input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
+            input_dict['regions'] = eval_util.get_region_feats(env.last_event,extractor,obj_predictor)
             
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,

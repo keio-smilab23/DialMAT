@@ -1,5 +1,6 @@
 import os
 import re
+import copy
 import json
 import torch
 import lmdb
@@ -69,12 +70,53 @@ def extract_features(images, extractor):
 
 
 #追加
-def extract_features_clip(images, extractor):
+def extract_clip_features(images, extractor):
     if images is None:
         return None
     feat = extractor.featurize_clip(images)
     return feat.cpu()
 
+def extract_region_features(images, extractor, obj_predictor):
+    '''
+    get environment observation
+    '''
+    # frame = Image.fromarray(images)
+    feats = []
+    labels = []
+    # print("len(images):", len(images))
+    for image in images:
+        rcnn_pred = obj_predictor.predict_objects(image)
+        regions = []
+        scores = []
+        label = []
+        for pred in rcnn_pred:
+            box = pred.box
+            c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
+            region = np.array(image)
+            region = region[c1[0]:c1[1], c2[0]:c2[1],:]
+            if region.shape[0] * region.shape[1] > 0:
+                regions.append(Image.fromarray(region))
+                label.append(pred.label)
+                scores.append(pred.score)
+        
+        #scoreの上位3つを抽出
+        if len(scores) > 2:
+            top3_idx = np.argsort(scores)[::-1][:3]
+            regions = [regions[i] for i in top3_idx]
+            label = [label[i] for i in top3_idx]
+            
+
+        if len(regions) > 0:
+            # print("len(regions) per image:", len(regions))
+            feat = extractor.featurize_clip(regions)
+            feats.append(feat)
+            labels.append(label)
+    
+    if len(feats) > 0:
+        feats = torch.cat(feats, dim=0)
+    else:
+        feats = torch.zeros(0, 768)
+    return feats
 
 def decompress_mask_alfred(mask_compressed_alfred):
     '''

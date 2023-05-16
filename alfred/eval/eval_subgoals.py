@@ -7,6 +7,8 @@ from datetime import datetime
 
 from alfred.utils import eval_util
 
+recent_id = None
+action_idx = None
 
 def compute_metrics(subgoal_success, subgoal_idx, reward, task, t_agent, pcs):
     '''
@@ -223,20 +225,45 @@ def evaluate_subgoals_middle_qa(
         t_agent, t_expert, num_fails, reward, mc_lists, episode_end, prev_action = interm_states
 
     subgoal_success = False
+    
+    # if not init_failed:
+    #     # this should be set during the teacher-forcing but sometimes it fails
+    #     # print(env.task)
+    #     # env.task.goal_idx = subgoal_idx
+    #     # env.task.finished = subgoal_idx - 1
+    #     t_current = 0
+    #     while t_agent < args.max_steps and t_current < num_rollout:
+    #         # print(t_agent)
+    #         # get an observation and do an agent step
+    #         global recent_id, action_idx
+    #         if recent_id != id:
+    #             recent_id = id
+    #             action_idx = 1
+    #         else:
+    #             action_idx += 1
+
+    #         input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
+
+    #         # print(prev_action, )
+    #         episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
+    #             model, input_dict, vocab, prev_action, env, args,
+    #             num_fails, obj_predictor)
+    #         mc_lists.append(mc_array[0] - mc_array[1])
+    #         # get rewards and subgoal success
+    #         # reward += env.get_transition_reward()[0]
+    #         # subgoal_success = (env.get_subgoal_idx() == subgoal_idx)
+    #         t_agent += 1
+    #         t_current += 1
+    #         # break if stop is predicted, args.max_fails is reached or success
+    #         if episode_end or subgoal_success:
+    #             break
+    
     if not init_failed:
         # this should be set during the teacher-forcing but sometimes it fails
-        env.task.goal_idx = task_info['subgoal_idx']
-        env.task.finished = task_info['subgoal_idx'] - 1
+        # env.task.goal_idx = task_info['subgoal_idx']
+        # env.task.finished = task_info['subgoal_idx'] - 1
         t_current = 0
         while t_agent < args.max_steps and t_current < num_rollout:
-            # get an observation and do an agent step
-            # if args.clip_image:
-            #     input_dict['frames'] = eval_util.get_observation_clip(env.last_event, extractor)
-            # if args.clip_resnet or args.clip_image:
-            #     input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
-            # else:
-            #     input_dict['frames'] = eval_util.get_observation(env.last_event, extractor)
-
             input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
             
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
@@ -251,6 +278,36 @@ def evaluate_subgoals_middle_qa(
             # break if stop is predicted, args.max_fails is reached or success
             if episode_end or subgoal_success:
                 break
+
+
+    # if not init_failed:
+    #     # this should be set during the teacher-forcing but sometimes it fails
+    #     env.task.goal_idx = task_info['subgoal_idx']
+    #     env.task.finished = task_info['subgoal_idx'] - 1
+    #     t_current = 0
+    #     while t_agent < args.max_steps and t_current < num_rollout:
+    #         # get an observation and do an agent step
+    #         # if args.clip_image:
+    #         #     input_dict['frames'] = eval_util.get_observation_clip(env.last_event, extractor)
+    #         # if args.clip_resnet or args.clip_image:
+    #         #     input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
+    #         # else:
+    #         #     input_dict['frames'] = eval_util.get_observation(env.last_event, extractor)
+
+    #         input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
+            
+    #         episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
+    #             model, input_dict, vocab, prev_action, env, args,
+    #             num_fails, obj_predictor)
+    #         mc_lists.append(mc_array[0] - mc_array[1])
+    #         # get rewards and subgoal success
+    #         reward += env.get_transition_reward()[0]
+    #         subgoal_success = (env.get_subgoal_idx() == subgoal_idx)
+    #         t_agent += 1
+    #         t_current += 1
+    #         # break if stop is predicted, args.max_fails is reached or success
+    #         if episode_end or subgoal_success:
+    #             break
 
     interm_states = [t_agent, t_expert, num_fails, reward, mc_lists, episode_end, prev_action]
     # compute metrics and dump a video

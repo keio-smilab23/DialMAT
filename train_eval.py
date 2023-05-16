@@ -391,6 +391,13 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
         subgoal_idxs = [sg['high_idx'] for sg in task_json[0]['plan']['high_pddl']]
         # ignore the last subgoal which is often the padding one
         subgoal_idxs = subgoal_idxs[:-1]
+
+        trial_uid = "pad:" + str(0) + ":" + str(0)
+        dataset_idx_qa = 0 + dataset_idx
+        init_states = evaluate_subgoals_start_qa(
+                env, performer, dataset, extractor, trial_uid, dataset_idx_qa, args, obj_predictor)
+        _, _, _, init_failed, _ = init_states
+
         for subgoal_idx in subgoal_idxs:
             current_query = []
             current_object_found = []
@@ -402,9 +409,9 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
             # set up the performer for expect actions first
             trial_uid = "pad:" + str(0) + ":" + str(subgoal_idx)
             dataset_idx_qa = 0 + dataset_idx
-            init_states = evaluate_subgoals_start_qa(
-                env, performer, dataset, extractor, trial_uid, dataset_idx_qa, args, obj_predictor)
-            _, _, _, init_failed, _ = init_states
+            # init_states = evaluate_subgoals_start_qa(
+            #     env, performer, dataset, extractor, trial_uid, dataset_idx_qa, args, obj_predictor)
+            # _, _, _, init_failed, _ = init_states
 
             task, trial = task_json[0]['task'].split("/")
             pair = (None, None, task, trial, subgoal_idx)
@@ -413,7 +420,8 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
             qa = ""
             reward = 0
             all_instr.append(orig_instr)
-            interm_states = None
+            if subgoal_idx == 0:
+                interm_states = None
             pws = 0.0
             t_agent_old = 0
             while True:
@@ -691,7 +699,7 @@ def evalModel(args):
     data_split = "pseudo_test"
     # data_split = "valid_unseen"
     train_id = 1
-    logging.basicConfig(filename='./logs/rl_anytime_eval_'+ data_split + str(train_id) + '.log', level=logging.INFO)
+    logging.basicConfig(filename='./logs/rl_anytime_eval_without_teacher_forcing_'+ data_split + str(train_id) + '.log', level=logging.INFO)
 
     use_qa_everytime = args.use_qa_everytime
 

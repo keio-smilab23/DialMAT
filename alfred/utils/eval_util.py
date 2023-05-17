@@ -420,7 +420,7 @@ def load_language(
     if not test_split and 'frames' in dataset.ann_type:
         # frames will be used as annotations
         feat_numpy['frames'] = frames_expert
-    _, input_dict, _ = data_util.tensorize_and_pad(
+    _, _, input_dict, _ = data_util.tensorize_and_pad(
         [(task, feat_numpy)], model_args.device, dataset.pad)
     return input_dict
 
@@ -440,7 +440,7 @@ def load_language_qa(
     if not test_split and 'frames' in dataset.ann_type:
         # frames will be used as annotations
         feat_numpy['frames'] = frames_expert
-    _, input_dict, _ = data_util.tensorize_and_pad(
+    _, _, input_dict, _ = data_util.tensorize_and_pad(
         [(task, feat_numpy)], model_args.device, dataset.pad)
     return input_dict
 

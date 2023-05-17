@@ -386,7 +386,7 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
     n_iters = len(data_instruct_list) * 4
 
     # first sample a subgoal and get the instruction and image feature
-    for dataset_idx in data_instruct_list:
+    for dataset_idx in tqdm(data_instruct_list):
         task_json = dataset.jsons_and_keys[dataset_idx]
         turk_annos = task_json[0]["turk_annotations"]["anns"]
         subgoal_idxs = [sg['high_idx'] for sg in task_json[0]['plan']['high_pddl']]

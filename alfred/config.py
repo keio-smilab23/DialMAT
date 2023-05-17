@@ -91,7 +91,8 @@ def cfg_train():
     mat_text = False
     mat_image = False
     mat_action = False
-    mat_object = False
+    overwrite_feat = False
+    # mat_object = False
 
     # GENERAL TRANING SETTINGS
     # random seed

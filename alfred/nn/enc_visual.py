@@ -205,6 +205,21 @@ class FeatureExtractor(nn.Module):
             feats = [self.clip_model.encode_image(image) for image in images]
             feats = torch.cat(feats, dim=0) # [len(images),768]
         return feats
+    
+    
+    def tokenize_featurize_clip(self, sentence):
+        """
+        Encode sentences with the CLIP model.
+        """
+
+
+        # for i in range(len(sentences)):
+        tokenized = clip.tokenize(sentence).to("cuda")
+        text_features = self.clip_model.encode_text(tokenized).unsqueeze(0)
+
+        # text_features = torch.cat(text_features_list, dim=0)
+
+        return text_features
 
 
     def predict_objects(self, image, verbose=False):

@@ -69,15 +69,18 @@ def process_feats(traj_paths, extractor, obj_predictor, lock, image_folder, save
         images = data_util.read_traj_images(traj_path, image_folder)
         feat = data_util.extract_features(images, extractor)
         feat_clip = data_util.extract_clip_features(images, extractor)
-        feat_region = data_util.extract_region_features(images, extractor, obj_predictor)
+        feat_region, feat_labels = data_util.extract_region_features(images, extractor, obj_predictor)
         
-        # print("feat_region.shape: ", feat_region.shape)
+        # print("feat.shape: ", feat.shape) torch.Size([46, 512, 7, 7])
+        # print("feat_clip.shape: ", feat_clip.shape) torch.Size([46, 768])
+        # print("feat_region.shape: ", feat_region.shape) torch.Size([46, 3, 768])
+        # print("feat_labels.shape: ", feat_labels.shape) torch.Size([46, 3, 768])
         # print("feat.shape: ", feat.shape)
         # print("len(images)", len(images)) #len(images) ex. 51...
         # print("images[0]: ", images[0]) #images[0]:  <PIL.Image.Image image mode=RGB size=300x300 at 0x7FCC5328E358>
         # print("feat.shape: ", feat.shape) #feat.shape:  torch.Size([51, 512, 7, 7])
         if feat is not None:
-            torch.save([feat,feat_clip], save_path / 'feats' / filename_new)
+            torch.save([feat,feat_clip,feat_region,feat_labels], save_path / 'feats' / filename_new)
         with lock:
             with open(save_path.parents[0] / 'processed_feats.txt', 'a') as f:
                 f.write(str(traj_path) + '\n')

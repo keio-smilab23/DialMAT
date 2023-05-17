@@ -75,8 +75,9 @@ class LearnedModel(nn.Module):
 
                 # do the forward passes
                 model_outs, losses_train = {}, {}
-                for batch_name, (traj_data, input_dict, gt_dict) in batches.items():
+                for batch_name, (task_path, traj_data, input_dict, gt_dict) in batches.items():
                     model_outs[batch_name] = self.model.forward(
+                        task_path,
                         vocabs_in[batch_name.split(':')[-1]],
                         action=gt_dict['action'], **input_dict)
                     info['iters']['train'] += (
@@ -85,7 +86,7 @@ class LearnedModel(nn.Module):
                 # compute losses
                 losses_train = self.model.compute_loss(
                     model_outs,
-                    {key: gt_dict for key, (_, _, gt_dict) in batches.items()})
+                    {key: gt_dict for key, (_, _, _, gt_dict) in batches.items()})
 
                 # do the gradient step
                 optimizer.zero_grad()
@@ -98,7 +99,8 @@ class LearnedModel(nn.Module):
                 # compute metrics
                 for dataset_name in losses_train.keys():
                     self.model.compute_metrics(
-                        model_outs[dataset_name], batches[dataset_name][2],
+                        model_outs[dataset_name], batches[dataset_name][3],
+                        # model_outs[dataset_name], batches[dataset_name][2],
                         metrics['train:' + dataset_name])
                     for key, value in losses_train[dataset_name].items():
                         metrics['train:' + dataset_name]['loss/' + key].append(
@@ -189,7 +191,7 @@ class LearnedModel(nn.Module):
         m_valid = collections.defaultdict(list)
         self.eval()
         for batch_idx, batch in tqdm(enumerate(loader), desc=name, total=len(loader)):
-            traj_data, input_dict, gt_dict = data_util.tensorize_and_pad(
+            task_path, traj_data, input_dict, gt_dict = data_util.tensorize_and_pad(
                 batch, self.args.device, self.pad)
             model_out = self.model.forward(
                 vocab_in, action=gt_dict['action'], **input_dict)

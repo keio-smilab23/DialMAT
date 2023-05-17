@@ -83,7 +83,6 @@ def extract_region_features(images, extractor, obj_predictor):
     # frame = Image.fromarray(images)
     feats = []
     labels = []
-    # print("len(images):", len(images))
     for image in images:
         rcnn_pred = obj_predictor.predict_objects(image)
         regions = []
@@ -104,19 +103,26 @@ def extract_region_features(images, extractor, obj_predictor):
             top3_idx = np.argsort(scores)[::-1][:3]
             regions = [regions[i] for i in top3_idx]
             label = [label[i] for i in top3_idx]
+        else:
+            #zeroを追加
+            regions = regions + [Image.fromarray(np.zeros((224, 224, 3), dtype=np.uint8)) for _ in range(3 - len(regions))]
+            label = label + ["" for _ in range(3 - len(label))]
             
 
-        if len(regions) > 0:
-            # print("len(regions) per image:", len(regions))
-            feat = extractor.featurize_clip(regions)
-            feats.append(feat)
-            labels.append(label)
+        feat = extractor.featurize_clip(regions).unsqueeze(0)
+        feats.append(feat)
+        label = extractor.tokenize_featurize_clip(label)
+        labels.append(label)
     
-    if len(feats) > 0:
+    if len(feats) > 0: 
         feats = torch.cat(feats, dim=0)
+        labels = torch.cat(labels, dim=0)
     else:
-        feats = torch.zeros(0, 768)
-    return feats
+        feats = torch.zeros(len(images), 3, 768)
+        labels = torch.zeros(len(images), 3, 768)
+    # print("feats.shape:", feats.shape)
+    # print("len(labels):", len(labels))
+    return feats, labels
 
 def decompress_mask_alfred(mask_compressed_alfred):
     '''
@@ -248,7 +254,7 @@ def tensorize_and_pad(batch, device, pad):
     '''
     device = torch.device(device)
     input_dict, gt_dict, feat_dict = dict(), dict(), dict()
-    traj_data, feat_list = list(zip(*batch))
+    task_path, traj_data, feat_list = list(zip(*batch))
     for key in feat_list[0].keys():
         feat_dict[key] = [el[key] for el in feat_list]
     # check that all samples come from the same dataset
@@ -306,7 +312,8 @@ def tensorize_and_pad(batch, device, pad):
             seqs = [torch.tensor(vv, device=device, dtype=torch.long) for vv in v]
             pad_seq = pad_sequence(seqs, batch_first=True, padding_value=pad)
             dict_assign[k] = pad_seq
-    return traj_data, input_dict, gt_dict
+
+    return task_path, traj_data, input_dict, gt_dict
 
 
 def sample_batches(iterators, device, pad, args):
@@ -320,9 +327,9 @@ def sample_batches(iterators, device, pad, args):
         except StopIteration as e:
             return None
         dataset_name = dataset_id.split(':')[1]
-        traj_data, input_dict, gt_dict = tensorize_and_pad(
+        task_path, traj_data, input_dict, gt_dict = tensorize_and_pad(
             batches, device, pad)
-        batches_dict[dataset_name] = (traj_data, input_dict, gt_dict)
+        batches_dict[dataset_name] = (task_path, traj_data, input_dict, gt_dict)
     return batches_dict
 
 

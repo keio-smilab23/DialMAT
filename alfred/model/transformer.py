@@ -1,6 +1,13 @@
 #追加
 import re
+import os
 import copy
+import glob
+
+
+import pickle
+from PIL import Image
+import numpy as np
 
 import torch
 from torch import nn
@@ -21,6 +28,7 @@ from alfred.utils.data_util import tokens_to_lang
 
 #追加
 from alfred.model import mat
+from alfred.nn.enc_visual import FeatureExtractor
 
 class Model(base.Model):
     def __init__(self, args, embs_ann, vocab_out, pad, seg, dim_size: int=768, rho1=0.9, rho2=0.999, lr_reduce=2e-3 / 8e-5, step_size=4):
@@ -43,6 +51,9 @@ class Model(base.Model):
 
         # if args.mat_action:
         self.mat = mat.AdversarialPerturbationAdder(dim_size)
+
+        self.obj_predictor = FeatureExtractor(archi='maskrcnn', device="cuda",
+        checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
 
         # encoder and visual embeddings
         self.encoder_vl = EncoderVL(args)
@@ -96,7 +107,6 @@ class Model(base.Model):
         else:
             self.reset()
 
-
     #追加
     def token_to_sentence_list(self, tokens, vocab):
         sentences_list = []
@@ -114,13 +124,19 @@ class Model(base.Model):
             sentences_list.append(sentences)
         return sentences_list
     
-    def encode_deberta(self, sentences, device="cuda:0"):
+    def encode_deberta(self, task_path, sentences, device="cuda:0"):
         """
         Encode two sentences with the deberta model.
         """
 
         text_features_list = []
         lengths_list = []
+        
+        if not self.args.overwrite_feat:
+            text_features, lengths_list = self.load_features_from_path(task_path, "deberta.pth")
+        
+            if text_features is not None and lengths_list is not None:
+                return text_features, lengths_list
 
         for i in range(len(sentences)):
             sentence = sentences[i]
@@ -136,13 +152,110 @@ class Model(base.Model):
 
         text_features = pad_sequence(text_features_list, batch_first=True)
 
+        self.save_features_to_path(task_path, "deberta.pth", [text_features, torch.tensor(lengths_list).to(device)])
+
+        print("text_features.shape: ", text_features.shape)
+        print("lengths_list: ", lengths_list)
+
         return text_features, torch.tensor(lengths_list).to(device)
+    
+    def embed_maskrcnn(self, task_path):
+        '''
+        get environment observation
+        '''
+        # frame = Image.fromarray(images)
+
+        if not self.args.overwrite_feat:
+            text_features_bbox, _ = self.load_features_from_path(task_path, "maskrcnn_bbox.pth")
+            text_features_label, _ = self.load_features_from_path(task_path, "maskrcnn_label.pth")
+
+            # if features are already saved, return them
+            if text_features_bbox != None and text_features_label != None:
+                return text_features_bbox, text_features_label
+
+        # get images from task_path
+        all_images = []
+        for single_path in task_path:
+            image_paths = glob.glob(os.path.join(single_path, "raw_images", "*.png"))
+            image_paths.sort()
+            images = []
+            for image_path in image_paths:
+                image = Image.open(image_path)
+                images.append(image)
+            all_images.append(images)
+
+        all_feats = []
+        all_labels = []
+        for images in all_images:
+            feats = []
+            labels = []
+            for image in images:
+                rcnn_pred = self.obj_predictor.predict_objects(image)
+                regions = []
+                scores = []
+                label = []
+                for pred in rcnn_pred:
+                    box = pred.box
+                    c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
+                    region = np.array(image)
+                    region = region[c1[0]:c1[1], c2[0]:c2[1],:]
+                    if region.shape[0] * region.shape[1] > 0:
+                        regions.append(Image.fromarray(region))
+                        label.append(pred.label)
+                        scores.append(pred.score)
+
+                #scoreの上位3つを抽出
+                if len(scores) > 2:
+                    top3_idx = np.argsort(scores)[::-1][:3]
+                    regions = [regions[i] for i in top3_idx]
+                    label = [label[i] for i in top3_idx]
+                else:
+                    #zeroを追加
+                    regions = regions + [Image.fromarray(np.zeros((224, 224, 3), dtype=np.uint8)) for _ in range(3 - len(regions))]
+                    label = label + ["" for _ in range(3 - len(label))]
+                    
+                preprocessed_regions = [self.clip_preprocess(region).unsqueeze(0).to("cuda") for region in regions]
+                with torch.no_grad():
+                    feat = [self.clip_model.encode_image(region) for region in preprocessed_regions]
+                    feat = torch.cat(feat, dim=0).unsqueeze(0) # [len(images),768]
+
+                feats.append(feat)
+                label = self.clip_model.encode_text(clip.tokenize(label).to("cuda:0")).unsqueeze(0)
+                labels.append(label)
+                
+            if len(feats) > 0: 
+                feats = torch.cat(feats, dim=0)
+                labels = torch.cat(labels, dim=0)
+            else:
+                feats = torch.zeros(len(images), 3, 768)
+                labels = torch.zeros(len(images), 3, 768)
+
+            all_feats.append(feats)
+            all_labels.append(labels)
+
+        feats = pad_sequence(all_feats, batch_first=True)
+        # print("feats.shape:", feats.shape)
+        # print("len(labels):", len(labels))
+
+        self.save_features_to_path(task_path, "maskrcnn_bbox.pth", feats)
+        self.save_features_to_path(task_path, "maskrcnn_label.pth", labels)
+
+        print("emb_maskrcc bbox", feats.shape)
+        print("emb_maskrcc label", labels.shape)
+        return feats, labels
 
     #追加
-    def encode_clip_text(self, sentences, device="cuda:0"):
+    def encode_clip_text(self, task_path, sentences, device="cuda:0"):
         """
-        Encode two sentences with the CLIP model.
+        Encode sentences with the CLIP model.
         """
+
+        if not self.args.overwrite_feat:
+            text_features, lengths_list = self.load_features_from_path(task_path, "clip_text.pth")
+
+            # if features are already saved, return them
+            if text_features != None:
+                return text_features, lengths_list
 
         text_features_list = []
         lengths_list = []
@@ -155,25 +268,11 @@ class Model(base.Model):
 
         text_features = pad_sequence(text_features_list, batch_first=True)
 
+        self.save_features_to_path(task_path, "clip_text.pth", [text_features, torch.tensor(lengths_list).to(device)])
+
+        print("encode_clip_text", text_features.shape)
+        print("encode_clip_text length", torch.tensor(lengths_list).to(device).shape)
         return text_features, torch.tensor(lengths_list).to(device)
-
-        # if len(sentences) == 2:
-        #     # Tokenize the text
-        #     tokenized1 = clip.tokenize(sentences[0]).to(device)
-        #     tokenized2 = clip.tokenize(sentences[1]).to(device)
-            
-        #     # Encode the text
-        #     text_features1 = self.clip_model.encode_text(tokenized1)
-        #     text_features2 = self.clip_model.encode_text(tokenized2)
-
-        #     text_features = pad_sequence([text_features1, text_features2], batch_first=True)
-        #     return text_features, torch.tensor([tokenized1.shape[0], tokenized2.shape[0]]).to(device)
-        # else:
-        #     tokenized = clip.tokenize(sentences[0]).to(device)
-        #     text_features = self.clip_model.encode_text(tokenized)
-        #     return text_features, torch.tensor([tokenized.shape[0]]).to(device)
-        
-        #上記はsentencesのshapeが[2, max]であることを前提としているが、それを一般化する
 
     #追加
     def concat_embeddings_lang(self, emb_lang, lengths_lang, emb_other, lengths_other, device="cuda:0"):
@@ -211,13 +310,59 @@ class Model(base.Model):
         lengths = torch.tensor([temp.shape[0] for temp in temp_list]).to(device)
 
         return emb_frame, lengths
+    
+    def load_features_from_path(self, paths, file_name, return_length=False):
+        """
+        Load features from a file.
+        """
 
-    def forward(self, vocab, **inputs):
+        features = []
+        if return_length:
+            lengths = []
+        for path in paths:
+            path = os.path.join(path, file_name)
+
+            #まずpathにファイルがあるかを確認する
+            if os.path.exists(path):
+                #あれば読み込む
+                with open(path, "rb") as f:
+                    feature = pickle.load(f)
+                    features.append(feature)
+                    if return_length:
+                        lengths.append(feature.shape[0])
+            else:
+                return None, None
+            
+        features = pad_sequence(features, batch_first=True)
+
+        return features, lengths
+        
+    def save_features_to_path(self, paths, file_name, features):
+        """
+        Save features to a file.
+        """
+        for idx, path in enumerate(paths):
+            path = os.path.join(path, file_name)
+            features = features[idx]
+            print("save_{}: {}".format(file_name, features.shape))
+            
+            # Write features to file
+            with open(path, "wb") as f:
+                pickle.dump(features, f)
+
+    def forward(self, task_path, vocab, **inputs):
         '''
         forward the model for multiple time-steps (used for training)
         '''
+
+        print("task_path :", task_path)
         # embed language
         output = {}
+
+        if "maskrcnn_bbox" in inputs and "maskrcnn_label" in inputs:
+            pass
+        else:
+            emb_maskrcnn_bbox, emb_maskrcnn_label = self.embed_maskrcnn(task_path)
 
         #変更(CLIPのtext情報も用いる)
         if self.args.clip_text:
@@ -240,7 +385,7 @@ class Model(base.Model):
 
             sentences = self.token_to_sentence_list(inputs['lang'], vocab)
 
-            emb_deberta, lengths_deberta = self.encode_deberta(sentences, device=inputs['lang'].device)
+            emb_deberta, lengths_deberta = self.encode_deberta(task_path, sentences, device=inputs['lang'].device)
 
             emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device=inputs['lang'].device)
 
@@ -255,7 +400,7 @@ class Model(base.Model):
             emb_clip, lengths_clip = self.encode_clip_text(sentences, device=inputs['lang'].device)
 
             # encode deberta
-            emb_deberta, lengths_deberta = self.encode_deberta(sentences, device=inputs['lang'].device)
+            emb_deberta, lengths_deberta = self.encode_deberta(task_path, sentences, device=inputs['lang'].device)
 
             # concat clip and lang
             emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
@@ -325,8 +470,8 @@ class Model(base.Model):
             emb_frames = self.mat(emb_frames)
         if self.args.mat_action:
             emb_actions = self.mat(emb_actions)
-        if self.args.mat_object:
-            emb_object = self.mat(emb_object)
+        # if self.args.mat_object:
+        #     emb_object = self.mat(emb_object)
 
         #変更
         if not (self.args.clip_image or self.args.clip_resnet):

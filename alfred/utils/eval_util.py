@@ -14,6 +14,9 @@ from alfred.env.thor_env import ThorEnv
 from alfred.nn.enc_visual import FeatureExtractor
 from alfred.utils import data_util, model_util
 
+import nltk
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
 
 def setup_scene(env, traj_data, reward_type='dense', test_split=False):
     '''
@@ -208,12 +211,13 @@ def disable_lock_logs():
     lock_logger.setLevel(30)
 
 
-def extract_rcnn_pred(class_idx, obj_predictor, env, verbose=False):
+def extract_rcnn_pred(_class, obj_predictor, env, verbose=False, is_idx=True):
     '''
     extract a pixel mask using a pre-trained MaskRCNN
     '''
     rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
-    class_name = obj_predictor.vocab_obj.index2word(class_idx)
+    class_name = obj_predictor.vocab_obj.index2word(_class) if is_idx else _class
+    class_idx = obj_predictor.vocab_obj.word2index(_class) if not is_idx else _class
     candidates = list(filter(lambda p: p.label == class_name, rcnn_pred))
     if verbose:
         visible_objs = [
@@ -239,6 +243,12 @@ def extract_rcnn_pred(class_idx, obj_predictor, env, verbose=False):
         mask = None
     return mask, rcnn_pred
 
+def extract_nouns(lines,rec=0):
+    is_noun = lambda pos: pos[:2] == 'NN'
+    tokenized = nltk.word_tokenize(lines)
+    nouns = [word for (word, pos) in nltk.pos_tag(tokenized) if is_noun(pos)] 
+    return nouns
+
 # step and compute model confusion
 def agent_step_mc(
         model, input_dict, vocab, prev_action, env, args, num_fails, obj_predictor, rcnn_pred=None, subgoal_instr=None):
@@ -260,16 +270,37 @@ def agent_step_mc(
 
     mask = None
     obj = m_pred['object'][0][0] if model_util.has_interaction(action) else None
-    if obj is not None:
-        # get mask from a pre-trained RCNN
-        assert obj_predictor is not None
-        mask, _ = extract_rcnn_pred(
-            obj, obj_predictor, env, args.debug)
-        m_pred['mask_rcnn'] = mask
-    # remove blocking actions
-    action = obstruction_detection(
-        action, env, m_out, model.vocab_out, args.debug)
-    m_pred['action'] = action
+
+    # rule-based action selection
+    rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
+    target_nouns = extract_nouns(subgoal_instr)
+    manipulation_words = ["grab", "place", "pick", "open","close", "push", "switch", "take"]
+    print(target_nouns)
+    for word in subgoal_instr.split():
+        if word.lower() in manipulation_words:
+            target = target_nouns[-1]
+            target = "".join([s.upper() if i == 0 else s.lower() for i,s in enumerate(target)])
+            mask, _ = extract_rcnn_pred(target,obj_predictor,env,args.debug,is_idx=False)
+            m_pred['mask_rcnn'] = mask
+            if mask is not None:
+                action = "PickupObject"
+                action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
+                m_pred['action'] = action
+                print("== rule-based action selection ==")
+                print(f"target: {target}, action: {action}")
+                break
+
+
+    # if obj is not None:
+    #     # get mask from a pre-trained RCNN
+    #     assert obj_predictor is not None
+    #     mask, _ = extract_rcnn_pred(
+    #         obj, obj_predictor, env, args.debug)
+    #     m_pred['mask_rcnn'] = mask
+    # # remove blocking actions
+    # action = obstruction_detection(
+    #     action, env, m_out, model.vocab_out, args.debug)
+    # m_pred['action'] = action
 
     # TODO: Fix action with rcnn_pred and subgoal_instr
     if rcnn_pred != None:

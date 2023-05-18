@@ -208,6 +208,7 @@ class Dataset(BDataset):
         feat = dict()
         # language inputs
         feat['lang'] = self.load_lang(task_json, subgoal_idx)
+        # feat['raw_lang'] = self.load_rawlang(task_json, subgoal_idx)
 
         # action outputs
         if not self.test_mode:
@@ -273,6 +274,18 @@ class Dataset(BDataset):
             lang_num = task_json['num']['lang_instr'][subgoal_idx]
 
         return lang_num
+    
+    def load_rawlang(self, task_json, subgoal_idx=None):
+        if subgoal_idx is None:
+            lang_num_goal = task_json['ann']['goal']
+            raw_lang = lang_num_goal + task_json['ann']['instr']
+        else:
+            raw_lang = task_json['ann']['instr'][subgoal_idx]
+
+        raw_lang_str = " ".join([s for s in raw_lang if s[:2] != "<<"])
+        return raw_lang_str
+    
+    
 
     @staticmethod
     def load_action(task_json, vocab_orig, vocab_translate, action_type='action_low'):
@@ -745,6 +758,8 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
             print("word not in vocab: ", w)
     input_dict = eval_util.load_language_qa(
         dataset, traj_data, traj_key, model.args, extractor, num_qa, subgoal_idx, test_split=True)
+    raw_instr = dataset.load_rawlang(traj_data, subgoal_idx)
+
     # print(input_dict)
 
     if interm_states == None:
@@ -788,7 +803,7 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
             # print(prev_action, )
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,
-                num_fails, obj_predictor)
+                num_fails, obj_predictor,subgoal_instr=raw_instr)
             mc_lists.append(mc_array[0] - mc_array[1])
             # get rewards and subgoal success
             # reward += env.get_transition_reward()[0]

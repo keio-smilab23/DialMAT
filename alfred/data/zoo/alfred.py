@@ -52,6 +52,7 @@ class AlfredDataset(BaseDataset):
         feat = dict()
         # language inputs
         feat['lang'] = AlfredDataset.load_lang(task_json, subgoal_idx)
+        # feat['raw_lang'] = AlfredDataset.load_rawlang(task_json, subgoal_idx)
 
         # action outputs
         if not self.test_mode:
@@ -111,6 +112,17 @@ class AlfredDataset(BaseDataset):
         # print("lang_num",lang_num)
 
         return lang_num
+    
+    @staticmethod
+    def load_rawlang(task_json, subgoal_idx=None):
+        if subgoal_idx is None:
+            lang_num_goal = task_json['ann']['goal']
+            raw_lang = lang_num_goal + task_json['ann']['instr']
+        else:
+            raw_lang = task_json['ann']['instr'][subgoal_idx]
+
+        raw_lang_str = " ".join([s for s in raw_lang if s[:2] != "<<"]).lower()
+        return raw_lang_str
 
     @staticmethod
     def load_action(task_json, vocab_orig, vocab_translate, action_type='action_low'):

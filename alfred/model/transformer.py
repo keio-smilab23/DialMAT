@@ -226,6 +226,16 @@ class Model(base.Model):
             subgoal_words_clip = self.clip_model.encode_text(tokenized_subgoal_labels) #(len(subgoal_words), 768)
 
             feats, labels = get_maskrcnn_features_batch(image_paths, self.obj_predictor, self.clip_preprocess, self.clip_model, subgoal_words_list[idx], subgoal_words_clip)
+            # print("len subgoal_words", len(subgoal_words_list[idx]))
+
+            # for image_path in image_paths:
+            #     image = Image.open(image_path).convert('RGB')
+            #     # for each image
+            #     # TODO: ここに無限時間掛かる
+            #     feat = get_maskrcnn_features(image, self.obj_predictor, self.clip_preprocess, self.clip_model, subgoal_words_list[idx], subgoal_words_clip)
+            #     # feat = []
+            #     feats.append(feat)
+                # print("feat.shape: ", feat.shape)
 
             # print("len subgoal_words", len(subgoal_words_list[idx]))
 

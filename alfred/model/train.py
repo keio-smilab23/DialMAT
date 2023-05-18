@@ -182,11 +182,15 @@ def main(train, exp):
     train a network using an lmdb dataset
     '''
     # parse args
+    print("Prepare args ...")
     args = prepare(train, exp)
+
     # settings for wandb
     if args.wandb:
         wandb.init(project='dialfred-challenge', name=args.wandb_name)
+    
     # load dataset(s) and process vocabs
+    print("Loading datasets ... ")
     datasets = []
     ann_types = iter(args.data['ann_type'])
     for name, ann_type in zip(args.data['train'], ann_types):
@@ -194,12 +198,21 @@ def main(train, exp):
     for name, ann_type in zip(args.data['valid'], ann_types):
         datasets.extend(load_data(name, args, ann_type, valid_only=True))
     # assign vocabs to datasets and check their sizes for nn.Embeding inits
+    print("Prepare vocabs ... ")
     embs_ann, vocab_out = process_vocabs(datasets, args)
+    
     # wrap datasets with loaders
+    print("Prepare dataloaders ... ")
     loaders = wrap_datasets(datasets, args)
+    
     # create log directory
+    print("Create log directory ... ")
     args.dout = create_log_dir(args.dout)
+    
     # create the model
+    print("Create the model ... ")
     model, optimizer, prev_train_info = create_model(args, embs_ann, vocab_out)
+    
     # start train loop
+    print("Start train loop ...")
     model.run_train(loaders, prev_train_info, optimizer=optimizer)

@@ -184,9 +184,9 @@ def get_maskrcnn_features(image, obj_predictor, clip_preprocess,  clip_model, su
         c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
         region = image[:,c1[0]:c1[1], c2[0]:c2[1]] # TODO: H,W逆かも
         if region.shape[1] * region.shape[2] > 0:
-                region_resized = torchvision.transforms.functional.resize(region,size=(224,224))
-                labels.append(label)
-                regions.append(region_resized.unsqueeze(0))
+            region_resized = torchvision.transforms.functional.resize(region,size=(224,224))
+            labels.append(label)
+            regions.append(region_resized.unsqueeze(0))
 
     if len(regions) == 0:
         return torch.zeros(1, 768).cuda()
@@ -213,107 +213,7 @@ def get_maskrcnn_features(image, obj_predictor, clip_preprocess,  clip_model, su
         feats = clip_model.encode_image(batch_images)
 
     return feats if feats.shape[0] > 0 else torch.zeros(1, 768).cuda()
-
-def encode_clip_image(clip_preprocess, clip_model, images, device="cuda:0"):
-    images = [clip_preprocess(image).unsqueeze(0).to("cuda") for image in images]
-    with torch.no_grad():
-        feats = [clip_model.encode_image(image) for image in images]
-
-        #featsがからであれば、0を入れる
-        if len(feats) == 0:
-            feats = torch.zeros(1, 768).to(device)
-        feats = torch.cat(feats, dim=0) # [len(images),768]
-
-    return feats
-
-def get_maskrcnn_features_batch(image_paths, obj_predictor, clip_preprocess,  clip_model, subgoal_words, subgoal_words_clip, num_of_use=5, batch_size=32):
-    '''
-    get environment observation
-    
-    get_maskrcnn_featuresの処理をbatch化したもの
-
-    returns list of tensors of shape (subgoal_words * 5, 768)
-    '''
-
-    image_paths.sort()
-    original_images = [(image_path, Image.open(image_path)) for image_path in image_paths]
-
-    all_bboxes, all_labels = [], []
-
-    #divide into batch
-    images = [original_images[i:i+batch_size] for i in range(0, len(original_images), batch_size)]
-
-    for images_batch in images:
-        tensor_images = torch.stack([F.to_tensor(img[1]).cuda() for img in images_batch]).to(torch.device('cuda'))
-        outputs = obj_predictor.model.model(tensor_images)
-
-        regions, labels = [], []
-
-        for idx, output in enumerate(outputs):
-            _regions, _labels = [], []
-            for pred_idx in range(len(output['scores'])):
-                label = obj_predictor.model.vocab_pred[output['labels'][pred_idx].cpu().item()]
-                box = output['boxes'][pred_idx].detach().cpu().numpy() 
-                c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
-                region = tensor_images[idx,:,c1[0]:c1[1], c2[0]:c2[1]] # TODO: H,W逆かも
-                if region.shape[1] * region.shape[2] > 0:
-                        region_resized = torchvision.transforms.functional.resize(region,size=(224,224))
-                        _labels.append(label)
-                        _regions.append(region_resized.unsqueeze(0))
-
-            if len(_regions) == 0:
-                feats, label_clip_top5 = torch.zeros(len(original_images), len(subgoal_words) * num_of_use, 768).cuda(), torch.zeros(len(original_images), len(subgoal_words) * 5, 768).cuda()
-                save_features_to_path(images_batch[idx][0].replace(".png", "maskrcnn.pth"), [feats, label_clip_top5])
-                continue
-            
-            _regions = torch.cat(_regions,dim=0) # (N,3,224,224)
-
-            tokenized_labels = clip.tokenize(_labels).to("cuda")
-            label_clip = clip_model.encode_text(tokenized_labels) # (N,D)
-            cossim = FF.cosine_similarity(subgoal_words_clip.unsqueeze(1), label_clip, dim=-1) # (M,D) @ (D,N)
-            sort_idxs = torch.argsort(cossim, dim=1)
-            sort_idxs = sort_idxs[:num_of_use]
-            bboxes_top5 = torch.cat([reshape_with_pad(_regions[sort_idxs[i,:]],(num_of_use,3,224,224)) for i in range(sort_idxs.shape[0])],dim=0)
-            label_clip_top5 = torch.cat([label_clip[sort_idxs[i,:]] for i in range(sort_idxs.shape[0])],dim=0)
-
-            if len(bboxes_top5) == 0:
-                feats, label_clip_top5 = torch.zeros(len(original_images), len(subgoal_words) * num_of_use, 768).cuda(), torch.zeros(len(original_images), len(subgoal_words) * 5, 768).cuda()
-                save_features_to_path(images_batch[idx][0].replace(".png", "maskrcnn.pth"), [feats, label_clip_top5])
-                continue
-            
-            # c.f. https://github.com/openai/CLIP/blob/main/clip/clip.py#L79
-            my_transform = Compose([
-                Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
-            ])
-            
-            with torch.no_grad():
-                batch_images = my_transform(bboxes_top5) # (5N,3,224,224)
-                feats = clip_model.encode_image(batch_images) # (5N,768)
-
-            feats =  feats if feats.shape[0] > 0 else torch.zeros(1, 768).cuda()
-
-            save_features_to_path(images_batch[idx][0].replace(".png", "maskrcnn.pth"), [feats, label_clip_top5])
-
-            regions.append(feats)
-            labels.append(label_clip_top5)
         
-        all_bboxes.append(torch.cat(regions,dim=0)) #(batch_size, subgoal_words, 768)
-        all_labels.append(torch.cat(labels,dim=0)) #(batch_size, subgoal_words, 768)
-    return all_bboxes, all_labels
-
-
-def encode_clip_image(clip_preprocess, clip_model, images, device="cuda:0"):
-    images = [clip_preprocess(image).unsqueeze(0).to("cuda") for image in images]
-    with torch.no_grad():
-        feats = [clip_model.encode_image(image) for image in images]
-
-        #featsがからであれば、0を入れる
-        if len(feats) == 0:
-            feats = torch.zeros(1, 768).to(device)
-        feats = torch.cat(feats, dim=0) # [len(images),768]
-
-    return feats
-
 def decompress_mask_alfred(mask_compressed_alfred):
     '''
     decompress mask array from ALFRED compression (initially contained in jsons)

@@ -237,7 +237,7 @@ def extract_rcnn_pred(class_idx, obj_predictor, env, verbose=False):
             mask = candidates[index].mask[0]
     else:
         mask = None
-    return mask
+    return mask, rcnn_pred
 
 # step and compute model confusion
 def agent_step_mc(
@@ -263,7 +263,7 @@ def agent_step_mc(
     if obj is not None:
         # get mask from a pre-trained RCNN
         assert obj_predictor is not None
-        mask = extract_rcnn_pred(
+        mask, _ = extract_rcnn_pred(
             obj, obj_predictor, env, args.debug)
         m_pred['mask_rcnn'] = mask
     # remove blocking actions
@@ -309,7 +309,7 @@ def agent_step(
     if obj is not None:
         # get mask from a pre-trained RCNN
         assert obj_predictor is not None
-        mask = extract_rcnn_pred(
+        mask, _ = extract_rcnn_pred(
             obj, obj_predictor, env, args.debug)
         m_pred['mask_rcnn'] = mask
     # remove blocking actions
@@ -363,12 +363,6 @@ def get_observation(event, extractor, id=None, subgoal_idx=None, action_idx=None
     get environment observation
     '''
     frames = extractor.featurize([Image.fromarray(event.frame)], batch=1)
-
-    if id != None and subgoal_idx != None and action_idx != None:
-        dir = f"./qualitative/test/{id:04}"
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-        Image.fromarray(event.frame).save(f"{dir}/{subgoal_idx+1:02}_{action_idx:03}.png")
 
     return frames
 

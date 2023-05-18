@@ -95,6 +95,12 @@ To answer these questions, we build an oracle to extract ground-truth informatio
 ``` bash
 python append_data.py
 ```
+You can split the data of valid_unseen into pseudo_valid and pseudo_test for model evaluation by the following command.
+
+```bash
+python split_val_unseen.py
+```
+
 
 Following the ET pipeline, we can create the lmdb dataset 
 ``` bash
@@ -193,6 +199,15 @@ To create a submission file, execute the following command:
 ```bash
 python generate_submission.py --mode eval --questioner-path ./logs/questioner_rl/questioner_anytime_seen1.pt
 
+```
+
+## Evaluate your model from any metadata
+
+As Eval.AI evaluates metrics from metadata, we have prepared a script to compute SR from arbitrary metadata.
+This script evaluates the SR from `submission_file/{traj_key_str}.json`.
+
+```
+python eval_from_metadata.py --mode eval  --performer-path model_09.pth --questioner-path questioner_anytime_seen1.pt  --clip_resnet=true
 ```
 
 

@@ -115,6 +115,18 @@ class BaseTask(object):
         self.step_num += 1
         done = self.goal_idx >= self.num_subgoals or self.step_num >= self.max_episode_length
         return reward, done
+    
+    def check_subgoal_is_done(self, state):
+        # get subgoal and action
+        expert_plan = self.traj['plan']['high_pddl']
+        action_type = expert_plan[self.goal_idx]['planner_action']['action']
+
+        # subgoal reward
+        from alfred.env.reward import get_action
+        action = get_action(action_type, self.gt_graph, self.env, self.reward_config, self.strict)
+        _, sg_done = action.get_reward(state, self.prev_state, expert_plan, self.goal_idx) # prev_stateはevalには無関係なので適当な値で良い
+            
+        return sg_done
 
     def reset(self):
         '''

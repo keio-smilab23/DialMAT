@@ -61,11 +61,11 @@ class BaseDataset(TorchDataset):
 
         # load jsons with pickle and parse them
         if jsons:
-            with open(os.path.join(
-                    path, self.partition, 'jsons.pkl'), 'rb') as jsons_file:
+            print("Loading jsons.pkl ... (it might be huge) ")
+            with open(os.path.join(path, self.partition, 'jsons.pkl'), 'rb') as jsons_file:
                 jsons = pickle.load(jsons_file)
             self.jsons_and_keys = []
-            for idx in range(len(jsons)):
+            for idx in tqdm(range(len(jsons))):
                 key = '{:06}'.format(idx).encode('ascii')
                 task_jsons = jsons[key]
                 for json in task_jsons:

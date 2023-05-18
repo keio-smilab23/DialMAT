@@ -230,7 +230,9 @@ class Model(base.Model):
             for image_path in image_paths:
                 image = Image.open(image_path).convert('RGB')
                 # for each image
+                # TODO: ここに無限時間掛かる
                 feat = get_maskrcnn_features(image, self.obj_predictor, self.clip_preprocess, self.clip_model, subgoal_words_list[idx], subgoal_words_clip)
+                # feat = []
                 feats.append(feat)
                 # print("feat.shape: ", feat.shape)
 

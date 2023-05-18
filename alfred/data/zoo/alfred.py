@@ -8,6 +8,9 @@ from io import BytesIO
 from alfred.gen import constants
 from alfred.data.zoo.base import BaseDataset
 from alfred.utils import data_util, model_util
+from tqdm import tqdm
+
+def tqdm_wrapper(self, x): return tqdm([y for y in x])
 
 
 class AlfredDataset(BaseDataset):
@@ -22,6 +25,7 @@ class AlfredDataset(BaseDataset):
             constants.ET_ROOT, constants.OBJ_CLS_VOCAB))
 
     def load_data(self, path):
+        print("Loading data ...")
         return super().load_data(
             path, feats=True, masks=True, jsons=True)
 
@@ -52,7 +56,7 @@ class AlfredDataset(BaseDataset):
         #./data/generated_2.1.0/{split}/{task}/feats/deberta/*.pthからデータを取得
         data_paths = glob.glob(os.path.join(constants.ET_DATA,  "generated_2.1.0", split, task, "feats", "deberta", "*.pth"))
         feats_deberta = []
-        for data_path in data_paths:
+        for data_path in tqdm_wrapper(data_paths):
             deberta = torch.load(data_path) #(1, num_words, 768)
             feats_deberta.append(deberta)
         feats_deberta = torch.cat(feats_deberta, dim=0) #(num_sentences, num_words, 768)
@@ -60,7 +64,7 @@ class AlfredDataset(BaseDataset):
         #./data/generated_2.1.0/{split}/{task}/feats/text_clip/*.pthからデータを取得
         data_paths = glob.glob(os.path.join(constants.ET_DATA,  "generated_2.1.0", split, task, "feats", "text_clip", "*.pth"))
         feats_text_clip = []
-        for data_path in data_paths:
+        for data_path in tqdm_wrapper(data_paths):
             text_clip = torch.load(data_path)
             feats_text_clip.append(text_clip)
         feats_text_clip = torch.cat(feats_text_clip, dim=0) #(num_sentences, num_words, 768)
@@ -68,7 +72,7 @@ class AlfredDataset(BaseDataset):
         #./data/generated_2.1.0/{split}/{task}/feats/mask_rcnn/bbox/*.pthからデータを取得
         data_paths = glob.glob(os.path.join(constants.ET_DATA,  "generated_2.1.0", split, task, "feats", "mask_rcnn", "bbox", "*.pth"))
         feats_mask_rcnn_bbox = []
-        for data_path in data_paths:
+        for data_path in tqdm_wrapper(data_paths):
             mask_rcnn_bbox = torch.load(data_path)
             feats_mask_rcnn_bbox.append(mask_rcnn_bbox)
         feats_mask_rcnn_bbox = torch.cat(feats_mask_rcnn_bbox, dim=0) #(num_sentences, num_words, 4)
@@ -76,7 +80,7 @@ class AlfredDataset(BaseDataset):
         #./data/generated_2.1.0/{split}/{task}/feats/mask_rcnn/label/*.pthからデータを取得
         data_paths = glob.glob(os.path.join(constants.ET_DATA,  "generated_2.1.0", split, task, "feats", "mask_rcnn", "label", "*.pth"))
         feats_mask_rcnn_label = []
-        for data_path in data_paths:
+        for data_path in tqdm_wrapper(data_paths):
             mask_rcnn_label = torch.load(data_path)
             feats_mask_rcnn_label.append(mask_rcnn_label)
         feats_mask_rcnn_label = torch.cat(feats_mask_rcnn_label, dim=0) #(num_sentences, num_words, 1)
@@ -99,6 +103,7 @@ class AlfredDataset(BaseDataset):
         '''
         load features from task_json
         '''
+        print("Loading features ...")
         feat = dict()
         # language inputs
         feat['lang'] = AlfredDataset.load_lang(task_json, subgoal_idx)

@@ -191,7 +191,7 @@ def evaluate_subgoals_start_qa(
     return init_states
 
 def evaluate_subgoals_middle_qa(
-        env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, num_rollout=5):
+        env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, num_rollout=5, teacher_forcing=True):
     # modification of evaluate_subgoals: add qa and skip init
     # model.reset_for_clip()
     # add initial states from expert initialization
@@ -224,9 +224,10 @@ def evaluate_subgoals_middle_qa(
     subgoal_success = False
     
     if not init_failed:
-        # this should be set during the teacher-forcing but sometimes it fails
-        # env.task.goal_idx = task_info['subgoal_idx']
-        # env.task.finished = task_info['subgoal_idx'] - 1
+        if teacher_forcing:
+            # this should be set during the teacher-forcing but sometimes it fails
+            env.task.goal_idx = task_info['subgoal_idx']
+            env.task.finished = task_info['subgoal_idx'] - 1
         t_current = 0
         while t_agent < args.max_steps and t_current < num_rollout:
             input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]

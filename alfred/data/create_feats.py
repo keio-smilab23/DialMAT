@@ -85,7 +85,7 @@ def main():
 
     jsons = {}
 
-    for split in ['train', 'valid_seen', 'pseudo_valid', 'pseudo_test']:
+    # for split in ['train', 'valid_seen', 'pseudo_valid', 'pseudo_test']:
         
         
     with torch.no_grad():

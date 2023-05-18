@@ -28,7 +28,7 @@ from alfred.nn.enc_vl import EncoderVL
 from alfred.nn.encodings import DatasetLearnedEncoding
 from alfred.nn.dec_object import ObjectClassifier
 from alfred.utils import model_util
-from alfred.utils.data_util import tokens_to_lang, get_maskrcnn_features
+from alfred.utils.data_util import tokens_to_lang, get_maskrcnn_features_batch
 
 #追加
 from alfred.model import mat
@@ -225,22 +225,24 @@ class Model(base.Model):
             tokenized_subgoal_labels = clip.tokenize(subgoal_words_list[idx]).to("cuda")
             subgoal_words_clip = self.clip_model.encode_text(tokenized_subgoal_labels) #(len(subgoal_words), 768)
 
+            feats, labels = get_maskrcnn_features_batch(image_paths, self.obj_predictor, self.clip_preprocess, self.clip_model, subgoal_words_list[idx], subgoal_words_clip)
+
             # print("len subgoal_words", len(subgoal_words_list[idx]))
 
-            for image_path in image_paths:
-                image = Image.open(image_path).convert('RGB')
-                # for each image
-                feat = get_maskrcnn_features(image, self.obj_predictor, self.clip_preprocess, self.clip_model, subgoal_words_list[idx], subgoal_words_clip)
-                feats.append(feat)
-                # print("feat.shape: ", feat.shape)
+            # for image_path in image_paths:
+            #     image = Image.open(image_path).convert('RGB')
+            #     # for each image
+            #     feat = get_maskrcnn_features_batch(image, self.obj_predictor, self.clip_preprocess, self.clip_model, subgoal_words_list[idx], subgoal_words_clip)
+            #     feats.append(feat)
+            #     # print("feat.shape: ", feat.shape)
 
-                file_name = os.path.basename(image_path)
-                #image_pathのfile_name(拡張子以外)にmarkrcnnという文字列を追加
-                output_path = os.path.join(single_path, "raw_images", file_name.replace(".png", "_maskrcnn.pth"))
-                self.save_features_to_path(output_path, feat)
-
+            #     file_name = os.path.basename(image_path)
+            #     #image_pathのfile_name(拡張子以外)にmarkrcnnという文字列を追加
+            #     output_path = os.path.join(single_path, "raw_images", file_name.replace(".png", "_maskrcnn.pth"))
+            #     self.save_features_to_path(output_path, feat)
+            
             all_feats.append(feats)
-            all_labels.append(subgoal_words_clip)
+            all_labels.append(labels)
         
         return all_feats, all_labels
 

@@ -251,7 +251,7 @@ def extract_nouns(lines,rec=0):
 
 # step and compute model confusion
 def agent_step_mc(
-        model, input_dict, vocab, prev_action, env, args, num_fails, obj_predictor, rcnn_pred=None, subgoal_instr=None):
+        model, input_dict, vocab, prev_action, env, args, num_fails, obj_predictor, rcnn_pred=None, subgoal_instr=None, llm_data=None):
     '''
     environment step based on model prediction
     '''
@@ -274,21 +274,34 @@ def agent_step_mc(
     # rule-based action selection
     rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
     target_nouns = extract_nouns(subgoal_instr)
+    llm_target = llm_data[-1][1]
+    llm_action = llm_data[-1][0]
     manipulation_words = ["grab", "place", "pick", "open","close", "push", "switch", "take"]
-    print(target_nouns)
-    for word in subgoal_instr.split():
-        if word.lower() in manipulation_words:
-            target = target_nouns[-1]
-            target = "".join([s.upper() if i == 0 else s.lower() for i,s in enumerate(target)])
-            mask, _ = extract_rcnn_pred(target,obj_predictor,env,args.debug,is_idx=False)
+
+    if llm_action != "MoveTo":
+        mask, _ = extract_rcnn_pred(llm_target, obj_predictor,env,args.debug,is_idx=False)
+        if mask is not None:
             m_pred['mask_rcnn'] = mask
-            if mask is not None:
-                action = "PickupObject"
-                action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
-                m_pred['action'] = action
-                print("== rule-based action selection ==")
-                print(f"target: {target}, action: {action}")
-                break
+            action = llm_action
+            action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
+            m_pred['action'] = action
+            print("== rule-based action selection ==")
+            print(f"target: {llm_target}, action: {llm_action}")
+
+    # print(target_nouns, llm_target, llm_action)
+    # for word in subgoal_instr.split():
+    #     # if word.lower() in manipulation_words:
+    #         # target = target_nouns[-1]
+    #         # target = "".join([s.upper() if i == 0 else s.lower() for i,s in enumerate(target)])
+    #         mask, _ = extract_rcnn_pred(target, obj_predictor,env,args.debug,is_idx=False)
+    #         m_pred['mask_rcnn'] = mask
+    #         if mask is not None:
+    #             action = "PickupObject"
+    #             action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
+    #             m_pred['action'] = action
+    #             print("== rule-based action selection ==")
+    #             print(f"target: {llm_target}, action: {llm_action}")
+    #             break
 
 
     # if obj is not None:

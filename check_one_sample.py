@@ -788,10 +788,33 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
             # 現在のlow-level instructionを取得
             subgoal_instr = traj_data['turk_annotations']['anns'][0]['high_descs'][subgoal_idx]
 
+            # llm data を get
+            raw_output = traj_data['high_level_actions']['raw_output']
+            pattern = r'{.*}'
+            match = re.search(pattern, raw_output, re.DOTALL)
+            try:
+                if match:
+                    llm_output = match.group(0)
+                    llm_output = json.loads(llm_output)
+            except:
+                print("c")
+            action_dict = {'Open': 'OpenObject', 'Close':'CloseObject', 'Put-At/In':'PutObject', 'Toggle-On':'ToggleObjectOn', 'Toggle-Off': 'ToggleObjectOff', 'Move-To':'MoveTo', 'Pickup':'PickupObject', 'Clean':'XXX', 'Heat':'XXX', 'Cool':'XXX', 'Slice':'SliceObject', 'Look-At-In-Light':'XXX'}
+            object_action = ['Toggle-On', 'Toggle-Off', 'Pickup', 'Clean', 'Heat', 'Look-At-In-Light']
+            destination_action = ['Open', 'Close', 'Put-At/In', 'Move-To']
+            llm_data = []
+            for pair in llm_output[str(subgoal_idx)]:
+                if pair[0] in object_action:
+                    llm_data.append([action_dict[pair[0]], pair[1]])
+                elif pair[0] in destination_action:
+                    llm_data.append([action_dict[pair[0]], pair[2]])
+            
+            # print(llm_data)
+            # sys.exit()
+
             # print(prev_action, )
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,
-                num_fails, obj_predictor, rcnn_pred, subgoal_instr)
+                num_fails, obj_predictor, rcnn_pred, subgoal_instr, llm_data)
             mc_lists.append(mc_array[0] - mc_array[1])
             # get rewards and subgoal success
             # reward += env.get_transition_reward()[0]
@@ -901,7 +924,7 @@ def main():
     args = parser.parse_args()
     # path to testset json file
     # input_jsons = [str(path) for path in Path(os.environ['DF_ROOT'] + "/testset/dialfred_testset_final/").glob("*.json")]
-    input_jsons = [f"testset/dialfred_testset_final/{int(args.test_id):04}.json"]
+    input_jsons = [f"testset/new_dialfred_testset_final/{int(args.test_id):04}.json"]
     test(args, input_jsons)
 
 

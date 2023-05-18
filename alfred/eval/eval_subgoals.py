@@ -7,6 +7,12 @@ from datetime import datetime
 
 from alfred.utils import eval_util
 
+import cv2
+import copy
+from PIL import Image
+import numpy as np
+
+action_idx = 0
 
 def compute_metrics(subgoal_success, subgoal_idx, reward, task, t_agent, pcs):
     '''
@@ -191,6 +197,10 @@ def evaluate_subgoals_start_qa(
             break
 
     init_states = (task_info, vocab, prev_action, init_failed, expert_dict)
+
+    global action_idx 
+    action_idx= 1
+
     return init_states
 
 def evaluate_subgoals_middle_qa(
@@ -242,6 +252,22 @@ def evaluate_subgoals_middle_qa(
             input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
             input_dict['regions'] = eval_util.get_region_feats(env.last_event,extractor,obj_predictor)
 
+            global action_idx
+            action_idx += 1
+
+            if True: #id != None and subgoal_idx != None and action_idx != None:
+                print("HHHHH")
+                # dir = f"./qualitative/pseudo_test/{id:04}"
+                dir = f"./qualitative/pseudo_test/test"
+                if not os.path.exists(dir):
+                    os.makedirs(dir)
+                frame = Image.fromarray(env.last_event.frame)
+                rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
+                frame_np = draw_bbox(rcnn_pred,np.array(frame))
+                frame = Image.fromarray(frame_np)
+                frame.save(f"{dir}/{subgoal_idx+1:02}_{action_idx:03}.png")
+                
+
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,
                 num_fails, obj_predictor)
@@ -259,6 +285,24 @@ def evaluate_subgoals_middle_qa(
     # compute metrics and dump a video
     metrics = compute_metrics(subgoal_success, subgoal_idx, reward, traj_data, t_agent, env.get_goal_conditions_met())
     return dict(**metrics, **task_info), interm_states
+
+def draw_bbox(roi_list, image):
+    
+    image = copy.deepcopy(image)
+    for roi in roi_list:
+        box, label, score = roi.box, roi.label, roi.score
+        c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
+        display_txt = "%s: %.1f%%" % (label, 100 * score)
+        tl = 2
+        color = (0, 0, 255)
+        cv2.rectangle(image, c1, c2, color, thickness=tl)
+        tf = max(tl - 1, 1)  # font thickness
+        t_size = cv2.getTextSize(display_txt, 0, fontScale=tl / 3, thickness=tf)[0]
+        c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
+        cv2.rectangle(image, c1, c2, color, -1)  # filled
+        cv2.putText(image, display_txt, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+    return image
+
 
 def process_eval_subgoals(results_path, model_paths, args):
     print('Processing evaluation results')

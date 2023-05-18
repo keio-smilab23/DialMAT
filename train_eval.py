@@ -606,6 +606,7 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                 reward += REWARD_TIME * (t_agent - t_agent_old)
                 t_agent_old = t_agent
                 if done or t_agent > args.max_steps or num_fails > args.max_fails or episode_end or init_failed or len(current_query) > 100:
+                    sys.exit()
                     break
 
             succ.append(done)

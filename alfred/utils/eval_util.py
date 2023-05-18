@@ -387,6 +387,8 @@ def get_region_feats(event, extractor, obj_predictor):
     rcnn_pred = obj_predictor.predict_objects(frame)
     regions = []
     for pred in rcnn_pred:
+        # print(pred)
+        # import sys;   sys.exit()
         box = pred.box
         c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
         region = copy.deepcopy(event.frame)

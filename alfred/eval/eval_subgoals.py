@@ -256,7 +256,6 @@ def evaluate_subgoals_middle_qa(
             action_idx += 1
 
             if True: #id != None and subgoal_idx != None and action_idx != None:
-                print("HHHHH")
                 # dir = f"./qualitative/pseudo_test/{id:04}"
                 dir = f"./qualitative/pseudo_test/test"
                 if not os.path.exists(dir):
@@ -266,7 +265,9 @@ def evaluate_subgoals_middle_qa(
                 frame_np = draw_bbox(rcnn_pred,np.array(frame))
                 frame = Image.fromarray(frame_np)
                 frame.save(f"{dir}/{subgoal_idx+1:02}_{action_idx:03}.png")
-                
+
+            # 現在のlow-level instructionを取得
+            instr = traj_data['turk_annotations']['anns'][0]['high_descs'][task_info['subgoal_idx']]
 
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,

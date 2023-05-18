@@ -241,7 +241,7 @@ def extract_rcnn_pred(class_idx, obj_predictor, env, verbose=False):
 
 # step and compute model confusion
 def agent_step_mc(
-        model, input_dict, vocab, prev_action, env, args, num_fails, obj_predictor):
+        model, input_dict, vocab, prev_action, env, args, num_fails, obj_predictor, rcnn_pred=None, subgoal_instr=None):
     '''
     environment step based on model prediction
     '''
@@ -270,6 +270,10 @@ def agent_step_mc(
     action = obstruction_detection(
         action, env, m_out, model.vocab_out, args.debug)
     m_pred['action'] = action
+
+    # TODO: Fix action with rcnn_pred and subgoal_instr
+    if rcnn_pred != None:
+        pass
 
     # use the predicted action
     episode_end = (action == constants.STOP_TOKEN)

@@ -21,6 +21,9 @@ from copy import deepcopy
 from vocab import Vocab
 from pathlib import Path
 import clip
+import torchvision
+import torch.nn.functional as FF
+from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
 
 from alfred.gen import constants
 from alfred.gen.utils import image_util
@@ -147,142 +150,63 @@ def extract_save_region_features(images, obj_predictor, clip_preprocess,  clip_m
                     bboxes.append(box)
                     labels.append(label)
 
+def reshape_with_pad(x,shape):
+    if x.shape[0] < shape[0]:
+        zeros = torch.zeros(shape[0] - x.shape[0], x.shape[1], x.shape[2], x.shape[3]).to(x.device)
+        x = torch.cat([x, zeros])
+    return x
+
 
 def get_maskrcnn_features(image, obj_predictor, clip_preprocess,  clip_model, subgoal_words, subgoal_words_clip, num_of_use=5, batch_size=8):
     '''
     get environment observation
+    
+    subgoal_words_clip: (subgoal_nums, D)
+    各bboxにおいて、各subgoal_wordsに対しての類似度をclipで計算し、最も類似度が高いbboxをそれぞれのsubgoal_wordsに対して5つ選択する
 
     returns list of tensors of shape (subgoal_words * 5, 768)
     '''
-    cossim = CosineSimilarity(dim=0, eps=1e-6)
 
-    #まずsubgoal_wordsをCLIP特徴量に変換
-    subgoal_words_idx_dict = {subgoal_word: np.array([]) for  subgoal_word in subgoal_words}
-
-    #top5つの類似度を保存する
-    bboxes = []
-    labels = []
-
-    image = F.to_tensor(image).to(torch.device("cuda"))
+    image = F.to_tensor(image).cuda()
     output = obj_predictor.model.model(image[None])[0]
 
-    #以下は各画像に対しての処理
-    _bbox = []
-    _label = []
-    _label_clip = []
-
-    #各bboxにおいて、各subgoal_wordsに対しての類似度をclipで計算し、最も類似度が高いbboxをそれぞれのsubgoal_wordsに対して5つ選択する
-
-    #以下は各bboxに対しての処理
+    labels, regions = [], []
     for pred_idx in range(len(output['scores'])):
         label = obj_predictor.model.vocab_pred[output['labels'][pred_idx].cpu().item()]
-
         box = output['boxes'][pred_idx].detach().cpu().numpy() 
-        
         c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
-        region = image.detach().cpu().numpy()
-        # regio = image.cpu().numpy()
-        region = region[c1[0]:c1[1], c2[0]:c2[1],:]
-        if region.shape[0] * region.shape[1] > 0:
-            #labelをclip特徴量に変換
-            tokenized_labels = clip.tokenize(label).to("cuda")
-            label_clip = clip_model.encode_text(tokenized_labels) #(len(label), 768)
-            _label_clip.append(label_clip)
+        region = image[:,c1[0]:c1[1], c2[0]:c2[1]] # TODO: H,W逆かも
+        if region.shape[1] * region.shape[2] > 0:
+            region_resized = torchvision.transforms.functional.resize(region,size=(224,224))
+            labels.append(label)
+            regions.append(region_resized.unsqueeze(0))
 
-            # print("label_clip[0]", label_clip[0].shape)
-            #label_clipとsubgoal_words_clipの類似度を全て計算
-            for idx, subgoal_word in enumerate(subgoal_words):
-                # print("subgoal_words_clip[idx]", subgoal_words_clip[idx].shape)
-                np.append(subgoal_words_idx_dict[subgoal_word], cossim(label_clip[0], subgoal_words_clip[idx]).detach().cpu().item())
-
-            _bbox.append(Image.fromarray(region, mode="RGB"))
-            _label.append(label)
-
-    top_k_indexs = {}
-    #各labelにおいて、各subgoal_wordとの類似度が最も高いものを5つ選択する
-    for subgoal_word in subgoal_words:
-        #各subgoal_wordに対して、類似度が高い順にソート
-        sort_idx = np.argsort(subgoal_words_idx_dict[subgoal_word])[::-1]
-        #類似度が高いindexを5つ取得
-        sort_idx = sort_idx[:num_of_use]
-        #この5つのindexに対応するboxとlabelを取得する
-        top_k_indexs[subgoal_word] = sort_idx
-        # for box, label in zip(np.array(_bbox)[sort_idx], np.array(_label_clip)[sort_idx]):
-        for i in range(len(_bbox)):
-            bboxes.append(_bbox[i])
-            labels.append(_label[i])
+    if len(regions) == 0:
+        return torch.zeros(1, 768).cuda()
     
-    #各boxに対して、CLIP特徴量を計算する
-    if len(bboxes) > 0:
-        feats = encode_clip_image(clip_preprocess, clip_model, bboxes, device="cuda:0")
-    else:
-        feats = torch.zeros(1, 768).to("cuda")
-    
-    return feats
-        
-        
+    regions = torch.cat(regions,dim=0) # (N,3,224,224)
 
-def encode_clip_image(clip_preprocess, clip_model, images, device="cuda:0"):
-    images = [clip_preprocess(image).unsqueeze(0).to("cuda") for image in images]
+    tokenized_labels = clip.tokenize(labels).to("cuda")
+    label_clip = clip_model.encode_text(tokenized_labels) # (N,D)
+    cossim = FF.cosine_similarity(subgoal_words_clip.unsqueeze(1), label_clip, dim=-1) # (M,D) @ (D,N)
+    sort_idxs = torch.argsort(cossim, dim=1)
+    sort_idxs = sort_idxs[:num_of_use]
+    bboxes_top5 = torch.cat([reshape_with_pad(regions[sort_idxs[i,:]],(num_of_use,3,224,224)) for i in range(sort_idxs.shape[0])],dim=0)
+    
+    if len(bboxes_top5) == 0:
+        return torch.zeros(1, 768).cuda()
+
+    # c.f. https://github.com/openai/CLIP/blob/main/clip/clip.py#L79
+    my_transform = Compose([
+        Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+    ])
+    
     with torch.no_grad():
-        feats = [clip_model.encode_image(image) for image in images]
+        batch_images = my_transform(bboxes_top5) # (5N,3,224,224)
+        feats = clip_model.encode_image(batch_images)
 
-        #featsがからであれば、0を入れる
-        if len(feats) == 0:
-            feats = torch.zeros(1, 768).to(device)
-        feats = torch.cat(feats, dim=0) # [len(images),768]
-
-    return feats
-
-    # torch.save(all_bboxes, os.path.join(input_path, "maskrcnn_bbox.pth"))
-    # torch.save(all_labels, os.path.join(input_path, "maskrcnn_label.pth"))
-
-
-
-    # # frame = Image.fromarray(images)
-    # feats = []
-    # labels = []
-    # for image in images:
-    #     rcnn_pred = obj_predictor.predict_objects(image)
-    #     regions = []
-    #     scores = []
-    #     label = []
-    #     for pred in rcnn_pred:
-    #         box = pred.box
-    #         c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
-    #         regio = np.array(image)
-    #         regio = region[c1[0]:c1[1], c2[0]:c2[1],:]
-    #         if region.shape[0] * region.shape[1] > 0:
-    #             regions.append(Image.fromarray(region))
-    #             label.append(pred.label)
-    #             scores.append(pred.score)
+    return feats if feats.shape[0] > 0 else torch.zeros(1, 768).cuda()
         
-    #     #scoreの上位3つを抽出
-    #     if len(scores) > 2:
-    #         top3_idx = np.argsort(scores)[::-1][:3]
-    #         regions = [regions[i] for i in top3_idx]
-    #         label = [label[i] for i in top3_idx]
-    #     else:
-    #         #zeroを追加
-    #         regions = regions + [Image.fromarray(np.zeros((224, 224, 3), dtype=np.uint8)) for _ in range(3 - len(regions))]
-    #         label = label + ["" for _ in range(3 - len(label))]
-            
-
-    #     feat = extractor.featurize_clip(regions).unsqueeze(0)
-    #     feats.append(feat)
-    #     label = extractor.tokenize_featurize_clip(label)
-    #     labels.append(label)
-    
-    # if len(feats) > 0: 
-    #     feats = torch.cat(feats, dim=0)
-    #     labels = torch.cat(labels, dim=0)
-    # else:
-    #     feats = torch.zeros(len(images), 3, 768)
-    #     labels = torch.zeros(len(images), 3, 768)
-    # # print("feats.shape:", feats.shape)
-    # # print("len(labels):", len(labels))
-    # return feats, labels
-
 def decompress_mask_alfred(mask_compressed_alfred):
     '''
     decompress mask array from ALFRED compression (initially contained in jsons)

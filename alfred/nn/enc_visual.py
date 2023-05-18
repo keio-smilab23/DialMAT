@@ -90,7 +90,7 @@ class RCNN(nn.Module):
         if checkpoint_path is not None:
             self.load_from_checkpoint(
                 checkpoint_path, load_heads, device, archi, 'backbone.body')
-        self.model = self.model.to('cuda')
+        self.model = self.model.to(torch.device(device))
         self.model = self.model.eval()
         if share_memory:
             self.model.share_memory()

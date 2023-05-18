@@ -9,7 +9,7 @@ import wandb
 from tqdm import tqdm
 from importlib import import_module
 from torch import nn
-from tensorboardX import SummaryWriter
+# from tensorboardX import SummaryWriter
 
 from alfred.utils import data_util, model_util
 
@@ -44,7 +44,7 @@ class LearnedModel(nn.Module):
                      for loader in loaders.values()}
         epoch_length = len(next(iter(loaders_train.values())))
         # initialize summary writer for tensorboardX
-        self.summary_writer = SummaryWriter(log_dir=self.args.dout)
+        # self.summary_writer = SummaryWriter(log_dir=self.args.dout)
         # dump config
         with open(os.path.join(self.args.dout, 'config.json'), 'wt') as f:
             json.dump(vars(self.args), f, indent=2)

@@ -61,7 +61,8 @@ class LearnedModel(nn.Module):
         print("Saving to: %s" % self.args.dout)
         for epoch in range(info['progress'], self.args.epochs):
             print('Epoch {}/{}'.format(epoch, self.args.epochs))
-            self.train()
+            self.eval()
+            # self.train()
             train_iterators = {
                 key: iter(loader) for key, loader in loaders_train.items()}
             metrics = {key: collections.defaultdict(list) for key in loaders_train}
@@ -84,39 +85,40 @@ class LearnedModel(nn.Module):
                         len(traj_data) if ':' not in batch_name else 0)
                 gt.stamp('forward pass', unique=False)
                 # compute losses
-                losses_train = self.model.compute_loss(
-                    model_outs,
-                    {key: gt_dict for key, (_, _, _, gt_dict) in batches.items()})
+                if not self.args.update_feat:
+                    losses_train = self.model.compute_loss(
+                        model_outs,
+                        {key: gt_dict for key, (_, _, _, gt_dict) in batches.items()})
 
-                # do the gradient step
-                optimizer.zero_grad()
-                sum_loss = sum(
-                    [sum(loss.values()) for name, loss in losses_train.items()])
-                sum_loss.backward()
-                optimizer.step()
-                gt.stamp('optimizer', unique=False)
+                    # do the gradient step
+                    optimizer.zero_grad()
+                    sum_loss = sum(
+                        [sum(loss.values()) for name, loss in losses_train.items()])
+                    # sum_loss.backward()
+                    # optimizer.step()
+                    gt.stamp('optimizer', unique=False)
 
-                # compute metrics
-                for dataset_name in losses_train.keys():
-                    self.model.compute_metrics(
-                        model_outs[dataset_name], batches[dataset_name][3],
-                        # model_outs[dataset_name], batches[dataset_name][2],
-                        metrics['train:' + dataset_name])
-                    for key, value in losses_train[dataset_name].items():
-                        metrics['train:' + dataset_name]['loss/' + key].append(
-                            value.item())
-                    metrics['train:' + dataset_name]['loss/total'].append(
-                        sum_loss.detach().cpu().item())
+                    # compute metrics
+                    for dataset_name in losses_train.keys():
+                        self.model.compute_metrics(
+                            model_outs[dataset_name], batches[dataset_name][3],
+                            # model_outs[dataset_name], batches[dataset_name][2],
+                            metrics['train:' + dataset_name])
+                        for key, value in losses_train[dataset_name].items():
+                            metrics['train:' + dataset_name]['loss/' + key].append(
+                                value.item())
+                        metrics['train:' + dataset_name]['loss/total'].append(
+                            sum_loss.detach().cpu().item())
 
-                gt.stamp('metrics', unique=False)
+                    gt.stamp('metrics', unique=False)
                 
-                if self.args.profile:
-                    print(gt.report(include_itrs=False, include_stats=False))
+                    if self.args.profile:
+                        print(gt.report(include_itrs=False, include_stats=False))
 
-            # compute metrics for train
-            print('Computing train and validation metrics...')
-            metrics = {data: {k: sum(v) / len(v) for k, v in metr.items()}
-                       for data, metr in metrics.items()}
+                    # compute metrics for train
+                    print('Computing train and validation metrics...')
+                    metrics = {data: {k: sum(v) / len(v) for k, v in metr.items()}
+                            for data, metr in metrics.items()}
 
             # compute metrics for valid_seen
             for loader_id, loader in loaders_valid.items():
@@ -125,27 +127,28 @@ class LearnedModel(nn.Module):
                         loader, vocabs_in[loader_id.split(':')[-1]],
                         loader_id, info['iters'])
 
-            #追加
-            # arrange metrics
-            result = {}
-            for k, v in metrics.items():
-                for kk, vv in v.items():
-                    result[k.split(':')[0] + '_' + kk] =  vv
+            if not self.args.update_feat:
+                #追加
+                # arrange metrics
+                result = {}
+                for k, v in metrics.items():
+                    for kk, vv in v.items():
+                        result[k.split(':')[0] + '_' + kk] =  vv
 
-            if self.args.wandb:
-                wandb.log(result)
-            
-            print("metrics: ", result)
+                if self.args.wandb:
+                    wandb.log(result)
+                
+                print("metrics: ", result)
 
-            stats = {'epoch': epoch, 'general': {
-                'learning_rate': optimizer.param_groups[0]['lr']}, **metrics}
-            
+                stats = {'epoch': epoch, 'general': {
+                    'learning_rate': optimizer.param_groups[0]['lr']}, **metrics}
+                
 
-            # save the checkpoint
-            print('Saving models...')
-            model_util.save_model(
-                self, 'model_{:02d}.pth'.format(epoch), stats, optimizer=optimizer)
-            model_util.save_model(self, 'latest.pth', stats, symlink=True)
+                # save the checkpoint
+                print('Saving models...')
+                model_util.save_model(
+                    self, 'model_{:02d}.pth'.format(epoch), stats, optimizer=optimizer)
+                model_util.save_model(self, 'latest.pth', stats, symlink=True)
 
             #追加
             if self.args.valid:
@@ -163,23 +166,23 @@ class LearnedModel(nn.Module):
                     with open(os.path.join(self.args.dout, 'done.txt'), 'w') as f:
                         f.write('done')
 
-
-            # write averaged stats
-            for loader_id in stats.keys():
-                if isinstance(stats[loader_id], dict):
-                    for stat_key, stat_value in stats[loader_id].items():
-                        # for comparison with old epxs, maybe remove later
-                        summary_key = '{}/{}'.format(
-                            loader_id.replace(':', '/').replace(
-                                'lmdb/', '').replace(';lang', '').replace(';', '_'),
-                            stat_key.replace(':', '/').replace('lmdb/', ''))
-                        self.summary_writer.add_scalar(
-                            summary_key, stat_value, info['iters']['train'])
-            # dump the training info
-            model_util.save_log(
-                self.args.dout, progress=epoch+1, total=self.args.epochs,
-                stage='train', best_loss=info['best_loss'], iters=info['iters'])
-            model_util.adjust_lr(optimizer, self.args, epoch, schedulers)
+            if not self.args.update_feat:
+                # write averaged stats
+                for loader_id in stats.keys():
+                    if isinstance(stats[loader_id], dict):
+                        for stat_key, stat_value in stats[loader_id].items():
+                            # for comparison with old epxs, maybe remove later
+                            summary_key = '{}/{}'.format(
+                                loader_id.replace(':', '/').replace(
+                                    'lmdb/', '').replace(';lang', '').replace(';', '_'),
+                                stat_key.replace(':', '/').replace('lmdb/', ''))
+                            self.summary_writer.add_scalar(
+                                summary_key, stat_value, info['iters']['train'])
+                # dump the training info
+                model_util.save_log(
+                    self.args.dout, progress=epoch+1, total=self.args.epochs,
+                    stage='train', best_loss=info['best_loss'], iters=info['iters'])
+                model_util.adjust_lr(optimizer, self.args, epoch, schedulers)
         print('{} epochs are completed, all the models were saved to: {}'.format(
             self.args.epochs, self.args.dout))
 
@@ -194,14 +197,19 @@ class LearnedModel(nn.Module):
             task_path, traj_data, input_dict, gt_dict = data_util.tensorize_and_pad(
                 batch, self.args.device, self.pad)
             model_out = self.model.forward(
-                vocab_in, action=gt_dict['action'], **input_dict)
-            loss = self.model.compute_batch_loss(model_out, gt_dict)
-            for k, v in loss.items():
-                ln = 'loss/' + k
-                m_valid[ln].append(v.item())
-            self.model.compute_metrics(
-                model_out, gt_dict, m_valid, verbose=(batch_idx == 1))
-            iters_valid[name] += len(traj_data)
-            m_valid['loss/total'].append(sum(loss.values()).detach().cpu().item())
-        m_valid = {k: sum(v) / len(v) for k, v in m_valid.items()}
-        return m_valid
+                task_path, vocab_in, action=gt_dict['action'], **input_dict)
+            if not self.args.update_feat:
+                loss = self.model.compute_batch_loss(model_out, gt_dict)
+                for k, v in loss.items():
+                    ln = 'loss/' + k
+                    m_valid[ln].append(v.item())
+                self.model.compute_metrics(
+                    model_out, gt_dict, m_valid, verbose=(batch_idx == 1))
+                iters_valid[name] += len(traj_data)
+                m_valid['loss/total'].append(sum(loss.values()).detach().cpu().item())
+        
+        if not self.args.update_feat:
+            m_valid = {k: sum(v) / len(v) for k, v in m_valid.items()}
+            return m_valid  
+        else:
+            return None

@@ -5,8 +5,11 @@ import contextlib
 import numpy as np
 import torch.nn as nn
 
+from PIL import Image
+
 from torchvision import models
 from torchvision.transforms import functional as F
+from torch.nn.utils.rnn import pad_sequence
 
 from alfred.gen import constants
 from alfred.nn.transforms import Transforms
@@ -67,7 +70,7 @@ class RCNN(nn.Module):
             self.model = models.detection.maskrcnn_resnet50_fpn(
                 pretrained=(checkpoint_path is None),
                 pretrained_backbone=(checkpoint_path is None),
-                min_size=800)
+                min_size=800).to(('cuda'))
         elif archi == 'fasterrcnn':
             self.model = models.detection.fasterrcnn_resnet50_fpn(
                 pretrained=(checkpoint_path is None),
@@ -87,7 +90,7 @@ class RCNN(nn.Module):
         if checkpoint_path is not None:
             self.load_from_checkpoint(
                 checkpoint_path, load_heads, device, archi, 'backbone.body')
-        self.model = self.model.to(torch.device(device))
+        self.model = self.model.to('cuda')
         self.model = self.model.eval()
         if share_memory:
             self.model.share_memory()
@@ -155,7 +158,24 @@ class RCNN(nn.Module):
                 pred.mask = output['masks'][pred_idx].cpu().numpy()
             preds.append(pred)
         return preds
-
+    
+    def predict_objects_batch(self, images, confidence_threshold=0.0, verbose=False):
+        images = torch.stack([F.to_tensor(img) for img in images]).to(torch.device(self.device))
+        outputs = self.model(images)
+        preds = []
+        for output in outputs:
+            pred = []
+            for pred_idx in range(len(output['scores'])):
+                score = output['scores'][pred_idx].cpu().item()
+                if score < confidence_threshold:
+                    continue
+                box = output['boxes'][pred_idx].cpu().numpy()
+                label = self.vocab_pred[output['labels'][pred_idx].cpu().item()]
+                pred.append(types.SimpleNamespace(
+                    label=label, box=box, score=score))
+            preds.append(pred)
+        return preds
+    
 
 class FeatureExtractor(nn.Module):
     def __init__(self,
@@ -173,7 +193,7 @@ class FeatureExtractor(nn.Module):
             self.model = Resnet18(device, checkpoint, share_memory)
         else:
             self.model = RCNN(
-                archi, device, checkpoint, share_memory, load_heads=load_heads)
+                archi, 'cuda', checkpoint, share_memory, load_heads=load_heads)
         self.compress_type = compress_type
         # load object class vocabulary
         vocab_obj_path = os.path.join(
@@ -225,6 +245,11 @@ class FeatureExtractor(nn.Module):
     def predict_objects(self, image, verbose=False):
         with torch.set_grad_enabled(False):
             pred = self.model.predict_objects(image, verbose=verbose)
+        return pred
+    
+    def predict_objects_batch(self, images, verbose=False):
+        with torch.set_grad_enabled(False):
+            pred = self.model.predict_objects_batch(images, verbose=verbose)
         return pred
 
     def train(self, mode):

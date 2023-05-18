@@ -91,7 +91,7 @@ def cfg_train():
     mat_text = False
     mat_image = False
     mat_action = False
-    overwrite_feat = False
+    update_feat = True
     # mat_object = False
 
     # GENERAL TRANING SETTINGS

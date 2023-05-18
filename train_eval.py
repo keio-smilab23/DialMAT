@@ -354,7 +354,7 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
         
     env.stop()
 
-def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, split_id, max_steps, print_every=1, save_every=100, use_qa_everytime=False):
+def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, split_id, max_steps, print_every=1, save_every=100, use_qa_everytime=False, teacher_forcing=True):
     start = time.time()
     env = ThorEnv(x_display=1)
     obj_predictor = FeatureExtractor(archi='maskrcnn', device=device,
@@ -391,6 +391,15 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
         subgoal_idxs = [sg['high_idx'] for sg in task_json[0]['plan']['high_pddl']]
         # ignore the last subgoal which is often the padding one
         subgoal_idxs = subgoal_idxs[:-1]
+
+        trial_uid = "pad:" + str(0) + ":" + str(0)
+        dataset_idx_qa = 0 + dataset_idx
+
+        if not teacher_forcing:
+            init_states = evaluate_subgoals_start_qa(
+                    env, performer, dataset, extractor, trial_uid, dataset_idx_qa, args, obj_predictor)
+            _, _, _, init_failed, _ = init_states
+
         for subgoal_idx in subgoal_idxs:
             current_query = []
             current_object_found = []
@@ -402,9 +411,11 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
             # set up the performer for expect actions first
             trial_uid = "pad:" + str(0) + ":" + str(subgoal_idx)
             dataset_idx_qa = 0 + dataset_idx
-            init_states = evaluate_subgoals_start_qa(
-                env, performer, dataset, extractor, trial_uid, dataset_idx_qa, args, obj_predictor)
-            _, _, _, init_failed, _ = init_states
+
+            if teacher_forcing:
+                init_states = evaluate_subgoals_start_qa(
+                    env, performer, dataset, extractor, trial_uid, dataset_idx_qa, args, obj_predictor)
+                _, _, _, init_failed, _ = init_states
 
             task, trial = task_json[0]['task'].split("/")
             pair = (None, None, task, trial, subgoal_idx)
@@ -413,7 +424,11 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
             qa = ""
             reward = 0
             all_instr.append(orig_instr)
-            interm_states = None
+            if teacher_forcing:
+                interm_states = None
+            else:
+                if subgoal_idx == 0:
+                    interm_states = None
             pws = 0.0
             t_agent_old = 0
             while True:
@@ -591,7 +606,7 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                 # performer rollout for some steps
                 with torch.no_grad():
                     log_entry, interm_states = evaluate_subgoals_middle_qa(env, performer, dataset, extractor, \
-                        trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, num_rollout=5)
+                        trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, num_rollout=5, teacher_forcing=teacher_forcing)
 
                 if log_entry['success']:
                     reward += REWARD_SUC
@@ -689,7 +704,7 @@ def evalModel(args):
     np.random.seed(0)
     data_split = "pseudo_test"
     train_id = 1
-    logging.basicConfig(filename='./logs/rl_anytime_eval_'+ data_split + str(train_id) + '.log', level=logging.INFO)
+    logging.basicConfig(filename='./logs/rl_anytime_eval_without_teacher_forcing_'+ data_split + str(train_id) + '.log', level=logging.INFO)
 
     use_qa_everytime = args.use_qa_everytime
 
@@ -741,7 +756,7 @@ def evalModel(args):
     with open(dir_ans_fn, "rb") as f:
         dir_ans = pickle.load(f)
     all_ans = [loc_ans, app_ans, dir_ans]
-    evalIters(model_args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, split_id=data_split + str(train_id), max_steps=1000, print_every=1, save_every=10, use_qa_everytime=use_qa_everytime)
+    evalIters(model_args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, split_id=data_split + str(train_id), max_steps=1000, print_every=1, save_every=10, use_qa_everytime=use_qa_everytime, teacher_forcing=args.teacher_forcing)
 
 
 def main():
@@ -750,6 +765,7 @@ def main():
     parser.add_argument("--questioner-path", dest="questioner_path", type=str, default="./logs/pretrained/questioner_anytime_finetuned.pt")
     parser.add_argument("--performer-path", dest="performer_path", type=str, default="./logs/pretrained/performer/latest.pth")
     parser.add_argument("--use_qa_everytime", action='store_true')
+    parser.add_argument("--teacher_forcing", action='store_true')
     # parser.add_argument("--clip_resnet", action='store_false')
     # parser.add_argument("--clip_text", action='store_false')
     # parser.add_argument("--deberta", action='store_false')

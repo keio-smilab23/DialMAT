@@ -14,9 +14,9 @@ from alfred.env.thor_env import ThorEnv
 from alfred.nn.enc_visual import FeatureExtractor
 from alfred.utils import data_util, model_util
 
-import nltk
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
+# import nltk
+# nltk.download('punkt')
+# nltk.download('averaged_perceptron_tagger')
 
 def setup_scene(env, traj_data, reward_type='dense', test_split=False):
     '''
@@ -223,10 +223,13 @@ def extract_rcnn_pred(_class, obj_predictor, env, verbose=False, is_idx=True):
         visible_objs = [
             obj for obj in env.last_event.metadata['objects']
             if obj['visible'] and obj['objectId'].startswith(class_name + '|')]
+        # print(candidates, visible_objs)
         print('Agent prediction = {}, detected {} objects (visible {})'.format(
             class_name, len(candidates), len(visible_objs)))
     if len(candidates) > 0:
+        # print(env.last_interaction)
         if env.last_interaction[0] == class_idx and env.last_interaction[1] is not None:
+            # print("+++++++++A")
             # last_obj['id'] and class_name + '|' in env.last_obj['id']:
             # do the association based selection
             last_center = np.array(env.last_interaction[1].nonzero()).mean(axis=1)
@@ -236,6 +239,7 @@ def extract_rcnn_pred(_class, obj_predictor, env, verbose=False, is_idx=True):
             index = np.argmin(distances)
             mask = candidates[index].mask[0]
         else:
+            # print("+++++++++B")
             # do the confidence based selection
             index = np.argmax([p.score for p in candidates])
             mask = candidates[index].mask[0]
@@ -273,20 +277,21 @@ def agent_step_mc(
 
     # rule-based action selection
     rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
-    target_nouns = extract_nouns(subgoal_instr)
+    # target_nouns = extract_nouns(subgoal_instr)
     llm_target = llm_data[-1][1]
     llm_action = llm_data[-1][0]
-    manipulation_words = ["grab", "place", "pick", "open","close", "push", "switch", "take"]
+    llm_destination = llm_data[-1][1]
+    # manipulation_words = ["grab", "place", "pick", "open","close", "push", "switch", "take"]
 
-    if llm_action != "MoveTo":
-        mask, _ = extract_rcnn_pred(llm_target, obj_predictor,env,args.debug,is_idx=False)
-        if mask is not None:
-            m_pred['mask_rcnn'] = mask
-            action = llm_action
-            action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
-            m_pred['action'] = action
-            print("== rule-based action selection ==")
-            print(f"target: {llm_target}, action: {llm_action}")
+    # if llm_action != "MoveTo":
+    #     mask, _ = extract_rcnn_pred(llm_target, obj_predictor,env,args.debug,is_idx=False)
+    #     if mask is not None:
+    #         m_pred['mask_rcnn'] = mask
+    #         action = llm_action
+    #         action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
+    #         m_pred['action'] = action
+    #         print("== rule-based action selection ==")
+    #         print(f"target: {llm_target}, action: {llm_action}")
 
     # print(target_nouns, llm_target, llm_action)
     # for word in subgoal_instr.split():
@@ -302,6 +307,22 @@ def agent_step_mc(
     #             print("== rule-based action selection ==")
     #             print(f"target: {llm_target}, action: {llm_action}")
     #             break
+
+    
+    if not env.last_event.metadata['lastActionSuccess']: # 強制修正したが last action が success でない場合は指示どおりにする
+        if llm_action == "PickupObject":
+            obj = vocab['word'].word2index(llm_target.lower()) if model_util.has_interaction(action) else None
+            mask, _ = extract_rcnn_pred(llm_target, obj_predictor, env, verbose=True, is_idx=False)
+            m_pred['mask_rcnn'] = mask
+            if mask is not None:
+                action = "PickupObject"
+                action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
+                m_pred['action'] = action
+                print("== rule-based action selection ==     ", end="")
+                print(f"target: {llm_target}, action: {llm_action}")
+        elif llm_action == "PutObject":
+
+    print(f"subgoal : {subgoal_instr},  action: {action}, {obj}, llm_output: {llm_data}")
 
 
     # if obj is not None:
@@ -320,21 +341,28 @@ def agent_step_mc(
         pass
 
     # use the predicted action
-    episode_end = (action == constants.STOP_TOKEN)
+    # episode_end = (action == constants.STOP_TOKEN)
     api_action = None
     # constants.TERMINAL_TOKENS was originally used for subgoal evaluation
     target_instance_id = ''
-    if not episode_end:
-        step_success, _, target_instance_id, err, api_action = env.va_interact(
-            action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
-        env.last_interaction = (obj, mask)
-        if not step_success:
-            num_fails += 1
-            if num_fails >= args.max_fails:
-                if args.debug:
-                    print("Interact API failed {} times; latest error '{}'".format(
-                        num_fails, err))
-                episode_end = True
+    # if not episode_end:
+
+    episode_end = False
+    step_success, _, target_instance_id, err, api_action = env.va_interact(
+        action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
+    env.last_interaction = (obj, mask)
+
+    if step_success: # success & llm_action と action が一致してる場合
+        if llm_action == action:
+            episode_end = True
+    else:
+        print(f"+++ ERROR: {err}")
+        num_fails += 1
+        if num_fails >= args.max_fails:
+            # if args.debug:
+            #     print("Interact API failed {} times; latest error '{}'".format(
+            #         num_fails, err))
+            episode_end = True
     return episode_end, str(action), num_fails, target_instance_id, api_action, mc_array
 
 def agent_step(

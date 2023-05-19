@@ -799,14 +799,30 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
             except:
                 print("c")
             action_dict = {'Open': 'OpenObject', 'Close':'CloseObject', 'Put-At/In':'PutObject', 'Toggle-On':'ToggleObjectOn', 'Toggle-Off': 'ToggleObjectOff', 'Move-To':'MoveTo', 'Pickup':'PickupObject', 'Clean':'XXX', 'Heat':'XXX', 'Cool':'XXX', 'Slice':'SliceObject', 'Look-At-In-Light':'XXX'}
-            object_action = ['Toggle-On', 'Toggle-Off', 'Pickup', 'Clean', 'Heat', 'Look-At-In-Light']
-            destination_action = ['Open', 'Close', 'Put-At/In', 'Move-To']
+            # object_action = ['Toggle-On', 'Toggle-Off', 'Pickup']
+            destination_action = ['Open', 'Close', 'Put-At/In']
+            object_action = ['Toggle-On', 'Toggle-Off', 'Pickup']
+            # destination_action = []
             llm_data = []
+            # for pair in llm_output[str(subgoal_idx)]:
+            #     if pair[0] in object_action:
+            #         llm_data.append([action_dict[pair[0]], pair[1]])
+            #     elif pair[0] in destination_action:
+            #         llm_data.append([action_dict[pair[0]], pair[2]])
+            #     else:
+            #         tmp_action = action_dict[pair[0]]
+            #         if pair[0] != 'Move-To':
+            #             tmp_action = "None"
+            #         if pair[1] != "None":
+            #             llm_data.append([tmp_action, pair[1]])
+            #         elif pair[2] != "None":
+            #             llm_data.append([tmp_action, pair[2]])
+            #         else:
+            #             llm_data.append([tmp_action, "None"])
             for pair in llm_output[str(subgoal_idx)]:
-                if pair[0] in object_action:
-                    llm_data.append([action_dict[pair[0]], pair[1]])
-                elif pair[0] in destination_action:
-                    llm_data.append([action_dict[pair[0]], pair[2]])
+                llm_data.append([action_dict[pair[0]], pair[1], pair[2]])
+                
+                    
             
             # print(llm_data)
             # sys.exit()

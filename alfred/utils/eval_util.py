@@ -397,9 +397,12 @@ def agent_step_mc(
     if args.debug:
         print("Predicted action: {}".format(action))
 
-    mask = None
     obj = m_pred['object'][0][0] if model_util.has_interaction(action) else None
     original_obj = obj_predictor.vocab_obj.index2word(obj) if obj else None
+    if obj is not None:
+        mask, target = extract_rcnn_pred(obj, obj_predictor, env, verbose=False)
+    else:
+        mask, target = None, None
 
     llm_action = llm_data[-1][0]
     # rule-based action selection
@@ -415,9 +418,9 @@ def agent_step_mc(
             action = "MoveAhead_25"
             action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
 
+
     will_execute = True
     is_rule_based_target = False
-    target = None
     if prev_action != llm_action:
         will_execute, is_rule_based_target, m_pred, target, obj, action, mask \
             = rule_based_planner(action,obj,llm_data,obj_predictor,m_pred,env,m_out,model,args)

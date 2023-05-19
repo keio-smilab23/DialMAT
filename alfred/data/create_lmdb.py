@@ -6,6 +6,10 @@ import pickle
 import threading
 import copy
 
+import nltk
+from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.tag import pos_tag
+
 from progressbar import ProgressBar
 from pathlib import Path
 from sacred import Ingredient, Experiment
@@ -67,12 +71,29 @@ def process_feats(clip_model, traj_paths, extractor, obj_predictor, lock, image_
         filename_new = '{}:{}:{}.pt'.format(
             *[traj_path.parents[i].name for i in (2, 1, 0)])
         # extract features with th extractor
+
+        # load trajectory json
+        with open(traj_path, 'r') as f:
+            traj_data = json.load(f)
+
+        # print("turk_annotation", traj_data['turk_annotations']['anns'][0]['high_descs'])
+        
+        high_descs = ""
+        for i in range(len(traj_data['turk_annotations']['anns'][0]['high_descs'])):
+            high_descs += traj_data['turk_annotations']['anns'][0]['high_descs'][i]
+        
+        nouns = extract_nouns(high_descs)
+
         images = data_util.read_traj_images(traj_path, image_folder)
         feat = data_util.extract_features(images, extractor)
         feat_clip = data_util.extract_clip_features(images, extractor)
-        feat_maskrcnn, lengths = data_util.get_maskrcnn_features_score_lmdb(images, obj_predictor, clip_model)
-        # feat_region, feat_labels = data_util.extract_region_features(images, extractor, obj_predictor)
-        
+        feat_maskrcnn_bboxs, feat_maskrcnn_label = data_util.get_maskrcnn_features_similarity_lmdb(images, obj_predictor, clip_model, nouns)
+        # print("nouns", len(nouns))
+        # print("feat_maskrcnn_bbox.shape: ", feat_maskrcnn_bbox.shape)
+        # print("feat_maskrcnn_label.shape: ", feat_maskrcnn_label.shape)
+        # print("lengths", lengths)
+
+        # feat_region, feat_labels = data_util.extract_region_features(images, extractor, obj_predictor)#feat_maskrcnn.shape:  torch.Size([2, 32, 1, 1024]), feat.shape:  torch.Size([32, 512, 7, 7]), 32
         # print("feat.shape: ", feat.shape) torch.Size([46, 512, 7, 7])
         # print("feat_clip.shape: ", feat_clip.shape) torch.Size([46, 768])
         # print("feat_region.shape: ", feat_region.shape) torch.Size([46, 3, 768])
@@ -81,8 +102,9 @@ def process_feats(clip_model, traj_paths, extractor, obj_predictor, lock, image_
         # print("len(images)", len(images)) #len(images) ex. 51...
         # print("images[0]: ", images[0]) #images[0]:  <PIL.Image.Image image mode=RGB size=300x300 at 0x7FCC5328E358>
         # print("feat.shape: ", feat.shape) #feat.shape:  torch.Size([51, 512, 7, 7])
+        
         if feat is not None:
-            torch.save([feat,feat_clip,feat_maskrcnn,lengths], save_path / 'feats' / filename_new)
+            torch.save([feat,feat_clip,feat_maskrcnn_bboxs,feat_maskrcnn_label], save_path / 'feats' / filename_new)
         with lock:
             with open(save_path.parents[0] / 'processed_feats.txt', 'a') as f:
                 f.write(str(traj_path) + '\n')
@@ -93,7 +115,22 @@ def process_feats(clip_model, traj_paths, extractor, obj_predictor, lock, image_
     if str(save_path).endswith('/worker00'):
         progressbar.finish()
 
-
+def extract_nouns(text):
+    nouns = []
+    # 単語をトークン化
+    words = word_tokenize(text)
+    # 単語の品詞タグ付け
+    tagged_words = nltk.pos_tag(words)
+    
+    for word, tag in tagged_words:
+        # 名詞のみを抽出
+        if tag.startswith('NN'):
+            nouns.append(word)
+    
+    #nounsをアルファベット順にする
+    nouns.sort()
+    return nouns
+    
 def process_jsons(traj_paths, preprocessor, lock, save_path):
     save_path.mkdir(exist_ok=True)
     (save_path / 'masks').mkdir(exist_ok=True)
@@ -214,7 +251,7 @@ def gather_data(output_path, num_workers):
                 path_symlink.symlink_to(path_file)
 
     # partitions = ('pseudo_valid', 'pseudo_test')
-    partitions = ('train', 'valid_seen', 'pseudo_test', 'pseudo_valid')
+    partitions = ('train', 'pseudo_test')
     if not (output_path / '.deleting_worker_dirs').exists():
         for partition in partitions:
             print('Processing {} trajectories'.format(partition))
@@ -242,6 +279,10 @@ def gather_data(output_path, num_workers):
 
 @ex.automain
 def main(args):
+    nltk.download('punkt')
+    nltk.download('averaged_perceptron_tagger')
+    nltk.download('wordnet')
+
     torch.multiprocessing.set_start_method('spawn')
     args = helper_util.AttrDict(**args)
     if args.data_output is None:

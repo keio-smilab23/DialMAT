@@ -709,6 +709,7 @@ def draw_bbox(roi_list, image):
     import cv2
     image = copy.deepcopy(image)
     for roi in roi_list:
+        if roi.score < THR_SCORE: continue
         box, label, score = roi.box, roi.label, roi.score
         c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
         display_txt = "%s: %.1f%%" % (label, 100 * score)
@@ -830,7 +831,7 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
             # print(prev_action, )
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,
-                num_fails, obj_predictor, rcnn_pred, subgoal_instr, llm_data)
+                num_fails, obj_predictor, rcnn_pred, subgoal_instr, llm_data,subgoal_idx,action_idx)
             mc_lists.append(mc_array[0] - mc_array[1])
             # get rewards and subgoal success
             # reward += env.get_transition_reward()[0]
@@ -936,7 +937,7 @@ def main():
     parser.add_argument("--performer-path", dest="performer_path",
                         type=str, default="./logs/pretrained/performer/latest.pth")
     parser.add_argument("--use_qa_everytime", action='store_true')
-    parser.add_argument("--test_id", type=str, default="0001")
+    parser.add_argument("--test_id", type=str, default="0027")
     args = parser.parse_args()
     # path to testset json file
     # input_jsons = [str(path) for path in Path(os.environ['DF_ROOT'] + "/testset/new_dialfred_testset_final/").glob("*.json")]

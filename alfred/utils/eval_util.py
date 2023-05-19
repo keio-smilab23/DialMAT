@@ -223,8 +223,8 @@ def extract_rcnn_pred(_class, obj_predictor, env, verbose=False, is_idx=True):
     extract a pixel mask using a pre-trained MaskRCNN
     '''
     # print(obj_predictor.vocab_obj.to_dict()["index2word"])
-    obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]
     rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
+    obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]
     if not is_idx and _class not in obj_list:
         class_name = get_closest_object(_class, obj_list)
         class_idx = obj_predictor.vocab_obj.word2index(class_name)
@@ -305,7 +305,13 @@ def agent_step_mc(
     failed_rule = False
     if prev_action != llm_action:
         if llm_action == "PickupObject":
-            obj = vocab['word'].word2index(llm_target.lower()) if model_util.has_interaction(action) else None
+            obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
+            if llm_target not in obj_list:
+                class_name = get_closest_object(llm_target, obj_list)
+                obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(action) else None
+                print("<Could not find class>", llm_target, class_name)
+            else:
+                obj = obj_predictor.vocab_obj.word2index(llm_target) if model_util.has_interaction(action) else None
             mask, _ = extract_rcnn_pred(llm_target, obj_predictor, env, verbose=False, is_idx=False)
             if mask is not None:
                 m_pred['mask_rcnn'] = mask
@@ -318,7 +324,15 @@ def agent_step_mc(
                 failed_rule = True
 
         elif llm_action == "PutObject":
-            obj = vocab['word'].word2index(llm_destination.lower()) if model_util.has_interaction(action) else None
+            # obj = vocab['word'].word2index(llm_destination.lower()) if model_util.has_interaction(action) else None
+            obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
+            if llm_destination not in obj_list:
+                class_name = get_closest_object(llm_destination, obj_list)
+                obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(action) else None
+                print("<Could not find class>", llm_destination, class_name)
+            else:
+                obj = obj_predictor.vocab_obj.word2index(llm_destination) if model_util.has_interaction(action) else None
+
             mask, _ = extract_rcnn_pred(llm_destination, obj_predictor, env, verbose=False, is_idx=False)
             if mask is not None:
                 m_pred['mask_rcnn'] = mask
@@ -329,6 +343,31 @@ def agent_step_mc(
                 print(f"destination: {llm_destination}, action: {llm_action}")
             else:
                 failed_rule = True
+
+        elif llm_action == "OpenObject" or llm_action == "CloseObject":
+            if llm_destination != "None":
+                moveto_obj = llm_destination
+            elif llm_target != "None":       
+                moveto_obj = llm_target
+            obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
+            if llm_target not in obj_list:
+                class_name = get_closest_object(moveto_obj, obj_list)
+                obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(action) else None
+                print("<Could not find class>", moveto_obj, class_name)
+            else:
+                obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(action) else None
+            
+            mask, _ = extract_rcnn_pred(moveto_obj, obj_predictor, env, verbose=False, is_idx=False)
+            if mask is not None:
+                m_pred['mask_rcnn'] = mask
+                action = llm_action
+                m_pred['action'] = action
+                print("== rule-based action selection ==     ", end="")
+                print(f"destination: {moveto_obj}, action: {llm_action}")
+            else:
+                failed_rule = True
+            
+
 
     print(f"subgoal : {subgoal_instr},  action: {action}, llm_output: {llm_data}")
 
@@ -344,14 +383,22 @@ def agent_step_mc(
         action = constants.STOP_TOKEN
         return episode_end, str(action), num_fails, target_instance_id, api_action, mc_array
 
+    step_success = True
+
     if not episode_end:
-        if not (failed_rule and (action == "PickupObject" or action == "PutObject")):
-            step_success, _, target_instance_id, err, api_action = env.va_interact(
-                action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
-            env.last_interaction = (obj, mask)
+        # if not (failed_rule and (action == "PickupObject" or action == "PutObject")):
+        step_success, _, target_instance_id, err, api_action = env.va_interact(
+            action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
+        env.last_interaction = (obj, mask)
 
         if not step_success:
             print(f"+++ ERROR: {err}")
+
+            if "No valid Receptacle found" in str(err):
+                pass
+            elif "object not found" in str(err):
+                pass
+
             num_fails += 1
             if num_fails >= args.max_fails:
                 if args.debug:

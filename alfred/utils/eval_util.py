@@ -223,41 +223,47 @@ def extract_rcnn_pred(_class, obj_predictor, env, verbose=False, is_idx=True):
     extract a pixel mask using a pre-trained MaskRCNN
     '''
     # print(obj_predictor.vocab_obj.to_dict()["index2word"])
-    rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
-    obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]
-    if not is_idx and _class not in obj_list:
-        class_name = get_closest_object(_class, obj_list)
-        class_idx = obj_predictor.vocab_obj.word2index(class_name)
-        print("<Could not find class>", _class, class_name)
-    else:
-    # import sys; sys.exit()
-        class_name = obj_predictor.vocab_obj.index2word(_class) if is_idx else _class
-        class_idx = obj_predictor.vocab_obj.word2index(_class) if not is_idx else _class
+    actions = ["LookUp_15", "LookDown_15","LookDown_15","LookUp_15"]
+    for action in actions:
+        _ = env.va_interact(action, interact_mask=None,smooth_nav=False) # 最初に首を動かしておく
 
-    candidates = list(filter(lambda p: p.label == class_name and p.score > 0.3, rcnn_pred))
-    # print(f"detected bbox ({class_name};{[str(int(c.score * 100)) + '%' for c in candidates]}):",[c.box for c in candidates])
-    target = None
-    if verbose:
-        visible_objs = [
-            obj for obj in env.last_event.metadata['objects']
-            if obj['visible'] and obj['objectId'].startswith(class_name + '|')]
-        print('Agent prediction = {}, detected {} objects (visible {})'.format(
-            class_name, len(candidates), len(visible_objs)))
-    if len(candidates) > 0:
-        if env.last_interaction[0] == class_idx and env.last_interaction[1] is not None:
-            last_center = np.array(env.last_interaction[1].nonzero()).mean(axis=1)
-            cur_centers = np.array(
-                [np.array(c.mask[0].nonzero()).mean(axis=1) for c in candidates])
-            distances = ((cur_centers - last_center)**2).sum(axis=1)
-            index = np.argmin(distances)
-            mask = candidates[index].mask[0]
-            target = candidates[index]
+        rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
+        obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]
+        if not is_idx and _class not in obj_list:
+            class_name = get_closest_object(_class, obj_list)
+            class_idx = obj_predictor.vocab_obj.word2index(class_name)
+            print("<Could not find class>", _class, class_name)
         else:
-            index = np.argmax([p.score for p in candidates])
-            mask = candidates[index].mask[0]
-            target = candidates[index]
-    else:
-        mask = None
+        # import sys; sys.exit()
+            class_name = obj_predictor.vocab_obj.index2word(_class) if is_idx else _class
+            class_idx = obj_predictor.vocab_obj.word2index(_class) if not is_idx else _class
+
+        candidates = list(filter(lambda p: p.label == class_name and p.score > 0.3, rcnn_pred))
+        # print(f"detected bbox ({class_name};{[str(int(c.score * 100)) + '%' for c in candidates]}):",[c.box for c in candidates])
+        target = None
+        if verbose:
+            visible_objs = [
+                obj for obj in env.last_event.metadata['objects']
+                if obj['visible'] and obj['objectId'].startswith(class_name + '|')]
+            print('Agent prediction = {}, detected {} objects (visible {})'.format(
+                class_name, len(candidates), len(visible_objs)))
+        if len(candidates) > 0:
+            if env.last_interaction[0] == class_idx and env.last_interaction[1] is not None:
+                last_center = np.array(env.last_interaction[1].nonzero()).mean(axis=1)
+                cur_centers = np.array(
+                    [np.array(c.mask[0].nonzero()).mean(axis=1) for c in candidates])
+                distances = ((cur_centers - last_center)**2).sum(axis=1)
+                index = np.argmin(distances)
+                mask = candidates[index].mask[0]
+                target = candidates[index]
+            else:
+                index = np.argmax([p.score for p in candidates])
+                mask = candidates[index].mask[0]
+                target = candidates[index]
+        else:
+            mask = None
+        if mask is not None:
+            return mask, target
     return mask, target
 
 def move_behind(env,args):

@@ -234,7 +234,8 @@ def extract_rcnn_pred(_class, obj_predictor, env, verbose=False, is_idx=True):
         class_name = obj_predictor.vocab_obj.index2word(_class) if is_idx else _class
         class_idx = obj_predictor.vocab_obj.word2index(_class) if not is_idx else _class
 
-    candidates = list(filter(lambda p: p.label == class_name, rcnn_pred))
+    candidates = list(filter(lambda p: p.label == class_name and p.score > 0.3, rcnn_pred))
+    # print(f"detected bbox ({class_name};{[str(int(c.score * 100)) + '%' for c in candidates]}):",[c.box for c in candidates])
     target = None
     if verbose:
         visible_objs = [
@@ -320,10 +321,10 @@ def agent_step_mc(
             obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
             if llm_target not in obj_list:
                 class_name = get_closest_object(llm_target, obj_list)
-                obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(action) else None
+                obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(llm_action) else None
                 print("<Could not find class>", llm_target, class_name)
             else:
-                obj = obj_predictor.vocab_obj.word2index(llm_target) if model_util.has_interaction(action) else None
+                obj = obj_predictor.vocab_obj.word2index(llm_target) if model_util.has_interaction(llm_action) else None
             mask, target = extract_rcnn_pred(llm_target, obj_predictor, env, verbose=False, is_idx=False)
             if mask is not None:
                 m_pred['mask_rcnn'] = mask
@@ -340,10 +341,10 @@ def agent_step_mc(
             obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
             if llm_destination not in obj_list:
                 class_name = get_closest_object(llm_destination, obj_list)
-                obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(action) else None
+                obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(llm_action) else None
                 print("<Could not find class>", llm_destination, class_name)
             else:
-                obj = obj_predictor.vocab_obj.word2index(llm_destination) if model_util.has_interaction(action) else None
+                obj = obj_predictor.vocab_obj.word2index(llm_destination) if model_util.has_interaction(llm_action) else None
 
             mask, target = extract_rcnn_pred(llm_destination, obj_predictor, env, verbose=False, is_idx=False)
             if mask is not None:
@@ -364,10 +365,10 @@ def agent_step_mc(
             obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
             if llm_target not in obj_list:
                 class_name = get_closest_object(moveto_obj, obj_list)
-                obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(action) else None
+                obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(llm_action) else None
                 print("<Could not find class>", moveto_obj, class_name)
             else:
-                obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(action) else None
+                obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(llm_action) else None
             
             mask, target = extract_rcnn_pred(moveto_obj, obj_predictor, env, verbose=False, is_idx=False)
             if mask is not None:
@@ -387,10 +388,10 @@ def agent_step_mc(
             obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
             if llm_target not in obj_list:
                 class_name = get_closest_object(moveto_obj, obj_list)
-                obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(action) else None
+                obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(llm_action) else None
                 print("<Could not find class>", moveto_obj, class_name)
             else:
-                obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(action) else None
+                obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(llm_action) else None
             
             mask, target = extract_rcnn_pred(moveto_obj, obj_predictor, env, verbose=False, is_idx=False)
             if mask is not None:
@@ -403,7 +404,8 @@ def agent_step_mc(
                 failed_rule = True
 
 
-    print(f"{subgoal_idx+1:02}_{action_idx:03} -> subgoal : {subgoal_instr},  action: {action}, llm_output: {llm_data}")
+    xx = obj_predictor.vocab_obj.index2word(obj) if obj else None
+    print(f"{subgoal_idx+1:02}_{action_idx:03} -> subgoal : {subgoal_instr},  action: {action}, llm_output: {llm_data}, object: {xx}")
 
     # use the predicted action
     # episode_end = (action == constants.STOP_TOKEN)

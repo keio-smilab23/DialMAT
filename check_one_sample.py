@@ -939,7 +939,7 @@ def main():
     parser.add_argument("--test_id", type=str, default="0001")
     args = parser.parse_args()
     # path to testset json file
-    # input_jsons = [str(path) for path in Path(os.environ['DF_ROOT'] + "/testset/dialfred_testset_final/").glob("*.json")]
+    # input_jsons = [str(path) for path in Path(os.environ['DF_ROOT'] + "/testset/new_dialfred_testset_final/").glob("*.json")]
     input_jsons = [f"testset/new_dialfred_testset_final/{int(args.test_id):04}.json"]
     test(args, input_jsons)
 

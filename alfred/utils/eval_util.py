@@ -5,6 +5,7 @@ import torch
 import shutil
 import filelock
 import numpy as np
+import sys
 
 from PIL import Image
 from termcolor import colored
@@ -13,10 +14,8 @@ from alfred.gen import constants
 from alfred.env.thor_env import ThorEnv
 from alfred.nn.enc_visual import FeatureExtractor
 from alfred.utils import data_util, model_util
+import Levenshtein
 
-# import nltk
-# nltk.download('punkt')
-# nltk.download('averaged_perceptron_tagger')
 
 def setup_scene(env, traj_data, reward_type='dense', test_split=False):
     '''
@@ -210,28 +209,40 @@ def disable_lock_logs():
     lock_logger = filelock.logger()
     lock_logger.setLevel(30)
 
+def get_closest_object(obj, obj_list):
+    max_sim = 0
+    max_idx = 0
+    for ref in obj_list:
+        if Levenshtein.ratio(obj, ref) > max_sim:
+            max_sim =  Levenshtein.ratio(obj, ref) 
+            # max_idx = obj_list.index(ref)
+    return ref #, max_idx
 
 def extract_rcnn_pred(_class, obj_predictor, env, verbose=False, is_idx=True):
     '''
     extract a pixel mask using a pre-trained MaskRCNN
     '''
+    # print(obj_predictor.vocab_obj.to_dict()["index2word"])
+    obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]
     rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
-    class_name = obj_predictor.vocab_obj.index2word(_class) if is_idx else _class
-    class_idx = obj_predictor.vocab_obj.word2index(_class) if not is_idx else _class
+    if not is_idx and _class not in obj_list:
+        class_name = get_closest_object(_class, obj_list)
+        class_idx = obj_predictor.vocab_obj.word2index(class_name)
+        print("<Could not find class>", _class, class_name)
+    else:
+    # import sys; sys.exit()
+        class_name = obj_predictor.vocab_obj.index2word(_class) if is_idx else _class
+        class_idx = obj_predictor.vocab_obj.word2index(_class) if not is_idx else _class
+
     candidates = list(filter(lambda p: p.label == class_name, rcnn_pred))
     if verbose:
         visible_objs = [
             obj for obj in env.last_event.metadata['objects']
             if obj['visible'] and obj['objectId'].startswith(class_name + '|')]
-        # print(candidates, visible_objs)
         print('Agent prediction = {}, detected {} objects (visible {})'.format(
             class_name, len(candidates), len(visible_objs)))
     if len(candidates) > 0:
-        # print(env.last_interaction)
         if env.last_interaction[0] == class_idx and env.last_interaction[1] is not None:
-            # print("+++++++++A")
-            # last_obj['id'] and class_name + '|' in env.last_obj['id']:
-            # do the association based selection
             last_center = np.array(env.last_interaction[1].nonzero()).mean(axis=1)
             cur_centers = np.array(
                 [np.array(c.mask[0].nonzero()).mean(axis=1) for c in candidates])
@@ -239,19 +250,11 @@ def extract_rcnn_pred(_class, obj_predictor, env, verbose=False, is_idx=True):
             index = np.argmin(distances)
             mask = candidates[index].mask[0]
         else:
-            # print("+++++++++B")
-            # do the confidence based selection
             index = np.argmax([p.score for p in candidates])
             mask = candidates[index].mask[0]
     else:
         mask = None
     return mask, rcnn_pred
-
-def extract_nouns(lines,rec=0):
-    is_noun = lambda pos: pos[:2] == 'NN'
-    tokenized = nltk.word_tokenize(lines)
-    nouns = [word for (word, pos) in nltk.pos_tag(tokenized) if is_noun(pos)] 
-    return nouns
 
 # step and compute model confusion
 def agent_step_mc(
@@ -268,6 +271,7 @@ def agent_step_mc(
     m_pred = model_util.extract_action_preds(
         m_out, model.pad, vocab['action_low'], clean_special_tokens=False)[0]
     action = m_pred['action']
+    action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
     
     if args.debug:
         print("Predicted action: {}".format(action))
@@ -278,91 +282,75 @@ def agent_step_mc(
     # rule-based action selection
     rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
     # target_nouns = extract_nouns(subgoal_instr)
+
+
     llm_target = llm_data[-1][1]
     llm_action = llm_data[-1][0]
-    llm_destination = llm_data[-1][1]
-    # manipulation_words = ["grab", "place", "pick", "open","close", "push", "switch", "take"]
+    llm_destination = llm_data[-1][2]
 
-    # if llm_action != "MoveTo":
-    #     mask, _ = extract_rcnn_pred(llm_target, obj_predictor,env,args.debug,is_idx=False)
-    #     if mask is not None:
-    #         m_pred['mask_rcnn'] = mask
-    #         action = llm_action
-    #         action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
-    #         m_pred['action'] = action
-    #         print("== rule-based action selection ==")
-    #         print(f"target: {llm_target}, action: {llm_action}")
+    for data in llm_data:
+        if data[0] != "MoveTo":
+            llm_target = data[1]
+            llm_action = data[0]
+            llm_destination = data[2]
 
-    # print(target_nouns, llm_target, llm_action)
-    # for word in subgoal_instr.split():
-    #     # if word.lower() in manipulation_words:
-    #         # target = target_nouns[-1]
-    #         # target = "".join([s.upper() if i == 0 else s.lower() for i,s in enumerate(target)])
-    #         mask, _ = extract_rcnn_pred(target, obj_predictor,env,args.debug,is_idx=False)
-    #         m_pred['mask_rcnn'] = mask
-    #         if mask is not None:
-    #             action = "PickupObject"
-    #             action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
-    #             m_pred['action'] = action
-    #             print("== rule-based action selection ==")
-    #             print(f"target: {llm_target}, action: {llm_action}")
-    #             break
+    episode_end = False
+    if action == constants.STOP_TOKEN:
+        if llm_action == "MoveTo":
+            episode_end = True
+        else:
+            action = "MoveAhead_25"
+            action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
 
-    
-    if not env.last_event.metadata['lastActionSuccess']: # 強制修正したが last action が success でない場合は指示どおりにする
+    if prev_action != llm_action:
         if llm_action == "PickupObject":
             obj = vocab['word'].word2index(llm_target.lower()) if model_util.has_interaction(action) else None
-            mask, _ = extract_rcnn_pred(llm_target, obj_predictor, env, verbose=True, is_idx=False)
-            m_pred['mask_rcnn'] = mask
+            mask, _ = extract_rcnn_pred(llm_target, obj_predictor, env, verbose=False, is_idx=False)
             if mask is not None:
+                m_pred['mask_rcnn'] = mask
                 action = "PickupObject"
                 action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
                 m_pred['action'] = action
                 print("== rule-based action selection ==     ", end="")
                 print(f"target: {llm_target}, action: {llm_action}")
         elif llm_action == "PutObject":
+            obj = vocab['word'].word2index(llm_destination.lower()) if model_util.has_interaction(action) else None
+            mask, _ = extract_rcnn_pred(llm_destination, obj_predictor, env, verbose=False, is_idx=False)
+            if mask is not None:
+                m_pred['mask_rcnn'] = mask
+                action = "PutObject"
+                action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
+                m_pred['action'] = action
+                print("== rule-based action selection ==     ", end="")
+                print(f"destination: {llm_target}, action: {llm_action}")
 
-    print(f"subgoal : {subgoal_instr},  action: {action}, {obj}, llm_output: {llm_data}")
-
-
-    # if obj is not None:
-    #     # get mask from a pre-trained RCNN
-    #     assert obj_predictor is not None
-    #     mask, _ = extract_rcnn_pred(
-    #         obj, obj_predictor, env, args.debug)
-    #     m_pred['mask_rcnn'] = mask
-    # # remove blocking actions
-    # action = obstruction_detection(
-    #     action, env, m_out, model.vocab_out, args.debug)
-    # m_pred['action'] = action
-
-    # TODO: Fix action with rcnn_pred and subgoal_instr
-    if rcnn_pred != None:
-        pass
+    print(f"subgoal : {subgoal_instr},  action: {action}, llm_output: {llm_data}")
 
     # use the predicted action
     # episode_end = (action == constants.STOP_TOKEN)
     api_action = None
     # constants.TERMINAL_TOKENS was originally used for subgoal evaluation
     target_instance_id = ''
-    # if not episode_end:
 
-    episode_end = False
-    step_success, _, target_instance_id, err, api_action = env.va_interact(
-        action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
-    env.last_interaction = (obj, mask)
+    # 前回のactionが所望のmanipulationかつ成功していたら強制stop
+    if prev_action == llm_action and env.last_event.metadata['lastActionSuccess']:
+        episode_end = True
+        action = constants.STOP_TOKEN
+        return episode_end, str(action), num_fails, target_instance_id, api_action, mc_array
 
-    if step_success: # success & llm_action と action が一致してる場合
-        if llm_action == action:
-            episode_end = True
-    else:
-        print(f"+++ ERROR: {err}")
-        num_fails += 1
-        if num_fails >= args.max_fails:
-            # if args.debug:
-            #     print("Interact API failed {} times; latest error '{}'".format(
-            #         num_fails, err))
-            episode_end = True
+    if not episode_end:
+        step_success, _, target_instance_id, err, api_action = env.va_interact(
+            action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
+        env.last_interaction = (obj, mask)
+
+        if not step_success:
+            print(f"+++ ERROR: {err}")
+            num_fails += 1
+            if num_fails >= args.max_fails:
+                if args.debug:
+                    print("Interact API failed {} times; latest error '{}'".format(
+                        num_fails, err))
+                episode_end = True
     return episode_end, str(action), num_fails, target_instance_id, api_action, mc_array
 
 def agent_step(

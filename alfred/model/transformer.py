@@ -47,7 +47,7 @@ class Model(base.Model):
 
         #追加
         # if args.clip_image or args.clip_text or args.clip_resnet:
-        self.clip_model, self.clip_preprocess = clip.load("ViT-L/14", device="cuda")
+        self.clip_model, self.clip_preprocess = clip.load("RN50", device="cuda")
         for params in self.clip_model.parameters():
             params.requires_grad = False
 

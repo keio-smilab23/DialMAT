@@ -302,6 +302,7 @@ def agent_step_mc(
             action = "MoveAhead_25"
             action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
 
+    failed_rule = False
     if prev_action != llm_action:
         if llm_action == "PickupObject":
             obj = vocab['word'].word2index(llm_target.lower()) if model_util.has_interaction(action) else None
@@ -313,6 +314,9 @@ def agent_step_mc(
                 m_pred['action'] = action
                 print("== rule-based action selection ==     ", end="")
                 print(f"target: {llm_target}, action: {llm_action}")
+            else:
+                failed_rule = True
+
         elif llm_action == "PutObject":
             obj = vocab['word'].word2index(llm_destination.lower()) if model_util.has_interaction(action) else None
             mask, _ = extract_rcnn_pred(llm_destination, obj_predictor, env, verbose=False, is_idx=False)
@@ -322,7 +326,9 @@ def agent_step_mc(
                 action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
                 m_pred['action'] = action
                 print("== rule-based action selection ==     ", end="")
-                print(f"destination: {llm_target}, action: {llm_action}")
+                print(f"destination: {llm_destination}, action: {llm_action}")
+            else:
+                failed_rule = True
 
     print(f"subgoal : {subgoal_instr},  action: {action}, llm_output: {llm_data}")
 
@@ -339,9 +345,10 @@ def agent_step_mc(
         return episode_end, str(action), num_fails, target_instance_id, api_action, mc_array
 
     if not episode_end:
-        step_success, _, target_instance_id, err, api_action = env.va_interact(
-            action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
-        env.last_interaction = (obj, mask)
+        if not (failed_rule and (action == "PickupObject" or action == "PutObject")):
+            step_success, _, target_instance_id, err, api_action = env.va_interact(
+                action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
+            env.last_interaction = (obj, mask)
 
         if not step_success:
             print(f"+++ ERROR: {err}")

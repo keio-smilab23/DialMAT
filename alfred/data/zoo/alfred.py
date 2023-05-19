@@ -103,7 +103,7 @@ class AlfredDataset(BaseDataset):
         '''
         load features from task_json
         '''
-        print("Loading features ...")
+        # print("Loading features ...")
         feat = dict()
         # language inputs
         feat['lang'] = AlfredDataset.load_lang(task_json, subgoal_idx)

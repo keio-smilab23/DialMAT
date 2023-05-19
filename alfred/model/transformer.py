@@ -28,7 +28,7 @@ from alfred.nn.enc_vl import EncoderVL
 from alfred.nn.encodings import DatasetLearnedEncoding
 from alfred.nn.dec_object import ObjectClassifier
 from alfred.utils import model_util
-from alfred.utils.data_util import tokens_to_lang, get_maskrcnn_features_batch
+from alfred.utils.data_util import tokens_to_lang, get_maskrcnn_features_score, save_features_to_path, load_features_from_path
 
 #追加
 from alfred.model import mat
@@ -47,7 +47,8 @@ class Model(base.Model):
 
         #追加
         # if args.clip_image or args.clip_text or args.clip_resnet:
-        self.clip_model, self.clip_preprocess = clip.load("ViT-L/14", device="cuda")
+        self.clip_model, self.clip_preprocess = clip.load("RN50", device="cuda")
+        # self.clip_model, self.clip_preprocess = clip.load("ViT-L/14", device="cuda")
         for params in self.clip_model.parameters():
             params.requires_grad = False
 
@@ -161,20 +162,33 @@ class Model(base.Model):
             sentences_list.append(sentences)
         return sentences_list
     
-    def encode_deberta(self, task_path, sentences, device="cuda:0"):
+    def encode_deberta(self, task_paths, sentences, device="cuda:0"):
         """
         Encode two sentences with the deberta model.
         """
-
-        text_features_list = []
-        lengths_list = []
         
         if not self.args.update_feat:
-            text_features, lengths_list = self.load_features_from_path(task_path, "deberta.pth")
-        
-            if text_features is not None and lengths_list is not None:
-                return text_features, lengths_list
+            batch_features = []
+            batch_lengths = []
 
+            is_saved = True
+
+            for task_path in task_paths:
+                text_features = load_features_from_path(task_path, "deberta.pth") #len(words), 768
+
+                if text_features is None:
+                    is_saved = False
+                    break
+
+                batch_features.append(text_features)
+                batch_lengths.append(batch_features.shape[0])
+
+            if is_saved:
+                batch_features = pad_sequence(batch_features, batch_first=True)
+                return batch_features, torch.tensor(batch_lengths).to(device)
+            
+        batch_features = []
+        batch_lengths = []
         for i in range(len(sentences)):
             sentence = sentences[i]
             # 全ての文を.で結合
@@ -184,77 +198,75 @@ class Model(base.Model):
             text_features = self.deberta_model(tokenized).last_hidden_state.squeeze(0).to(device) #ex. (64, 768)
             # print("text_features.shape: ", text_features.shape)
 
-            text_features_list.append(text_features)
-            lengths_list.append(text_features.shape[0])
+            batch_features.append(text_features)
+            batch_lengths.append(text_features.shape[0])
 
-        text_features = pad_sequence(text_features_list, batch_first=True)
+            save_features_to_path(os.path.join(task_paths[i], "deberta.pth"), text_features)
+            print("text_features(deberta).shape: ", text_features.shape)
+            print("lengths_list: ", batch_lengths )
 
-        self.save_features_to_paths(task_path, "deberta.pth", [text_features, torch.tensor(lengths_list).to(device)])
+        batch_features = pad_sequence(batch_features, batch_first=True)
 
-        print("text_features.shape: ", text_features.shape)
-        print("lengths_list: ", lengths_list)
-
-        return text_features, torch.tensor(lengths_list).to(device)
+        return batch_features, torch.tensor(batch_lengths).to(device)
     
-    def embed_maskrcnn(self, task_path, subgoal_words_list):
+    def embed_maskrcnn(self, task_paths, subgoal_words_list):
         '''
         get environment observation
         '''
         # frame = Image.fromarray(images)
 
         if not self.args.update_feat:
-            text_features_bbox, _ = self.load_features_from_path(task_path, "maskrcnn_bbox.pth")
-            text_features_label, _ = self.load_features_from_path(task_path, "maskrcnn_label.pth")
+            batch_feats = []
+            batch_labels = []
+            batch_lengths = []
 
-            # if features are already saved, return them
-            if text_features_bbox != None and text_features_label != None:
-                return text_features_bbox, text_features_label
+            is_saved = True
+            
+            for task_path in task_paths:
+                feats, lens = load_features_from_path(task_path, "maskrcnn.pth")
 
-        # get images from task_path
+                if feats is None or lens is None:
+                    is_saved = False
+                    break
 
-        all_feats = []
-        all_labels = []
+                feat_bboxes = feats[0]
+                feat_labels = feats[1]
+
+                batch_feats.append(feat_bboxes)
+                batch_labels.append(feat_labels)
+                batch_lengths.append(lens)
+
+            if is_saved:
+                return batch_feats, batch_labels, batch_lengths
+
+        batch_feats = []
+        batch_labels = []
+        batch_lengths = []
 
         #for each batch
-        for idx, single_path in enumerate(task_path):
-            image_paths = glob.glob(os.path.join(single_path, "raw_images", "*.png"))
+        for task_path in task_paths:
+            image_paths = glob.glob(os.path.join(task_path, "raw_images", "*.png"))
             image_paths.sort()
 
             feats = []
 
-            tokenized_subgoal_labels = clip.tokenize(subgoal_words_list[idx]).to("cuda")
-            subgoal_words_clip = self.clip_model.encode_text(tokenized_subgoal_labels) #(len(subgoal_words), 768)
+            # tokenized_subgoal_labels = clip.tokenize(subgoal_words_list[idx]).to("cuda")
+            # subgoal_words_clip = self.clip_model.encode_text(tokenized_subgoal_labels) #(len(subgoal_words), 768)
 
-            feats, labels = get_maskrcnn_features_batch(image_paths, self.obj_predictor, self.clip_preprocess, self.clip_model, subgoal_words_list[idx], subgoal_words_clip)
-            # print("len subgoal_words", len(subgoal_words_list[idx]))
+            # feats, labels = get_maskrcnn_features_batch(image_paths, self.obj_predictor, self.clip_preprocess, self.clip_model, subgoal_words_list[idx], subgoal_words_clip)
+            feats, lengths = get_maskrcnn_features_score(task_path, image_paths, self.obj_predictor, self.clip_preprocess, self.clip_model)
 
-            # for image_path in image_paths:
-            #     image = Image.open(image_path).convert('RGB')
-            #     # for each image
-            #     # TODO: ここに無限時間掛かる
-            #     feat = get_maskrcnn_features(image, self.obj_predictor, self.clip_preprocess, self.clip_model, subgoal_words_list[idx], subgoal_words_clip)
-            #     # feat = []
-            #     feats.append(feat)
-                # print("feat.shape: ", feat.shape)
+            feat_bboxes = feats[0]
+            feat_labels = feats[1]
 
-            # print("len subgoal_words", len(subgoal_words_list[idx]))
+            batch_feats.append(feat_bboxes) # [len(images), num_of_use, 768]
+            batch_labels.append(feat_labels) # [len(images), num_of_use, 768]
+            batch_lengths.append(lengths) # [len(images), 1]
+            # print("feat_bboxes.shape: ", feat_bboxes.shape)
+            # print("feat_labels.shape: ", feat_labels.shape)
+            # print("lengths: ", lengths)
 
-            # for image_path in image_paths:
-            #     image = Image.open(image_path).convert('RGB')
-            #     # for each image
-            #     feat = get_maskrcnn_features_batch(image, self.obj_predictor, self.clip_preprocess, self.clip_model, subgoal_words_list[idx], subgoal_words_clip)
-            #     feats.append(feat)
-            #     # print("feat.shape: ", feat.shape)
-
-            #     file_name = os.path.basename(image_path)
-            #     #image_pathのfile_name(拡張子以外)にmarkrcnnという文字列を追加
-            #     output_path = os.path.join(single_path, "raw_images", file_name.replace(".png", "_maskrcnn.pth"))
-            #     self.save_features_to_path(output_path, feat)
-            
-            all_feats.append(feats)
-            all_labels.append(labels)
-        
-        return all_feats, all_labels
+        return batch_feats, batch_labels, batch_lengths
 
     def encode_clip_image(self, images, device="cuda:0"):
         images = [self.clip_preprocess(image).unsqueeze(0).to("cuda") for image in images]
@@ -263,35 +275,49 @@ class Model(base.Model):
             feats = torch.cat(feats, dim=0) # [len(images),768]
 
         return feats
+    
     #追加
-    def encode_clip_text(self, task_path, sentences, device="cuda:0"):
+    def encode_clip_text(self, task_paths, sentences, device="cuda:0"):
         """
         Encode sentences with the CLIP model.
         """
 
         if not self.args.update_feat:
-            text_features, lengths_list = self.load_features_from_path(task_path, "clip_text.pth")
+            batch_features = []
+            batch_lengths = []
 
-            # if features are already saved, return them
-            if text_features != None:
-                return text_features, lengths_list
+            is_saved = True
 
-        text_features_list = []
-        lengths_list = []
+            for task_path in task_paths:
+                text_features = load_features_from_path(task_path, "clip_text.pth") #len(sentences), 768
+
+                if text_features is None:
+                    is_saved = False
+                    break
+
+                batch_features.append(text_features)
+                batch_lengths.append(batch_features.shape[0])
+            
+            if is_saved:
+                batch_features = pad_sequence(batch_features, batch_first=True)
+                return batch_features, torch.tensor(batch_lengths).to(device)
+
+        batch_features = []
+        batch_lengths = []
 
         for i in range(len(sentences)):
             tokenized = clip.tokenize(sentences[i]).to(device)
             text_features = self.clip_model.encode_text(tokenized)
-            text_features_list.append(text_features)
-            lengths_list.append(tokenized.shape[0])
+            batch_features.append(text_features)
+            batch_lengths.append(tokenized.shape[0])
 
-        text_features = pad_sequence(text_features_list, batch_first=True)
+            save_features_to_path(os.path.join(task_paths[i], "clip_text.pth"), text_features)
+            print("text_features(clip).shape: ", text_features.shape)
+            print("lengths_list: ", batch_lengths )
 
-        self.save_features_to_paths(task_path, "clip_text.pth", [text_features, torch.tensor(lengths_list).to(device)])
+        batch_features = pad_sequence(batch_features, batch_first=True)
 
-        print("encode_clip_text", text_features.shape)
-        print("encode_clip_text length", torch.tensor(lengths_list).to(device).shape)
-        return text_features, torch.tensor(lengths_list).to(device)
+        return batch_features, torch.tensor(batch_lengths).to(device)
 
     #追加
     def concat_embeddings_lang(self, emb_lang, lengths_lang, emb_other, lengths_other, device="cuda:0"):
@@ -330,66 +356,6 @@ class Model(base.Model):
 
         return emb_frame, lengths
     
-    def load_features_from_path(self, paths, file_name, return_length=False):
-        """
-        Load features from a file.
-        """
-
-        features = []
-        if return_length:
-            lengths = []
-        for path in paths:
-            path = os.path.join(path, file_name)
-
-            #まずpathにファイルがあるかを確認する
-            if os.path.exists(path):
-                #あれば読み込む
-                with open(path, "rb") as f:
-                    feature = pickle.load(f)
-                    features.append(feature)
-                    if return_length:
-                        lengths.append(feature.shape[0])
-            else:
-                return None, None
-            
-        features = pad_sequence(features, batch_first=True)
-        if return_length:
-            lengths = torch.tensor(lengths)
-            return features, lengths
-        else:
-            return features
-        
-    def save_features_to_paths(self, paths, file_name, features):
-        """
-        Save features to files.
-        """
-        for idx, path in enumerate(paths):
-            path = os.path.join(path, file_name)
-        
-            if len(features.shape) == 3:
-                save_features = features[idx,:,:]
-            elif len(features.shape) == 4:
-                 save_features = features[idx,:,:,:]
-
-            # save_features = features[idx,:,:].unsqueeze(0) #mask_rcnnでは( max_len(image), 30(max), 768), clipでは(max_len(text), 768), debertaでは(max_len(text), 768)
-            if isinstance(save_features, torch.Tensor):
-                print("save_{}: {}".format(file_name, save_features.shape))
-            elif isinstance(save_features, list):
-                print("save_{}: {}".format(file_name, save_features[0].shape))
-
-            # Write features to file
-            with open(path, "wb") as f:
-                pickle.dump(save_features, f)
-
-    def save_features_to_path(self, output_path, feature):
-        """
-        Save features to a file.
-        """
-        save_feature = feature #mask_rcnnでは(1, max_len(image), 30(max), 768), clipでは(1, max_len(text), 768), debertaでは(1, max_len(text), 768)
-
-        with open(output_path, "wb") as f:
-            pickle.dump(save_feature, f)
-
     def forward(self, task_path, vocab, **inputs):
         '''
         forward the model for multiple time-steps (used for training)
@@ -402,14 +368,14 @@ class Model(base.Model):
         if self.args.update_feat:
             with torch.no_grad():
 
-                emb_maskrcnn_bbox, emb_maskrcnn_label = self.embed_maskrcnn(task_path, subgoal_words_list)
+                emb_maskrcnn_bbox, emb_maskrcnn_label, emb_maskrcnn_length = self.embed_maskrcnn(task_path, subgoal_words_list)
                 # emb_clip, lengths_clip = self.embed_clip(task_path)
                 # emb_deberta, lengths_deberta = self.embed_deberta(task_path)
 
                 return output
         
         else:
-            emb_maskrcnn_bbox, emb_maskrcnn_label = self.embed_maskrcnn(task_path)
+            emb_maskrcnn_bbox, emb_maskrcnn_label, emb_maskrcnn_length = self.embed_maskrcnn(task_path)
 
         #変更(CLIPのtext情報も用いる)
         if self.args.clip_text:

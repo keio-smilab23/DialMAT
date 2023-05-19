@@ -114,7 +114,7 @@ def load_data(name, args, ann_type, valid_only=False):
     '''
     # partitions = ([] if valid_only else ['train']) + ['valid_seen', 'valid_unseen']
     # partitions = ([] if valid_only else ['train']) + ['valid_seen', 'pseudo_valid']
-    partitions = ([] if valid_only else ['train']) + ['pseudo_valid', 'pseudo_test']
+    partitions = ([] if valid_only else ['train']) + ['valid_seen', 'pseudo_valid', 'pseudo_test']
     # partitions = ([] if valid_only else ['pseudo_valid']) + ['pseudo_test']
     # partitions = ([] if valid_only else ['train']) + ['pseudo_test']
     datasets = []

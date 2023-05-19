@@ -104,7 +104,7 @@ def cfg_train():
 
     # HYPER PARAMETERS
     # batch size
-    batch = 2
+    batch = 16
     # number of epochs
     epochs = 20
     # optimizer type, must be in ('adam', 'adamw')

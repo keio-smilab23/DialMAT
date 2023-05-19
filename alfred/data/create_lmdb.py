@@ -10,6 +10,7 @@ from progressbar import ProgressBar
 from pathlib import Path
 from sacred import Ingredient, Experiment
 from vocab import Vocab
+import clip
 
 from alfred.gen import constants
 from alfred.nn.enc_visual import FeatureExtractor
@@ -52,7 +53,7 @@ def cfg_args():
     vocab_path = 'files/base.vocab'
 
 
-def process_feats(traj_paths, extractor, obj_predictor, lock, image_folder, save_path):
+def process_feats(traj_paths, extractor, obj_predictor, lock, image_folder, save_path, clip_model):
     (save_path / 'feats').mkdir(exist_ok=True)
     if str(save_path).endswith('/worker00'):
         with lock:
@@ -69,7 +70,8 @@ def process_feats(traj_paths, extractor, obj_predictor, lock, image_folder, save
         images = data_util.read_traj_images(traj_path, image_folder)
         feat = data_util.extract_features(images, extractor)
         feat_clip = data_util.extract_clip_features(images, extractor)
-        feat_region, feat_labels = data_util.extract_region_features(images, extractor, obj_predictor)
+        # feat_maskrcnn, lengths = data_util.get_maskrcnn_features_score(obj_predictor, clip_model)
+        # feat_region, feat_labels = data_util.extract_region_features(images, extractor, obj_predictor)
         
         # print("feat.shape: ", feat.shape) torch.Size([46, 512, 7, 7])
         # print("feat_clip.shape: ", feat_clip.shape) torch.Size([46, 768])
@@ -297,13 +299,17 @@ def main(args):
     obj_predictor = FeatureExtractor(archi='maskrcnn', device=args.device,
         checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
     
+    clip_model, clip_preprocess = clip.load("RN50", device="cuda")
+    for params in clip_model.parameters():
+        params.requires_grad = False
+
     if len(trajs_list) > 0:
         manager = torch.multiprocessing.Manager()
         lock = manager.Lock()
         trajs_queue = manager.Queue()
         for path in trajs_list:
             trajs_queue.put(path)
-        args_process_feats = [trajs_queue, extractor, obj_predictor, lock, args.image_folder]
+        args_process_feats = [trajs_queue, extractor, obj_predictor, lock, args.image_folder, clip_model]
         run_in_parallel(
             process_feats, args.num_workers, output_path,
             args=args_process_feats, use_processes=True)

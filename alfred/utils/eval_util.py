@@ -276,7 +276,8 @@ def move_behind(env,args):
                 action, interact_mask=None, smooth_nav=args.smooth_nav, debug=args.debug)
             
 
-def rule_based_planner(action,llm_data,obj_predictor,m_pred,env,m_out,model,args):
+def rule_based_planner(action,obj,llm_data,obj_predictor,m_pred,env,m_out,model,args):
+    mask = None
     target = None
     is_rule_based_target = True
     will_execute = True
@@ -400,12 +401,11 @@ def agent_step_mc(
     obj = m_pred['object'][0][0] if model_util.has_interaction(action) else None
     original_obj = obj_predictor.vocab_obj.index2word(obj) if obj else None
 
+    llm_action = llm_data[-1][0]
     # rule-based action selection
     for data in llm_data:
         if data[0] != "MoveTo":
-            llm_target = data[1]
             llm_action = data[0]
-            llm_destination = data[2]
 
     episode_end = False
     if action == constants.STOP_TOKEN:
@@ -417,9 +417,10 @@ def agent_step_mc(
 
     will_execute = True
     is_rule_based_target = False
+    target = None
     if prev_action != llm_action:
         will_execute, is_rule_based_target, m_pred, target, obj, action, mask \
-            = rule_based_planner(action,llm_data,obj_predictor,m_pred,env,m_out,model,args)
+            = rule_based_planner(action,obj,llm_data,obj_predictor,m_pred,env,m_out,model,args)
 
     xx = obj_predictor.vocab_obj.index2word(obj) if obj else None
     print(f"{subgoal_idx+1:02}_{action_idx:03} -> subgoal : {subgoal_instr},  action: {action}, llm_output: {llm_data}, object: {xx}")
@@ -492,7 +493,7 @@ def agent_step_mc(
                     # 上記行動によって改善したか？
                     if prev_action != llm_action and pos != "center":
                         will_execute, is_rule_based_target, m_pred, target, obj, action, mask \
-                            = rule_based_planner(action,llm_data,obj_predictor,m_pred,env,m_out,model,args)
+                            = rule_based_planner(action,obj,llm_data,obj_predictor,m_pred,env,m_out,model,args)
                         step_success, _, target_instance_id, err, api_action = env.va_interact(
                             action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
                         env.last_interaction = (obj, mask)

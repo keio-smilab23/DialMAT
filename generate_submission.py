@@ -940,6 +940,7 @@ def main():
     args = parser.parse_args()
     # path to testset json file
     input_jsons = [str(path) for path in Path(os.environ['DF_ROOT'] + "/testset/new_dialfred_testset_final/").glob("*.json")]
+    input_jsons = sorted(input_jsons)
     test(args, input_jsons)
 
 

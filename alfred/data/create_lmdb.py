@@ -53,7 +53,7 @@ def cfg_args():
     vocab_path = 'files/base.vocab'
 
 
-def process_feats(traj_paths, extractor, obj_predictor, lock, image_folder, save_path, clip_model):
+def process_feats(clip_model, traj_paths, extractor, obj_predictor, lock, image_folder, save_path):
     (save_path / 'feats').mkdir(exist_ok=True)
     if str(save_path).endswith('/worker00'):
         with lock:
@@ -70,7 +70,7 @@ def process_feats(traj_paths, extractor, obj_predictor, lock, image_folder, save
         images = data_util.read_traj_images(traj_path, image_folder)
         feat = data_util.extract_features(images, extractor)
         feat_clip = data_util.extract_clip_features(images, extractor)
-        # feat_maskrcnn, lengths = data_util.get_maskrcnn_features_score(obj_predictor, clip_model)
+        feat_maskrcnn, lengths = data_util.get_maskrcnn_features_score_lmdb(images, obj_predictor, clip_model)
         # feat_region, feat_labels = data_util.extract_region_features(images, extractor, obj_predictor)
         
         # print("feat.shape: ", feat.shape) torch.Size([46, 512, 7, 7])
@@ -82,7 +82,7 @@ def process_feats(traj_paths, extractor, obj_predictor, lock, image_folder, save
         # print("images[0]: ", images[0]) #images[0]:  <PIL.Image.Image image mode=RGB size=300x300 at 0x7FCC5328E358>
         # print("feat.shape: ", feat.shape) #feat.shape:  torch.Size([51, 512, 7, 7])
         if feat is not None:
-            torch.save([feat,feat_clip,feat_region,feat_labels], save_path / 'feats' / filename_new)
+            torch.save([feat,feat_clip,feat_maskrcnn,lengths], save_path / 'feats' / filename_new)
         with lock:
             with open(save_path.parents[0] / 'processed_feats.txt', 'a') as f:
                 f.write(str(traj_path) + '\n')
@@ -303,13 +303,15 @@ def main(args):
     for params in clip_model.parameters():
         params.requires_grad = False
 
+    print("len(trajs_list): ", len(trajs_list))
     if len(trajs_list) > 0:
+        print('Extracting features')
         manager = torch.multiprocessing.Manager()
         lock = manager.Lock()
         trajs_queue = manager.Queue()
         for path in trajs_list:
             trajs_queue.put(path)
-        args_process_feats = [trajs_queue, extractor, obj_predictor, lock, args.image_folder, clip_model]
+        args_process_feats = [clip_model, trajs_queue, extractor, obj_predictor, lock, args.image_folder]
         run_in_parallel(
             process_feats, args.num_workers, output_path,
             args=args_process_feats, use_processes=True)

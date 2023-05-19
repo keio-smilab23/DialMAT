@@ -278,6 +278,7 @@ def agent_step_mc(
 
     mask = None
     obj = m_pred['object'][0][0] if model_util.has_interaction(action) else None
+    original_obj = obj_predictor.vocab_obj.index2word(obj) if obj else None
 
     # rule-based action selection
     rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
@@ -345,10 +346,14 @@ def agent_step_mc(
         return episode_end, str(action), num_fails, target_instance_id, api_action, mc_array
 
     if not episode_end:
+        step_success = True
         if not (failed_rule and (action == "PickupObject" or action == "PutObject")):
+            print(f"==== action: {action}")
             step_success, _, target_instance_id, err, api_action = env.va_interact(
                 action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
             env.last_interaction = (obj, mask)
+        else:
+            action = prev_action
 
         if not step_success:
             print(f"+++ ERROR: {err}")

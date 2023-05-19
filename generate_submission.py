@@ -208,7 +208,6 @@ class Dataset(BDataset):
         feat = dict()
         # language inputs
         feat['lang'] = self.load_lang(task_json, subgoal_idx)
-        # feat['raw_lang'] = self.load_rawlang(task_json, subgoal_idx)
 
         # action outputs
         if not self.test_mode:
@@ -274,18 +273,6 @@ class Dataset(BDataset):
             lang_num = task_json['num']['lang_instr'][subgoal_idx]
 
         return lang_num
-    
-    def load_rawlang(self, task_json, subgoal_idx=None):
-        if subgoal_idx is None:
-            lang_num_goal = task_json['ann']['goal']
-            raw_lang = lang_num_goal + task_json['ann']['instr']
-        else:
-            raw_lang = task_json['ann']['instr'][subgoal_idx]
-
-        raw_lang_str = " ".join([s for s in raw_lang if s[:2] != "<<"])
-        return raw_lang_str
-    
-    
 
     @staticmethod
     def load_action(task_json, vocab_orig, vocab_translate, action_type='action_low'):
@@ -722,6 +709,7 @@ def draw_bbox(roi_list, image):
     import cv2
     image = copy.deepcopy(image)
     for roi in roi_list:
+        if roi.score < THR_SCORE: continue
         box, label, score = roi.box, roi.label, roi.score
         c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
         display_txt = "%s: %.1f%%" % (label, 100 * score)
@@ -758,8 +746,6 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
             print("word not in vocab: ", w)
     input_dict = eval_util.load_language_qa(
         dataset, traj_data, traj_key, model.args, extractor, num_qa, subgoal_idx, test_split=True)
-    raw_instr = dataset.load_rawlang(traj_data, subgoal_idx)
-
     # print(input_dict)
 
     if interm_states == None:
@@ -800,10 +786,52 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
                 frame = Image.fromarray(frame_np)
                 frame.save(f"{dir}/{subgoal_idx+1:02}_{action_idx:03}.png")
 
+            # 現在のlow-level instructionを取得
+            subgoal_instr = traj_data['turk_annotations']['anns'][0]['high_descs'][subgoal_idx]
+
+            # llm data を get
+            raw_output = traj_data['high_level_actions']['raw_output']
+            pattern = r'{.*}'
+            match = re.search(pattern, raw_output, re.DOTALL)
+            try:
+                if match:
+                    llm_output = match.group(0)
+                    llm_output = json.loads(llm_output)
+            except:
+                print("c")
+            action_dict = {'Open': 'OpenObject', 'Close':'CloseObject', 'Put-At/In':'PutObject', 'Toggle-On':'ToggleObjectOn', 'Toggle-Off': 'ToggleObjectOff', 'Move-To':'MoveTo', 'Pickup':'PickupObject', 'Clean':'XXX', 'Heat':'XXX', 'Cool':'XXX', 'Slice':'SliceObject', 'Look-At-In-Light':'XXX'}
+            # object_action = ['Toggle-On', 'Toggle-Off', 'Pickup']
+            destination_action = ['Open', 'Close', 'Put-At/In']
+            object_action = ['Toggle-On', 'Toggle-Off', 'Pickup']
+            # destination_action = []
+            llm_data = []
+            # for pair in llm_output[str(subgoal_idx)]:
+            #     if pair[0] in object_action:
+            #         llm_data.append([action_dict[pair[0]], pair[1]])
+            #     elif pair[0] in destination_action:
+            #         llm_data.append([action_dict[pair[0]], pair[2]])
+            #     else:
+            #         tmp_action = action_dict[pair[0]]
+            #         if pair[0] != 'Move-To':
+            #             tmp_action = "None"
+            #         if pair[1] != "None":
+            #             llm_data.append([tmp_action, pair[1]])
+            #         elif pair[2] != "None":
+            #             llm_data.append([tmp_action, pair[2]])
+            #         else:
+            #             llm_data.append([tmp_action, "None"])
+            for pair in llm_output[str(subgoal_idx)]:
+                llm_data.append([action_dict[pair[0]], pair[1], pair[2]])
+                
+                    
+            
+            # print(llm_data)
+            # sys.exit()
+
             # print(prev_action, )
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,
-                num_fails, obj_predictor,subgoal_instr=raw_instr)
+                num_fails, obj_predictor, rcnn_pred, subgoal_instr, llm_data,subgoal_idx,action_idx)
             mc_lists.append(mc_array[0] - mc_array[1])
             # get rewards and subgoal success
             # reward += env.get_transition_reward()[0]
@@ -911,7 +939,7 @@ def main():
     parser.add_argument("--use_qa_everytime", action='store_true')
     args = parser.parse_args()
     # path to testset json file
-    input_jsons = [str(path) for path in Path(os.environ['DF_ROOT'] + "/testset/dialfred_testset_final/").glob("*.json")]
+    input_jsons = [str(path) for path in Path(os.environ['DF_ROOT'] + "/testset/new_dialfred_testset_final/").glob("*.json")]
     test(args, input_jsons)
 
 

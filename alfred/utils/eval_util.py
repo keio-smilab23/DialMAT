@@ -235,6 +235,7 @@ def extract_rcnn_pred(_class, obj_predictor, env, verbose=False, is_idx=True):
         class_idx = obj_predictor.vocab_obj.word2index(_class) if not is_idx else _class
 
     candidates = list(filter(lambda p: p.label == class_name, rcnn_pred))
+    target = None
     if verbose:
         visible_objs = [
             obj for obj in env.last_event.metadata['objects']
@@ -249,12 +250,21 @@ def extract_rcnn_pred(_class, obj_predictor, env, verbose=False, is_idx=True):
             distances = ((cur_centers - last_center)**2).sum(axis=1)
             index = np.argmin(distances)
             mask = candidates[index].mask[0]
+            target = candidates[index]
         else:
             index = np.argmax([p.score for p in candidates])
             mask = candidates[index].mask[0]
+            target = candidates[index]
     else:
         mask = None
-    return mask, rcnn_pred
+    return mask, target
+
+def move_behind(env,args):
+    actions = ["RotateRight_90","RotateRight_90","MoveAhead_25","RotateRight_90","RotateRight_90"]
+    for action in actions:
+        step_success, _, target_instance_id, err, api_action = env.va_interact(
+                action, interact_mask=None, smooth_nav=args.smooth_nav, debug=args.debug)
+            
 
 # step and compute model confusion
 def agent_step_mc(
@@ -304,6 +314,7 @@ def agent_step_mc(
             action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
 
     failed_rule = False
+    target = None
     if prev_action != llm_action:
         if llm_action == "PickupObject":
             obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
@@ -313,7 +324,7 @@ def agent_step_mc(
                 print("<Could not find class>", llm_target, class_name)
             else:
                 obj = obj_predictor.vocab_obj.word2index(llm_target) if model_util.has_interaction(action) else None
-            mask, _ = extract_rcnn_pred(llm_target, obj_predictor, env, verbose=False, is_idx=False)
+            mask, target = extract_rcnn_pred(llm_target, obj_predictor, env, verbose=False, is_idx=False)
             if mask is not None:
                 m_pred['mask_rcnn'] = mask
                 action = "PickupObject"
@@ -334,7 +345,7 @@ def agent_step_mc(
             else:
                 obj = obj_predictor.vocab_obj.word2index(llm_destination) if model_util.has_interaction(action) else None
 
-            mask, _ = extract_rcnn_pred(llm_destination, obj_predictor, env, verbose=False, is_idx=False)
+            mask, target = extract_rcnn_pred(llm_destination, obj_predictor, env, verbose=False, is_idx=False)
             if mask is not None:
                 m_pred['mask_rcnn'] = mask
                 action = "PutObject"
@@ -358,7 +369,7 @@ def agent_step_mc(
             else:
                 obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(action) else None
             
-            mask, _ = extract_rcnn_pred(moveto_obj, obj_predictor, env, verbose=False, is_idx=False)
+            mask, target = extract_rcnn_pred(moveto_obj, obj_predictor, env, verbose=False, is_idx=False)
             if mask is not None:
                 m_pred['mask_rcnn'] = mask
                 action = llm_action
@@ -381,7 +392,7 @@ def agent_step_mc(
             else:
                 obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(action) else None
             
-            mask, _ = extract_rcnn_pred(moveto_obj, obj_predictor, env, verbose=False, is_idx=False)
+            mask, target = extract_rcnn_pred(moveto_obj, obj_predictor, env, verbose=False, is_idx=False)
             if mask is not None:
                 m_pred['mask_rcnn'] = mask
                 action = llm_action
@@ -408,6 +419,7 @@ def agent_step_mc(
 
     step_success = True
 
+ 
     if not episode_end:
         if not (failed_rule and (action == "PickupObject" or action == "PutObject")):
             step_success, _, target_instance_id, err, api_action = env.va_interact(
@@ -419,10 +431,37 @@ def agent_step_mc(
         if not step_success:
             print(f"+++ ERROR: {err}")
 
-            if "No valid Receptacle found" in str(err):
-                pass
-            elif "object not found" in str(err):
-                pass
+            box = target.box
+            c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
+            frame = env.last_event.frame
+            H, W, _ = frame.shape
+            centroid_x = (c1[0] + c2[0]) / 2
+            print("frame",frame.shape,"target",c1,c2,centroid_x)
+            action = []
+            pos = ""
+            if centroid_x < H / 4: # left 
+                actions = ["RotateLeft_90","MoveAhead_25"]
+                pos = "left"
+            elif centroid_x > H * 3 / 4: # right
+                actions = ["RotateRight_90","MoveAhead_25"]
+                pos = "right"
+            else: # center
+                actions = ["MoveAhead_25"]
+                pos = "center"
+            
+            for action in actions:
+                print(f"=== ERROR RECOVERY (action: {action}, pos: {pos})===")
+                step_success, _, target_instance_id, err, api_action = env.va_interact(
+                    action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
+                env.last_interaction = (obj, mask)
+                if not step_success:
+                    print("failed:",err)
+
+                if not step_success and action == "MoveAhead_25":
+                    move_behind(env,args)
+                    step_success, _, target_instance_id, err, api_action = env.va_interact(
+                        action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
+                    env.last_interaction = (obj, mask)
 
             num_fails += 1
             if num_fails >= args.max_fails:
@@ -452,7 +491,7 @@ def agent_step(
     if obj is not None:
         # get mask from a pre-trained RCNN
         assert obj_predictor is not None
-        mask, _ = extract_rcnn_pred(
+        mask, target = extract_rcnn_pred(
             obj, obj_predictor, env, args.debug)
         m_pred['mask_rcnn'] = mask
     # remove blocking actions

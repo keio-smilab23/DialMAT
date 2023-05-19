@@ -278,6 +278,7 @@ def agent_step_mc(
 
     mask = None
     obj = m_pred['object'][0][0] if model_util.has_interaction(action) else None
+    original_obj = obj_predictor.vocab_obj.index2word(obj) if obj else None
 
     # rule-based action selection
     rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))

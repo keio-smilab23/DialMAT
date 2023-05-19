@@ -345,7 +345,7 @@ def agent_step_mc(
             else:
                 failed_rule = True
 
-        elif llm_action == "OpenObject" or llm_action == "CloseObject":
+        elif llm_action == "OpenObject" or llm_action == "CloseObject" :
             if llm_destination != "None":
                 moveto_obj = llm_destination
             elif llm_target != "None":       
@@ -367,7 +367,29 @@ def agent_step_mc(
                 print(f"destination: {moveto_obj}, action: {llm_action}")
             else:
                 failed_rule = True
+        
+        elif llm_action == "ToggleObjectOn" or llm_action == "ToggleObjectOff":
+            if llm_target != "None":       
+                moveto_obj = llm_target
+            elif llm_destination != "None":
+                moveto_obj = llm_destination
+            obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
+            if llm_target not in obj_list:
+                class_name = get_closest_object(moveto_obj, obj_list)
+                obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(action) else None
+                print("<Could not find class>", moveto_obj, class_name)
+            else:
+                obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(action) else None
             
+            mask, _ = extract_rcnn_pred(moveto_obj, obj_predictor, env, verbose=False, is_idx=False)
+            if mask is not None:
+                m_pred['mask_rcnn'] = mask
+                action = llm_action
+                m_pred['action'] = action
+                print("== rule-based action selection ==     ", end="")
+                print(f"destination: {moveto_obj}, action: {llm_action}")
+            else:
+                failed_rule = True
 
 
     print(f"subgoal : {subgoal_instr},  action: {action}, llm_output: {llm_data}")
@@ -387,10 +409,12 @@ def agent_step_mc(
     step_success = True
 
     if not episode_end:
-        # if not (failed_rule and (action == "PickupObject" or action == "PutObject")):
-        step_success, _, target_instance_id, err, api_action = env.va_interact(
-            action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
-        env.last_interaction = (obj, mask)
+        if not (failed_rule and (action == "PickupObject" or action == "PutObject")):
+            step_success, _, target_instance_id, err, api_action = env.va_interact(
+                action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
+            env.last_interaction = (obj, mask)
+        else:
+            action = prev_action
 
         if not step_success:
             print(f"+++ ERROR: {err}")

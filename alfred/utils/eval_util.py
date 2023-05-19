@@ -268,7 +268,7 @@ def move_behind(env,args):
 
 # step and compute model confusion
 def agent_step_mc(
-        model, input_dict, vocab, prev_action, env, args, num_fails, obj_predictor, rcnn_pred=None, subgoal_instr=None, llm_data=None):
+        model, input_dict, vocab, prev_action, env, args, num_fails, obj_predictor, rcnn_pred=None, subgoal_instr=None, llm_data=None, subgoal_idx=None,action_idx=None):
     '''
     environment step based on model prediction
     '''
@@ -403,7 +403,7 @@ def agent_step_mc(
                 failed_rule = True
 
 
-    print(f"subgoal : {subgoal_instr},  action: {action}, llm_output: {llm_data}")
+    print(f"{subgoal_idx+1:02}_{action_idx:03} -> subgoal : {subgoal_instr},  action: {action}, llm_output: {llm_data}")
 
     # use the predicted action
     # episode_end = (action == constants.STOP_TOKEN)
@@ -430,38 +430,38 @@ def agent_step_mc(
 
         if not step_success:
             print(f"+++ ERROR: {err}")
-
-            box = target.box
-            c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
-            frame = env.last_event.frame
-            H, W, _ = frame.shape
-            centroid_x = (c1[0] + c2[0]) / 2
-            print("frame",frame.shape,"target",c1,c2,centroid_x)
-            action = []
-            pos = ""
-            if centroid_x < H / 4: # left 
-                actions = ["RotateLeft_90","MoveAhead_25"]
-                pos = "left"
-            elif centroid_x > H * 3 / 4: # right
-                actions = ["RotateRight_90","MoveAhead_25"]
-                pos = "right"
-            else: # center
-                actions = ["MoveAhead_25"]
-                pos = "center"
-            
-            for action in actions:
-                print(f"=== ERROR RECOVERY (action: {action}, pos: {pos})===")
-                step_success, _, target_instance_id, err, api_action = env.va_interact(
-                    action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
-                env.last_interaction = (obj, mask)
-                if not step_success:
-                    print("failed:",err)
-
-                if not step_success and action == "MoveAhead_25":
-                    move_behind(env,args)
+            if target:
+                box = target.box
+                c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
+                frame = env.last_event.frame
+                H, W, _ = frame.shape
+                centroid_x = (c1[0] + c2[0]) / 2
+                print("frame",frame.shape,"target",c1,c2,centroid_x)
+                action = []
+                pos = ""
+                if centroid_x < H / 4: # left 
+                    actions = ["RotateLeft_90","MoveAhead_25"]
+                    pos = "left"
+                elif centroid_x > H * 3 / 4: # right
+                    actions = ["RotateRight_90","MoveAhead_25"]
+                    pos = "right"
+                else: # center
+                    actions = ["MoveAhead_25"]
+                    pos = "center"
+                
+                for action in actions:
+                    print(f"=== ERROR RECOVERY (action: {action}, pos: {pos})===")
                     step_success, _, target_instance_id, err, api_action = env.va_interact(
                         action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
                     env.last_interaction = (obj, mask)
+                    if not step_success:
+                        print("failed:",err)
+
+                    if not step_success and action == "MoveAhead_25":
+                        move_behind(env,args)
+                        step_success, _, target_instance_id, err, api_action = env.va_interact(
+                            action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
+                        env.last_interaction = (obj, mask)
 
             num_fails += 1
             if num_fails >= args.max_fails:

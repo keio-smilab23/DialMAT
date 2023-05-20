@@ -414,6 +414,7 @@ def agent_step_mc(
     m_pred = model_util.extract_action_preds(
         m_out, model.pad, vocab['action_low'], clean_special_tokens=False)[0]
     action = m_pred['action']
+    action = action if "Look" not in action[:len("Look")] else "MoveAhead_25"
     action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
     
     if args.debug:

@@ -114,7 +114,7 @@ def load_data(name, args, ann_type, valid_only=False):
     '''
     # partitions = ([] if valid_only else ['train']) + ['valid_seen', 'valid_unseen']
     # partitions = ([] if valid_only else ['train']) + ['valid_seen', 'pseudo_valid']
-    partitions = ([] if valid_only else ['train']) + ['valid_seen', 'pseudo_valid', 'pseudo_test']
+    partitions = ([] if valid_only else ['train']) + ['pseudo_test']
     # partitions = ([] if valid_only else ['pseudo_valid']) + ['pseudo_test']
     # partitions = ([] if valid_only else ['train']) + ['pseudo_test']
     datasets = []
@@ -136,6 +136,7 @@ def wrap_datasets(datasets, args):
     batch_size = args.batch // len(args.data['train'])
     loader_args = {
         'num_workers': args.num_workers,
+        # 'num_workers': args.num_workers,
         'drop_last': (torch.cuda.device_count() > 1),
         'collate_fn': helper_util.identity}
     if args.num_workers > 0:
@@ -197,6 +198,7 @@ def main(train, exp):
         datasets.extend(load_data(name, args, ann_type))
     for name, ann_type in zip(args.data['valid'], ann_types):
         datasets.extend(load_data(name, args, ann_type, valid_only=True))
+        
     # assign vocabs to datasets and check their sizes for nn.Embeding inits
     print("Prepare vocabs ... ")
     embs_ann, vocab_out = process_vocabs(datasets, args)

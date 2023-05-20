@@ -87,11 +87,12 @@ def cfg_train():
     clip_resnet = False
     clip_deberta = False
     clip_object = False
+    maskrcnn = True
     deberta = False
     mat_text = False
     mat_image = False
     mat_action = False
-    update_feat = True
+    
     # mat_object = False
 
     # GENERAL TRANING SETTINGS
@@ -104,7 +105,7 @@ def cfg_train():
 
     # HYPER PARAMETERS
     # batch size
-    batch = 16
+    batch = 2
     # number of epochs
     epochs = 20
     # optimizer type, must be in ('adam', 'adamw')

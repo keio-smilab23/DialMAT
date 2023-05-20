@@ -49,44 +49,6 @@ class AlfredDataset(BaseDataset):
             feat_dict['frames'] = self.load_frames(key)
         return task_path, task_json, feat_dict
 
-    def load_features_from_task_json(self, task_json):
-        task = task_json['task_type'] #'task': 'look_at_obj_in_light-Pillow-None-DeskLamp-205/trial_T20190909_014933_134232'
-        split = task_json['split']
-
-        #./data/generated_2.1.0/{split}/{task}/feats/deberta/*.pthからデータを取得
-        data_paths = glob.glob(os.path.join(constants.ET_DATA,  "generated_2.1.0", split, task, "feats", "deberta", "*.pth"))
-        feats_deberta = []
-        for data_path in tqdm_wrapper(data_paths):
-            deberta = torch.load(data_path) #(1, num_words, 768)
-            feats_deberta.append(deberta)
-        feats_deberta = torch.cat(feats_deberta, dim=0) #(num_sentences, num_words, 768)
-
-        #./data/generated_2.1.0/{split}/{task}/feats/text_clip/*.pthからデータを取得
-        data_paths = glob.glob(os.path.join(constants.ET_DATA,  "generated_2.1.0", split, task, "feats", "text_clip", "*.pth"))
-        feats_text_clip = []
-        for data_path in tqdm_wrapper(data_paths):
-            text_clip = torch.load(data_path)
-            feats_text_clip.append(text_clip)
-        feats_text_clip = torch.cat(feats_text_clip, dim=0) #(num_sentences, num_words, 768)
-
-        #./data/generated_2.1.0/{split}/{task}/feats/mask_rcnn/bbox/*.pthからデータを取得
-        data_paths = glob.glob(os.path.join(constants.ET_DATA,  "generated_2.1.0", split, task, "feats", "mask_rcnn", "bbox", "*.pth"))
-        feats_mask_rcnn_bbox = []
-        for data_path in tqdm_wrapper(data_paths):
-            mask_rcnn_bbox = torch.load(data_path)
-            feats_mask_rcnn_bbox.append(mask_rcnn_bbox)
-        feats_mask_rcnn_bbox = torch.cat(feats_mask_rcnn_bbox, dim=0) #(num_sentences, num_words, 4)
-
-        #./data/generated_2.1.0/{split}/{task}/feats/mask_rcnn/label/*.pthからデータを取得
-        data_paths = glob.glob(os.path.join(constants.ET_DATA,  "generated_2.1.0", split, task, "feats", "mask_rcnn", "label", "*.pth"))
-        feats_mask_rcnn_label = []
-        for data_path in tqdm_wrapper(data_paths):
-            mask_rcnn_label = torch.load(data_path)
-            feats_mask_rcnn_label.append(mask_rcnn_label)
-        feats_mask_rcnn_label = torch.cat(feats_mask_rcnn_label, dim=0) #(num_sentences, num_words, 1)
-
-        return {"deberta": feats_deberta, "text_clip": feats_text_clip, "mask_rcnn_bbox": feats_mask_rcnn_bbox, "mask_rcnn_label": feats_mask_rcnn_label}
-
     def load_masks(self, key):
         '''
         load interaction masks from the disk

@@ -29,6 +29,8 @@ from alfred.gen import constants
 from alfred.gen.utils import image_util
 from alfred.utils import helper_util, model_util
 
+import torch.multiprocessing as multiprocessing
+
 #追加
 from .model_util import tokens_to_lang
 
@@ -157,12 +159,10 @@ def save_features_to_path(output_path, feature):
     with open(output_path, "wb") as f:
         pickle.dump(feature, f)
 
-def load_features_from_path(self, path, file_name):
+def load_features_from_path(path):
     """
     Load features from a file.
     """
-
-    path = os.path.join(path, file_name)
 
     #まずpathにファイルがあるかを確認する
     if os.path.exists(path):
@@ -180,7 +180,7 @@ def reshape_with_pad(x,shape):
         x = torch.cat([x, zeros])
     return x
 
-def get_maskrcnn_features(image, obj_predictor, clip_preprocess,  clip_model, subgoal_words, subgoal_words_clip, num_of_use=5, batch_size=8):
+def get_maskrcnn_features(image, obj_predictor,clip_model, subgoal_words, num_of_use=1):
     '''
     get environment observation
     
@@ -190,10 +190,13 @@ def get_maskrcnn_features(image, obj_predictor, clip_preprocess,  clip_model, su
     returns list of tensors of shape (subgoal_words * 5, 768)
     '''
 
+    subgoal_words_clip = clip.tokenize(subgoal_words).to("cuda")
+    subgoal_words_clip = clip_model.encode_text(subgoal_words_clip) # (N,D)
+
     image = F.to_tensor(image).cuda()
     output = obj_predictor.model.model(image[None])[0]
 
-    labels, regions = [], []
+    regions, labels = [], []
     for pred_idx in range(len(output['scores'])):
         label = obj_predictor.model.vocab_pred[output['labels'][pred_idx].cpu().item()]
         box = output['boxes'][pred_idx].detach().cpu().numpy() 
@@ -205,7 +208,8 @@ def get_maskrcnn_features(image, obj_predictor, clip_preprocess,  clip_model, su
             regions.append(region_resized.unsqueeze(0))
 
     if len(regions) == 0:
-        return torch.zeros(1, 768).cuda()
+        feats, _labels = torch.zeros(1, len(subgoal_words), 1024).cuda(), torch.zeros(1, len(subgoal_words), 1024).cuda()
+        return feats, _labels
     
     regions = torch.cat(regions,dim=0) # (N,3,224,224)
 
@@ -213,11 +217,13 @@ def get_maskrcnn_features(image, obj_predictor, clip_preprocess,  clip_model, su
     label_clip = clip_model.encode_text(tokenized_labels) # (N,D)
     cossim = FF.cosine_similarity(subgoal_words_clip.unsqueeze(1), label_clip, dim=-1) # (M,D) @ (D,N)
     sort_idxs = torch.argsort(cossim, dim=1)
-    sort_idxs = sort_idxs[:num_of_use]
-    bboxes_top5 = torch.cat([reshape_with_pad(regions[sort_idxs[i,:]],(num_of_use,3,224,224)) for i in range(sort_idxs.shape[0])],dim=0)
-    
-    if len(bboxes_top5) == 0:
-        return torch.zeros(1, 768).cuda()
+    sort_idxs = torch.argmax(sort_idxs, dim=1)
+    bboxes_top1 = torch.cat([regions[sort_idxs[i]].unsqueeze(0) for i in range(sort_idxs.shape[0])],dim=0)
+    label_clip_top1 = torch.cat([label_clip[sort_idxs[i]].unsqueeze(0) for i in range(sort_idxs.shape[0])],dim=0) #(N,D)
+
+    if len(bboxes_top1) == 0:
+        feats, _labels = torch.zeros(1, len(subgoal_words), 1024).cuda(), torch.zeros(1, len(subgoal_words), 1024).cuda()
+        return feats, _labels
 
     # c.f. https://github.com/openai/CLIP/blob/main/clip/clip.py#L79
     my_transform = Compose([
@@ -225,10 +231,10 @@ def get_maskrcnn_features(image, obj_predictor, clip_preprocess,  clip_model, su
     ])
     
     with torch.no_grad():
-        batch_images = my_transform(bboxes_top5) # (5N,3,224,224)
-        feats = clip_model.encode_image(batch_images)
+        batch_images = my_transform(bboxes_top1) # (N,3,224,224)
+        feats = clip_model.encode_image(batch_images) # (N,1024)
 
-    return feats if feats.shape[0] > 0 else torch.zeros(1, 768).cuda()
+    return feats.unsqueeze(0), label_clip_top1.unsqueeze(0)
 
 def encode_clip_image(clip_preprocess, clip_model, images, device="cuda:0"):
     images = [clip_preprocess(image).unsqueeze(0).to("cuda") for image in images]
@@ -462,7 +468,7 @@ def get_maskrcnn_features_similarity_lmdb(images, obj_predictor,  clip_model, su
 
     original_images = images
 
-    all_bboxes, all_labels, all_lengths = [], [], []
+    all_bboxes, all_labels = [], []
 
     #divide into batch
     images = [original_images[i:i+batch_size] for i in range(0, len(original_images), batch_size)]
@@ -471,7 +477,7 @@ def get_maskrcnn_features_similarity_lmdb(images, obj_predictor,  clip_model, su
         tensor_images = torch.stack([F.to_tensor(img).cuda() for img in images_batch]).to(torch.device('cuda'))
         outputs = obj_predictor.model.model(tensor_images)
 
-        regions, labels, lengths = [], [], []
+        regions, labels = [], []
 
         #for single image
         for idx, output in enumerate(outputs):
@@ -489,7 +495,6 @@ def get_maskrcnn_features_similarity_lmdb(images, obj_predictor,  clip_model, su
                         _regions.append(region_resized.unsqueeze(0))
 
             if len(_regions) == 0:
-                lengths.append(0)
                 feats, _labels = torch.zeros(1, len(subgoal_words), 1024).cuda(), torch.zeros(1, len(subgoal_words), 1024).cuda()
                 regions.append(feats)
                 labels.append(_labels)
@@ -501,25 +506,15 @@ def get_maskrcnn_features_similarity_lmdb(images, obj_predictor,  clip_model, su
             label_clip = clip_model.encode_text(tokenized_labels) # (N,D)
             cossim = FF.cosine_similarity(subgoal_words_clip.unsqueeze(1), label_clip, dim=-1) # (M,D) @ (D,N)
             sort_idxs = torch.argsort(cossim, dim=1)
-            # print("sort_idxs", sort_idxs.shape)
-            # print("sort_idxs", sort_idxs)
-            # print("cosine_similarity", cossim.shape)
-            # print("cosine_similarity", cossim)
             # 各行で一番大きい値が格納されたインデックスを取得
             sort_idxs = torch.argmax(sort_idxs, dim=1)
-            # print("sort_idxs", sort_idxs.shape)
-            # print("sort_idxs", sort_idxs)
 
             # print("subgoal_words_clip", subgoal_words_clip.shape)
             #top1bboxes
             bboxes_top1 = torch.cat([_regions[sort_idxs[i]].unsqueeze(0) for i in range(sort_idxs.shape[0])],dim=0)
             label_clip_top1 = torch.cat([label_clip[sort_idxs[i]].unsqueeze(0) for i in range(sort_idxs.shape[0])],dim=0)
 
-            # print("bboxes_top1", bboxes_top1.shape)
-            # print("label_clip_top1", label_clip_top1.shape)
-
             if len(bboxes_top1) == 0:
-                lengths.append(0)
                 feats, _labels = torch.zeros(1, len(subgoal_words), 1024).cuda(), torch.zeros(1, len(subgoal_words), 1024).cuda()
                 regions.append(feats)
                 labels.append(_labels)
@@ -545,7 +540,6 @@ def get_maskrcnn_features_similarity_lmdb(images, obj_predictor,  clip_model, su
         
         all_bboxes.append(torch.cat(regions,dim=0)) #(batch_size, subgoal_words, 768)
         all_labels.append(torch.cat(labels,dim=0)) #(batch_size, subgoal_words, 768)
-        all_lengths += lengths
     
     # print("all_bboxes。", torch.cat(all_bboxes,dim=0).shape)
     all_bboxes = torch.cat(all_bboxes,dim=0) #(len(images), num_of_use, 768)
@@ -554,7 +548,7 @@ def get_maskrcnn_features_similarity_lmdb(images, obj_predictor,  clip_model, su
     # all_feats = torch.cat([all_bboxes, all_labels], dim=0)
     # all_lengths = torch.tensor(all_lengths).cuda() #(len(images),1)
     
-    return all_bboxes, all_labels
+    return all_bboxes.cpu(), all_labels.cpu()
 
 def get_maskrcnn_features_similarity(image_paths, obj_predictor, clip_preprocess,  clip_model, subgoal_words, subgoal_words_clip, num_of_use=4, batch_size=16):
     '''
@@ -820,14 +814,17 @@ def tensorize_and_pad(batch, device, pad):
             seqs = [vv[0].clone().detach().to(device).type(torch.float) for vv in v]
             pad_seq = pad_sequence(seqs, batch_first=True, padding_value=pad)
             # print("pad_seq.shape",pad_seq.shape)#torch.Size([2, 72, 512, 7, 7])
+            clip = pad_sequence([vv[1].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
+            box = pad_sequence([vv[2].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
+            label = pad_sequence([vv[3].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
             # dict_assign[k] = pad_seq
             #pad_seqとv[0][1]とv[1][1]を結合
-            if len(v) == 1:
-                pad_seq = [pad_seq, v[0][1]]
-            else:
-                pad_seq = [pad_seq, v[0][1], v[1][1]]
+            # if len(v) == 1:
+            #     pad_seq = [pad_seq, v[0][1]]
+            # else:
+            #     pad_seq = [pad_seq, v[0][1], v[1][1]]
             # print("pad_seq[0].shape",pad_seq[0].shape)
-            dict_assign[k] = pad_seq
+            dict_assign[k] = [pad_seq, clip, box, label]
             dict_assign['lengths_' + k] = torch.tensor(list(map(len, seqs)))
             dict_assign['length_' + k + '_max'] = max(map(len, seqs))
         else:

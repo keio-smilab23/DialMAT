@@ -91,6 +91,10 @@ class Model(base.Model):
         self.dec_action = nn.Linear(
             encoder_output_size, args.demb)
         
+        self.mask_rcnn_fc = nn.Linear(
+            1024, args.demb
+        )
+        
         self.dec_object = ObjectClassifier(encoder_output_size)
 
         # skip connection for object predictions
@@ -162,19 +166,20 @@ class Model(base.Model):
             sentences_list.append(sentences)
         return sentences_list
     
-    def encode_deberta(self, task_paths, sentences, device="cuda:0"):
+    def encode_deberta(self, epoch, task_paths, sentences, device="cuda:0"):
         """
         Encode two sentences with the deberta model.
         """
         
-        if not self.args.update_feat:
+        if epoch != 0 or not self.args.update_feat:
             batch_features = []
             batch_lengths = []
 
             is_saved = True
 
             for task_path in task_paths:
-                text_features = load_features_from_path(task_path, "deberta.pth") #len(words), 768
+                task_path = task_path.replace("traj_data.json", "deberta.pth")
+                text_features = load_features_from_path(task_path) #len(words), 768
 
                 if text_features is None:
                     is_saved = False
@@ -184,9 +189,9 @@ class Model(base.Model):
                 batch_lengths.append(batch_features.shape[0])
 
             if is_saved:
-                batch_features = pad_sequence(batch_features, batch_first=True)
+                batch_features = pad_sequence(batch_features, batch_first=True) #(batch_size, words_length, 768)
                 return batch_features, torch.tensor(batch_lengths).to(device)
-            
+        
         batch_features = []
         batch_lengths = []
         for i in range(len(sentences)):
@@ -201,11 +206,12 @@ class Model(base.Model):
             batch_features.append(text_features)
             batch_lengths.append(text_features.shape[0])
 
-            save_features_to_path(os.path.join(task_paths[i], "deberta.pth"), text_features)
-            print("text_features(deberta).shape: ", text_features.shape)
-            print("lengths_list: ", batch_lengths )
+            task_path = task_paths[i].replace("traj_data.json", "deberta.pth")
+            save_features_to_path(task_path, text_features)
+            # print("text_features(deberta).shape: ", text_features.shape)
+            # print("lengths_list: ", batch_lengths )
 
-        batch_features = pad_sequence(batch_features, batch_first=True)
+        batch_features = pad_sequence(batch_features, batch_first=True) #(batch_size, words_length, 768)
 
         return batch_features, torch.tensor(batch_lengths).to(device)
     
@@ -277,19 +283,20 @@ class Model(base.Model):
         return feats
     
     #追加
-    def encode_clip_text(self, task_paths, sentences, device="cuda:0"):
+    def encode_clip_text(self, epoch, task_paths, sentences, device="cuda:0"):
         """
         Encode sentences with the CLIP model.
         """
 
-        if not self.args.update_feat:
+        if epoch != 0 or not self.args.update_feat:
             batch_features = []
             batch_lengths = []
 
             is_saved = True
 
             for task_path in task_paths:
-                text_features = load_features_from_path(task_path, "clip_text.pth") #len(sentences), 768
+                task_path = task_path.replace("traj_data.json", "clip_text.pth")
+                text_features = load_features_from_path(task_path) #len(sentences), 768
 
                 if text_features is None:
                     is_saved = False
@@ -299,7 +306,7 @@ class Model(base.Model):
                 batch_lengths.append(batch_features.shape[0])
             
             if is_saved:
-                batch_features = pad_sequence(batch_features, batch_first=True)
+                batch_features = pad_sequence(batch_features, batch_first=True) #(batch_size, max_sentence_length, 768)
                 return batch_features, torch.tensor(batch_lengths).to(device)
 
         batch_features = []
@@ -307,15 +314,16 @@ class Model(base.Model):
 
         for i in range(len(sentences)):
             tokenized = clip.tokenize(sentences[i]).to(device)
-            text_features = self.clip_model.encode_text(tokenized)
+            text_features = self.clip_model.encode_text(tokenized) #(len(sentences), 768)
             batch_features.append(text_features)
             batch_lengths.append(tokenized.shape[0])
 
-            save_features_to_path(os.path.join(task_paths[i], "clip_text.pth"), text_features)
-            print("text_features(clip).shape: ", text_features.shape)
-            print("lengths_list: ", batch_lengths )
+            task_path = task_paths[i].replace("traj_data.json", "clip_text.pth")
+            save_features_to_path(task_path, text_features)
+            # print("text_features(clip).shape: ", text_features.shape)
+            # print("lengths_list: ", batch_lengths )
 
-        batch_features = pad_sequence(batch_features, batch_first=True)
+        batch_features = pad_sequence(batch_features, batch_first=True) #(batch_size, max_sentence_length, 768)
 
         return batch_features, torch.tensor(batch_lengths).to(device)
 
@@ -356,26 +364,22 @@ class Model(base.Model):
 
         return emb_frame, lengths
     
-    def forward(self, task_path, vocab, **inputs):
+    def forward(self, epoch, task_path, vocab, **inputs):
         '''
         forward the model for multiple time-steps (used for training)
         '''
         # embed language
         output = {}
         
-        subgoal_words_list = self.get_subgoal_text(inputs['lang'], vocab)
-
-        if self.args.update_feat:
-            with torch.no_grad():
-
-                emb_maskrcnn_bbox, emb_maskrcnn_label, emb_maskrcnn_length = self.embed_maskrcnn(task_path, subgoal_words_list)
-                # emb_clip, lengths_clip = self.embed_clip(task_path)
-                # emb_deberta, lengths_deberta = self.embed_deberta(task_path)
-
-                return output
-        
-        else:
-            emb_maskrcnn_bbox, emb_maskrcnn_label, emb_maskrcnn_length = self.embed_maskrcnn(task_path)
+        # subgoal_words_list = self.get_subgoal_text(inputs['lang'], vocab)
+        # if self.args.update_feat:
+        #     with torch.no_grad():
+        #         emb_maskrcnn_bbox, emb_maskrcnn_label, emb_maskrcnn_length = self.embed_maskrcnn(task_path, subgoal_words_list)
+        #         # emb_clip, lengths_clip = self.embed_clip(task_path)
+        #         # emb_deberta, lengths_deberta = self.embed_deberta(task_path)
+        #         return output
+        # else:
+        #     emb_maskrcnn_bbox, emb_maskrcnn_label = self.embed_maskrcnn(task_path)
 
         #変更(CLIPのtext情報も用いる)
         if self.args.clip_text:
@@ -386,7 +390,7 @@ class Model(base.Model):
             sentences = self.token_to_sentence_list(inputs['lang'], vocab)
             
             # encode clip
-            emb_clip, lengths_clip = self.encode_clip_text(sentences, device=inputs['lang'].device)
+            emb_clip, lengths_clip = self.encode_clip_text(epoch, sentences, device=inputs['lang'].device)
             
             # concat clip and lang
             emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
@@ -398,7 +402,7 @@ class Model(base.Model):
 
             sentences = self.token_to_sentence_list(inputs['lang'], vocab)
 
-            emb_deberta, lengths_deberta = self.encode_deberta(task_path, sentences, device=inputs['lang'].device)
+            emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, device=inputs['lang'].device)
 
             emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device=inputs['lang'].device)
 
@@ -410,10 +414,10 @@ class Model(base.Model):
             sentences = self.token_to_sentence_list(inputs['lang'], vocab)
 
             # encode clip
-            emb_clip, lengths_clip = self.encode_clip_text(sentences, device=inputs['lang'].device)
+            emb_clip, lengths_clip = self.encode_clip_text(epoch, sentences, device=inputs['lang'].device)
 
             # encode deberta
-            emb_deberta, lengths_deberta = self.encode_deberta(task_path, sentences, device=inputs['lang'].device)
+            emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, device=inputs['lang'].device)
 
             # concat clip and lang
             emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
@@ -458,18 +462,33 @@ class Model(base.Model):
                 length_frames_max = inputs['length_frames_max']
                 lengths_actions = lengths_frames.clone()
 
-
             # emb_frames, lengths_frames = self.concat_embeddings_frames(emb_frames, inputs['region_feats'], inputs['lengths_frames'],device=inputs['frames'][0].device)
-        else:
-            #元々
-            # embed frames and actions
-            if len(inputs["frames"]) == 1: #推論時
-                if len(inputs["frames"].shape) != 5:
-                    inputs["frames"] = inputs["frames"].unsqueeze(0)
-                emb_frames, emb_object = self.embed_frames(inputs['frames'])
+        # else:
+            # #元々
+            # # embed frames and actions
+            # if len(inputs["frames"]) == 1: #推論時
+            #     if len(inputs["frames"].shape) != 5:
+            #         inputs["frames"] = inputs["frames"].unsqueeze(0)
+            #     emb_frames, emb_object = self.embed_frames(inputs['frames'])
             
-            else:
-                emb_frames, emb_object = self.embed_frames(inputs['frames'][0])
+            # else:
+            #     emb_frames, emb_object = self.embed_frames(inputs['frames'][0])
+            # lengths_frames = inputs['lengths_frames']
+            # length_frames_max = inputs['length_frames_max']
+            # lengths_actions = lengths_frames.clone()
+
+
+        if self.args.maskrcnn:
+            emb_resnet, emb_object = self.embed_frames(inputs['frames'][0])
+            emb_clip = inputs['frames'][1]
+            emb_bbox = inputs['frames'][2]
+            emb_label = inputs['frames'][3]
+            # emb_bbox、emb_labelは[batch, max_img, max_subword, 1024]だが、これを[batch, max_img, 1024]に変換する。つまり、dim=2でsumをとる
+            emb_bbox = emb_bbox.mean(dim=2)
+            emb_label = emb_label.mean(dim=2)
+            emb_bbox = self.mask_rcnn_fc(emb_bbox)
+            emb_label = self.mask_rcnn_fc(emb_label)
+            emb_frames = torch.cat([emb_resnet, emb_clip, emb_bbox, emb_label], dim=1)
             lengths_frames = inputs['lengths_frames']
             length_frames_max = inputs['length_frames_max']
             lengths_actions = lengths_frames.clone()
@@ -487,13 +506,13 @@ class Model(base.Model):
         #     emb_object = self.mat(emb_object)
 
         #変更
-        if not (self.args.clip_image or self.args.clip_resnet):
-            assert emb_frames.shape == emb_actions.shape
+        # if not (self.args.clip_image or self.args.clip_resnet):
+            # assert emb_frames.shape == emb_actions.shape
 
         # concatenate language, frames and actions and add encodings
         encoder_out, _ = self.encoder_vl(
             emb_lang, emb_frames, emb_actions, lengths_lang,
-            lengths_frames, lengths_actions, length_frames_max, is_clip_resnet=self.args.clip_resnet)
+            lengths_frames, lengths_actions, length_frames_max, is_maskrcnn=True,  is_clip_resnet=self.args.clip_resnet)
         # use outputs corresponding to visual frames for prediction only
         if self.args.clip_resnet:
             encoder_out_visual = encoder_out[
@@ -506,8 +525,8 @@ class Model(base.Model):
             
         if self.args.clip_resnet:
             #encoder_out_visualを半分にして足し合わせる
-            middle_shape = encoder_out_visual.shape[1] // 2
-            encoder_out_visual = encoder_out_visual[:, :middle_shape, :] + encoder_out_visual[:, middle_shape:,:]
+            middle_shape = encoder_out_visual.shape[1] // 4
+            encoder_out_visual = encoder_out_visual[:, :middle_shape] + encoder_out_visual[:, middle_shape:middle_shape*2] + encoder_out_visual[:, middle_shape*2:middle_shape*3] + encoder_out_visual[:, middle_shape*3:]
 
         # get the output actions
         decoder_input = encoder_out_visual.reshape(-1, self.args.demb)
@@ -515,6 +534,7 @@ class Model(base.Model):
         action_flat = action_emb_flat.mm(self.emb_action.weight.t())
         action = action_flat.view(
             *encoder_out_visual.shape[:2], *action_flat.shape[1:])
+
         
         # get the output objects
         emb_object_flat = emb_object.view(-1, self.args.demb)

@@ -40,6 +40,7 @@ class EncoderVL(nn.Module):
                 lengths_frames,
                 lengths_actions,
                 length_frames_max,
+                is_maskrcnn=True,
                 is_clip_resnet=False,
                 attn_masks=True):
         '''
@@ -53,6 +54,8 @@ class EncoderVL(nn.Module):
 
         if is_clip_resnet:
             length_mask_pad = length_lang_max + length_frames_max * 2 + length_actions_max
+        elif is_maskrcnn:
+            length_mask_pad = length_lang_max + length_frames_max * 5
         else:
             length_mask_pad = length_lang_max + length_frames_max + length_actions_max
             
@@ -70,6 +73,21 @@ class EncoderVL(nn.Module):
                         length_lang_max + length_frames_max * 2] = True
                 # mask padded actions
                 mask_pad[i, length_lang_max + length_frames_max * 2 + len_a:] = True
+            elif is_maskrcnn:
+                # mask padded words
+                mask_pad[i, len_l: length_lang_max] = True
+                # mask padded frames
+                mask_pad[i, length_lang_max + len_f:
+                        length_lang_max + length_frames_max] = True
+                mask_pad[i, length_lang_max + length_frames_max + len_f:
+                        length_lang_max + length_frames_max * 2] = True
+                mask_pad[i, length_lang_max + length_frames_max * 2 + len_f:
+                        length_lang_max + length_frames_max * 3] = True
+                mask_pad[i, length_lang_max + length_frames_max * 3 + len_f:
+                        length_lang_max + length_frames_max * 4] = True
+                # mask padded actions
+                mask_pad[i, length_lang_max + length_frames_max * 4 + len_a:] = True
+                
             else:
                 # mask padded words
                 mask_pad[i, len_l: length_lang_max] = True
@@ -87,13 +105,15 @@ class EncoderVL(nn.Module):
             # assert length_frames_max == max(lengths_actions)
             mask_attn = model_util.generate_attention_mask(
                 length_lang_max, length_frames_max, length_actions_max,
-                emb_all.device, self.num_input_actions, is_clip_resnet=is_clip_resnet)
+                emb_all.device, self.num_input_actions, is_maskrcnn=True, is_clip_resnet=is_clip_resnet)
         else:
             # allow every token to attend to all others
             mask_attn = torch.zeros(
                 (mask_pad.shape[1], mask_pad.shape[1]),
                 device=mask_pad.device).float()
-            
+        
+        print("mask_pad.shape", mask_pad.shape)
+        print("mask_attn.shape", mask_attn.shape)
         # encode the inputs
         output = self.enc_transformer(
             emb_all.transpose(0, 1), mask_attn, mask_pad).transpose(0, 1)

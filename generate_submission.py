@@ -358,6 +358,8 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
     obj_predictor = FeatureExtractor(
         archi='maskrcnn', device=device, checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
 
+    clip_model, clip_preprocess = clip.load("RN50", device="cuda")
+
     loc_ans, app_ans, dir_ans = all_ans
     all_rewards = []
     succ = []
@@ -597,7 +599,7 @@ def iters(json_paths, args, lang, dataset, encoder, decoder, critic, performer, 
 
                 # performer rollout for some steps
                 with torch.no_grad():
-                    interm_states = step(env, performer, dataset, extractor,
+                    interm_states = step(clip_model, env, performer, dataset, extractor,
                                          trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, int(path[-9:-5]), num_rollout=5)
 
                 # if log_entry['success']:
@@ -705,7 +707,7 @@ def reset(
     return init_states
 
 
-def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, id, num_rollout=5):
+def step(clip_model, env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, id, num_rollout=5):
     # modification of evaluate_subgoals: add qa and skip init
 
     # add initial states from expert initialization
@@ -717,6 +719,8 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
         ':')[1]), int(trial_uid.split(':')[2])
     # if not traj_data['repeat_idx'] == r_idx:
     #     print(traj_data)
+
+    
 
     # load language features and append numericalized qa
     num_qa = []
@@ -752,8 +756,12 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
                 action_idx = 1
             else:
                 action_idx += 1
+            
+            maskrcnn_frames, maskrcnn_labels = eval_util.get_observation_maskrcnn(env.last_event, extractor, clip_model, subgoal_words)
 
-            input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
+            input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), 
+                                    eval_util.get_observation_clip(env.last_event, extractor),
+                                    ]
 
             # print(prev_action, )
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(

@@ -4,10 +4,12 @@ import lmdb
 import torch
 import warnings
 import numpy as np
+import io
 
 from torch.utils.data import Dataset as TorchDataset
 from copy import deepcopy
 from tqdm import tqdm
+import torch.multiprocessing as mp
 
 from alfred.gen import constants
 from alfred.utils import data_util
@@ -91,11 +93,26 @@ class BaseDataset(TorchDataset):
         if not hasattr(self, 'feats_lmdb'):
             self.feats_lmdb, self.feats = self.load_lmdb(
                 self.feats_lmdb_path)
+            
+        # if mp.get_start_method() != 'spawn':
+        #     mp.set_start_method('spawn', force=True)
+        #     print("{} setup done".format(mp.get_start_method()))
         # feats_bytes = self.feats.get(key)
         # feats_numpy = np.frombuffer(
         #     feats_bytes, dtype=np.float32).reshape(self.dataset_info['feat_shape'])
         #変更(only clip)
+        # print("self.feats.get(key):", self.feats.get(key))
+        # buffer = io.BytesIO(self.feats.get(key))
+        # print("buffer", buffer)
+
+        # if mp.get_start_method() != 'spawn':
+        #     mp.set_start_method('spawn', force=True)
+        #     print("{} setup done".format(mp.get_start_method()))
+
+        # feats_list = torch.load(buffer)
         feats_list = pickle.loads(self.feats.get(key))
+        # print("len(feats_list):", len(feats_list))
+        # print("len(feats_list):", len(feats_list))
         #追加
         #feats_numpy: ex. [99, 512, 7, 7]
 
@@ -112,7 +129,8 @@ class BaseDataset(TorchDataset):
         '''
         database = lmdb.open(
             lmdb_path, readonly=True,
-            lock=False, readahead=False, meminit=False, max_readers=252)
+            lock=False, readahead=False, meminit=False, max_readers=1008)
+            # lock=False, readahead=False, meminit=False, max_readers=252)
         cursor = database.begin(write=False)
         return database, cursor
 

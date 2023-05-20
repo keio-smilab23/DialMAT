@@ -7,6 +7,7 @@ import shutil
 import filelock
 import numpy as np
 
+import clip
 from PIL import Image
 from termcolor import colored
 
@@ -14,6 +15,7 @@ from alfred.gen import constants
 from alfred.env.thor_env import ThorEnv
 from alfred.nn.enc_visual import FeatureExtractor
 from alfred.utils import data_util, model_util
+
 
 
 def setup_scene(env, traj_data, reward_type='dense', test_split=False):
@@ -372,6 +374,16 @@ def get_observation(event, extractor, id=None, subgoal_idx=None, action_idx=None
         Image.fromarray(event.frame).save(f"{dir}/{subgoal_idx+1:02}_{action_idx:03}.png")
 
     return frames
+
+def get_observation_maskrcnn(event, obj_predictor,  clip_model, subgoal_words, num_of_use=1, batch_size=8):
+    '''
+    get environment observation of maskrcnn
+
+    returns list of tensors of shape (subgoal_words * 5, 768)
+    '''
+    frames, labels = data_util.get_maskrcnn_features([Image.fromarray(event.frame)], obj_predictor, clip_model, subgoal_words, num_of_use=num_of_use)
+
+    return frames, labels
 
 #追加
 def get_observation_clip(event, extractor):

@@ -5,6 +5,7 @@ import torch
 import shutil
 import filelock
 import numpy as np
+import sys
 
 from PIL import Image
 from termcolor import colored
@@ -13,6 +14,9 @@ from alfred.gen import constants
 from alfred.env.thor_env import ThorEnv
 from alfred.nn.enc_visual import FeatureExtractor
 from alfred.utils import data_util, model_util
+import Levenshtein
+
+THR_SCORE = 0.5
 
 
 def setup_scene(env, traj_data, reward_type='dense', test_split=False):
@@ -207,41 +211,197 @@ def disable_lock_logs():
     lock_logger = filelock.logger()
     lock_logger.setLevel(30)
 
+def get_closest_object(obj, obj_list):
+    max_sim = 0
+    max_idx = 0
+    for ref in obj_list:
+        if Levenshtein.ratio(obj, ref) > max_sim:
+            max_sim =  Levenshtein.ratio(obj, ref) 
+            # max_idx = obj_list.index(ref)
+    return ref #, max_idx
 
-def extract_rcnn_pred(class_idx, obj_predictor, env, verbose=False):
+def extract_rcnn_pred(_class, obj_predictor, env, verbose=False, is_idx=True):
     '''
     extract a pixel mask using a pre-trained MaskRCNN
     '''
-    rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
-    class_name = obj_predictor.vocab_obj.index2word(class_idx)
-    candidates = list(filter(lambda p: p.label == class_name, rcnn_pred))
-    if verbose:
-        visible_objs = [
-            obj for obj in env.last_event.metadata['objects']
-            if obj['visible'] and obj['objectId'].startswith(class_name + '|')]
-        print('Agent prediction = {}, detected {} objects (visible {})'.format(
-            class_name, len(candidates), len(visible_objs)))
-    if len(candidates) > 0:
-        if env.last_interaction[0] == class_idx and env.last_interaction[1] is not None:
-            # last_obj['id'] and class_name + '|' in env.last_obj['id']:
-            # do the association based selection
-            last_center = np.array(env.last_interaction[1].nonzero()).mean(axis=1)
-            cur_centers = np.array(
-                [np.array(c.mask[0].nonzero()).mean(axis=1) for c in candidates])
-            distances = ((cur_centers - last_center)**2).sum(axis=1)
-            index = np.argmin(distances)
-            mask = candidates[index].mask[0]
+
+    env.reset_angle()
+    for rotate_action in ["RotateRight_90"] * 4:  # 四方を仔細にチェック
+        _ = env.va_interact(rotate_action, interact_mask=None,smooth_nav=False) 
+        for look_action in ["LookUp_15", "LookDown_15","LookDown_15","LookUp_15"]:
+            _ = env.va_interact(look_action, interact_mask=None,smooth_nav=False)
+            rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
+            obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]
+            if not is_idx and _class not in obj_list:
+                class_name = get_closest_object(_class, obj_list)
+                class_idx = obj_predictor.vocab_obj.word2index(class_name)
+                print("<Could not find class>", _class, class_name)
+            else:
+            # import sys; sys.exit()
+                class_name = obj_predictor.vocab_obj.index2word(_class) if is_idx else _class
+                class_idx = obj_predictor.vocab_obj.word2index(_class) if not is_idx else _class
+
+            candidates = list(filter(lambda p: p.label == class_name and p.score > THR_SCORE, rcnn_pred))
+            # print(f"detected bbox ({class_name};{[str(int(c.score * 100)) + '%' for c in candidates]}):",[c.box for c in candidates])
+            target = None
+            if verbose:
+                visible_objs = [
+                    obj for obj in env.last_event.metadata['objects']
+                    if obj['visible'] and obj['objectId'].startswith(class_name + '|')]
+                print('Agent prediction = {}, detected {} objects (visible {})'.format(
+                    class_name, len(candidates), len(visible_objs)))
+            if len(candidates) > 0:
+                if env.last_interaction[0] == class_idx and env.last_interaction[1] is not None:
+                    last_center = np.array(env.last_interaction[1].nonzero()).mean(axis=1)
+                    cur_centers = np.array(
+                        [np.array(c.mask[0].nonzero()).mean(axis=1) for c in candidates])
+                    distances = ((cur_centers - last_center)**2).sum(axis=1)
+                    index = np.argmin(distances)
+                    mask = candidates[index].mask[0]
+                    target = candidates[index]
+                else:
+                    index = np.argmax([p.score for p in candidates])
+                    mask = candidates[index].mask[0]
+                    target = candidates[index]
+            else:
+                mask = None
+            if mask is not None:
+                return mask, target
+    return mask, target
+
+def move_behind(env,args):
+    actions = ["RotateRight_90","RotateRight_90","MoveAhead_25","RotateRight_90","RotateRight_90"]
+    for action in actions:
+        step_success, _, target_instance_id, err, api_action = env.va_interact(
+                action, interact_mask=None, smooth_nav=args.smooth_nav, debug=args.debug)
+            
+
+def rule_based_planner(action,obj,llm_data,obj_predictor,m_pred,env,m_out,model,args):
+    mask = None
+    target = None
+    is_rule_based_target = True
+    will_execute = True
+
+    llm_target = llm_data[-1][1]
+    llm_action = llm_data[-1][0]
+    llm_destination = llm_data[-1][2]
+
+    for data in llm_data:
+        if data[0] != "MoveTo":
+            llm_target = data[1]
+            llm_action = data[0]
+            llm_destination = data[2]
+
+    if llm_action == "PickupObject":
+        obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
+        if llm_target not in obj_list:
+            class_name = get_closest_object(llm_target, obj_list)
+            obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(llm_action) else None
+            print("<Could not find class>", llm_target, class_name)
         else:
-            # do the confidence based selection
-            index = np.argmax([p.score for p in candidates])
-            mask = candidates[index].mask[0]
+            # obj = obj_predictor.vocab_obj.word2index(llm_target) if model_util.has_interaction(llm_action) else None
+            try:
+                obj = obj_predictor.vocab_obj.word2index(llm_target) if model_util.has_interaction(llm_action) else None
+            except:
+                obj = None
+            
+        mask, target = extract_rcnn_pred(llm_target, obj_predictor, env, verbose=False, is_idx=False)
+        if mask is not None:
+            m_pred['mask_rcnn'] = mask
+            action = "PickupObject"
+            action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
+            m_pred['action'] = action
+            print("== rule-based action selection ==     ", end="")
+            print(f"target: {llm_target}, action: {llm_action}")
+        else:
+            will_execute = False
+
+    elif llm_action == "PutObject":
+        # obj = vocab['word'].word2index(llm_destination.lower()) if model_util.has_interaction(action) else None
+        obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
+        if llm_destination not in obj_list:
+            class_name = get_closest_object(llm_destination, obj_list)
+            obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(llm_action) else None
+            print("<Could not find class>", llm_destination, class_name)
+        else:
+            # obj = obj_predictor.vocab_obj.word2index(llm_destination) if model_util.has_interaction(llm_action) else None
+            try:
+                obj = obj_predictor.vocab_obj.word2index(llm_destination) if model_util.has_interaction(llm_action) else None
+            except:
+                obj = None
+
+        mask, target = extract_rcnn_pred(llm_destination, obj_predictor, env, verbose=False, is_idx=False)
+        if mask is not None:
+            m_pred['mask_rcnn'] = mask
+            action = "PutObject"
+            action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
+            m_pred['action'] = action
+            print("== rule-based action selection ==     ", end="")
+            print(f"destination: {llm_destination}, action: {llm_action}")
+        else:
+            will_execute = False
+
+    elif llm_action == "OpenObject" or llm_action == "CloseObject" :
+        if llm_destination != "None":
+            moveto_obj = llm_destination
+        elif llm_target != "None":       
+            moveto_obj = llm_target
+        obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
+        if llm_target not in obj_list:
+            class_name = get_closest_object(moveto_obj, obj_list)
+            obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(llm_action) else None
+            print("<Could not find class>", moveto_obj, class_name)
+        else:
+            try:
+                obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(llm_action) else None
+            except:
+                obj = None
+        
+        mask, target = extract_rcnn_pred(moveto_obj, obj_predictor, env, verbose=False, is_idx=False)
+        if mask is not None:
+            m_pred['mask_rcnn'] = mask
+            action = llm_action
+            m_pred['action'] = action
+            print("== rule-based action selection ==     ", end="")
+            print(f"destination: {moveto_obj}, action: {llm_action}")
+        else:
+            will_execute = False
+    
+    elif llm_action == "ToggleObjectOn" or llm_action == "ToggleObjectOff":
+        if llm_target != "None":       
+            moveto_obj = llm_target
+        elif llm_destination != "None":
+            moveto_obj = llm_destination
+        obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
+        if moveto_obj not in obj_list:
+            class_name = get_closest_object(moveto_obj, obj_list)
+            obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(llm_action) else None
+            print("<Could not find class>", moveto_obj, class_name)
+        else:
+            # obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(llm_action) else None
+            try:
+                obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(llm_action) else None
+            except:
+                obj = None
+        
+        mask, target = extract_rcnn_pred(moveto_obj, obj_predictor, env, verbose=False, is_idx=False)
+        if mask is not None:
+            m_pred['mask_rcnn'] = mask
+            action = llm_action
+            m_pred['action'] = action
+            print("== rule-based action selection ==     ", end="")
+            print(f"destination: {moveto_obj}, action: {llm_action}")
+        else:
+            will_execute = False
     else:
-        mask = None
-    return mask, rcnn_pred
+        is_rule_based_target = False
+        will_execute = False
+
+    return will_execute, is_rule_based_target, m_pred, target, obj, action, mask
 
 # step and compute model confusion
 def agent_step_mc(
-        model, input_dict, vocab, prev_action, env, args, num_fails, obj_predictor):
+        model, input_dict, vocab, prev_action, env, args, num_fails, obj_predictor, rcnn_pred=None, subgoal_instr=None, llm_data=None, subgoal_idx=None,action_idx=None):
     '''
     environment step based on model prediction
     '''
@@ -254,33 +414,153 @@ def agent_step_mc(
     m_pred = model_util.extract_action_preds(
         m_out, model.pad, vocab['action_low'], clean_special_tokens=False)[0]
     action = m_pred['action']
+    action = action if "Look" not in action[:len("Look")] else "MoveAhead_25"
+    action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
     
     if args.debug:
         print("Predicted action: {}".format(action))
 
-    mask = None
     obj = m_pred['object'][0][0] if model_util.has_interaction(action) else None
+    original_obj = obj_predictor.vocab_obj.index2word(obj) if obj else None
     if obj is not None:
-        # get mask from a pre-trained RCNN
-        assert obj_predictor is not None
-        mask, _ = extract_rcnn_pred(
-            obj, obj_predictor, env, args.debug)
-        m_pred['mask_rcnn'] = mask
-    # remove blocking actions
-    action = obstruction_detection(
-        action, env, m_out, model.vocab_out, args.debug)
-    m_pred['action'] = action
+        mask, target = extract_rcnn_pred(obj, obj_predictor, env, verbose=False)
+    else:
+        mask, target = None, None
+
+    llm_target = llm_data[-1][1]
+    llm_action = llm_data[-1][0]
+    llm_destination = llm_data[-1][2]
+
+    for data in llm_data:
+        if data[0] != "MoveTo":
+            llm_target = data[1]
+            llm_action = data[0]
+            llm_destination = data[2]
+
+    episode_end = False
+    if action == constants.STOP_TOKEN:
+        if llm_action == "MoveTo":
+            episode_end = True
+        else:
+            action = "MoveAhead_25"
+            action = obstruction_detection(action, env, m_out, model.vocab_out, args.debug)
+
+
+    will_execute = True
+    is_rule_based_target = False
+    if prev_action != llm_action:
+        will_execute, is_rule_based_target, m_pred, target, obj, action, mask \
+            = rule_based_planner(action,obj,llm_data,obj_predictor,m_pred,env,m_out,model,args)
+
+    xx = obj_predictor.vocab_obj.index2word(obj) if obj else None
+    print(f"{subgoal_idx+1:02}_{action_idx:03} -> subgoal : {subgoal_instr},  action: {action}, llm_output: {llm_data}, object: {xx}")
 
     # use the predicted action
-    episode_end = (action == constants.STOP_TOKEN)
+    # episode_end = (action == constants.STOP_TOKEN)
     api_action = None
     # constants.TERMINAL_TOKENS was originally used for subgoal evaluation
     target_instance_id = ''
+
+    # 前回のactionが所望のmanipulationかつ成功していたら強制stop
+    if prev_action == llm_action and env.last_event.metadata['lastActionSuccess']:
+        episode_end = True
+        action = constants.STOP_TOKEN
+        return episode_end, str(action), num_fails, target_instance_id, api_action, mc_array
+
+    step_success = True
+
+ 
     if not episode_end:
-        step_success, _, target_instance_id, err, api_action = env.va_interact(
-            action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
-        env.last_interaction = (obj, mask)
+        failed_rule = not will_execute
+        if not is_rule_based_target or not (failed_rule and (action == "PickupObject" or action == "PutObject")): # TODO: ここの条件分岐チェック
+            step_success, _, target_instance_id, err, api_action = env.va_interact(
+                action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
+            env.last_interaction = (obj, mask)
+        else:
+            action = prev_action
+
         if not step_success:
+            print(f"+++ ERROR: {err}")
+            if "not visible" in str(err):
+                print("+++ FIND ANOTHER OBJECT IF NOT VISIBLE")
+                rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
+                obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
+                if llm_target != "None":       
+                    moveto_obj = llm_target
+                elif llm_destination != "None":
+                    moveto_obj = llm_destination
+                if moveto_obj not in obj_list:
+                    class_name = get_closest_object(moveto_obj, obj_list)
+                    print("<Could not find class>", moveto_obj, class_name)
+                else:
+                    class_name = moveto_obj
+                candidates = list(filter(lambda p: p.label == class_name, rcnn_pred))
+                for candidate in candidates:
+                    mask = candidate.mask[0]
+                    
+                    step_success, _, target_instance_id, err, api_action = env.va_interact(
+                        action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
+
+                    if step_success:
+                        env.last_interaction = (obj, mask)
+                        break
+            elif target:
+                box = target.box
+                c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
+                frame = env.last_event.frame
+                H, W, _ = frame.shape
+                centroid_x = (c1[0] + c2[0]) / 2
+                print("frame",frame.shape,"target",c1,c2,centroid_x)
+                action = []
+                pos = ""
+                if centroid_x < H / 4: # left 
+                    actions = ["MoveAhead_25","RotateLeft_90"]
+                    pos = "left"
+                elif centroid_x > H * 3 / 4: # right
+                    actions = ["MoveAhead_25","RotateRight_90"]
+                    pos = "right"
+                else: # center
+                    actions = ["MoveAhead_25"]
+                    pos = "center"
+                
+                failed_step = 0
+                max_failed_step = 3
+                while failed_step < max_failed_step:
+                    for action in actions: # 目標領域の位置に従って，回転 or 前進
+                        print(f"=== ERROR RECOVERY[({failed_step}/{max_failed_step})] (action: {action}, pos: {pos})===")
+                        step_success, _, target_instance_id, err, api_action = env.va_interact(
+                            action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
+                        env.last_interaction = (obj, mask)
+                        if not step_success:
+                            print("failed:",err)
+
+                        if not step_success and action == "MoveAhead_25":
+                            move_behind(env,args)
+                            step_success, _, target_instance_id, err, api_action = env.va_interact(
+                                action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
+                            env.last_interaction = (obj, mask)
+                    
+                    if pos == "center":
+                        break
+
+                    # 上記行動によって改善したか？
+                    if prev_action != llm_action and pos != "center":
+                        will_execute, is_rule_based_target, m_pred, target, obj, action, mask \
+                            = rule_based_planner(action,obj,llm_data,obj_predictor,m_pred,env,m_out,model,args)
+                        step_success, _, target_instance_id, err, api_action = env.va_interact(
+                            action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
+                        env.last_interaction = (obj, mask)
+                        if is_rule_based_target and not step_success:
+                            if pos == "left":
+                                actions = ["RotateRight_90","MoveAhead_25","RotateLeft_90"]
+                            elif pos == "right":
+                                actions = ["RotateLeft_90","MoveAhead_25","RotateRight_90"]
+                            failed_step += 1
+                            if failed_step > max_failed_step:
+                                break
+                        else:
+                            break
+
             num_fails += 1
             if num_fails >= args.max_fails:
                 if args.debug:
@@ -309,7 +589,7 @@ def agent_step(
     if obj is not None:
         # get mask from a pre-trained RCNN
         assert obj_predictor is not None
-        mask, _ = extract_rcnn_pred(
+        mask, target = extract_rcnn_pred(
             obj, obj_predictor, env, args.debug)
         m_pred['mask_rcnn'] = mask
     # remove blocking actions

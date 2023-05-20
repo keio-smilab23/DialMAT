@@ -44,6 +44,8 @@ class ThorEnv(Controller):
         self.cooled_objects = set()
         self.heated_objects = set()
 
+        self.up_angle = 0
+        self.down_angle = 0
 
         print("ThorEnv started.")
 
@@ -91,6 +93,9 @@ class ThorEnv(Controller):
         event.metadata["cleaned_objects"] = list(self.cleaned_objects)
         event.metadata["heated_objects"] = list(self.heated_objects)
         event.metadata["cooled_objects"] = list(self.cooled_objects)
+
+        self.up_angle = 0
+        self.down_angle = 0
 
         return event
 
@@ -414,6 +419,32 @@ class ThorEnv(Controller):
         event = super().step(teleport_action)
         return event
 
+    def reset_angle(self):
+        '''
+        rotate at a specific angle
+        '''
+        render_settings = DEFAULT_RENDER_SETTINGS
+        event = self.last_event
+        rotation = np.round(event.metadata['agent']['rotation']['y'], 4)
+        position = event.metadata['agent']['position']
+
+        teleport_action = {
+            'action': 'TeleportFull',
+            'rotation': rotation,
+            'x': position['x'],
+            'z': position['z'],
+            'y': position['y'],
+            'horizon': 0,
+            'tempRenderChange': True,
+            'renderNormalsImage': False,
+            'renderImage': render_settings['renderImage'],
+            'renderClassImage': render_settings['renderClassImage'],
+            'renderObjectImage': render_settings['renderObjectImage'],
+            'renderDepthImage': render_settings['renderDepthImage'],
+        }
+        event = super().step(teleport_action)
+        return event
+
     def to_thor_api_exec(self, action, object_id="", smooth_nav=False):
         # TODA: parametrized navigation commands
 
@@ -576,6 +607,11 @@ class ThorEnv(Controller):
         '''
         target_instance_id = ''
         navig_action = (interact_mask is None)
+
+        if "LookUp" in action:
+            self.up_angle += 1
+        if "LookDown" in action:
+            self.down_angle -= 1
 
         # object selection module
         if not navig_action:

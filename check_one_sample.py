@@ -822,7 +822,7 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
             #             llm_data.append([tmp_action, "None"])
             # for pair in llm_output[str(subgoal_idx)]:
             #     llm_data.append([action_dict[pair[0]], pair[1], pair[2]])
-                
+            
             for pair in llm_output[str(subgoal_idx)]:
                 tmp_action = pair[0]
                 if tmp_action not in action_dict.keys():
@@ -831,6 +831,7 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
                     elif tmp_action == "Grab":
                         tmp_action = "Pickup"
                 llm_data.append([action_dict[tmp_action], pair[1], pair[2]])
+                
                     
             
             # print(llm_data)
@@ -945,10 +946,11 @@ def main():
     parser.add_argument("--performer-path", dest="performer_path",
                         type=str, default="./logs/pretrained/performer/latest.pth")
     parser.add_argument("--use_qa_everytime", action='store_true')
+    parser.add_argument("--test_id", type=str, default="0027")
     args = parser.parse_args()
     # path to testset json file
-    input_jsons = [str(path) for path in Path(os.environ['DF_ROOT'] + "/testset/new_dialfred_testset_final/").glob("*.json")]
-    input_jsons = sorted(input_jsons)
+    input_jsons = sorted([str(path) for path in Path(os.environ['DF_ROOT'] + "/testset/new_dialfred_testset_final/").glob("*.json")], reverse=True)
+    # input_jsons = [f"testset/new_dialfred_testset_final/{int(args.test_id):04}.json"]
     test(args, input_jsons)
 
 

@@ -820,9 +820,17 @@ def step(env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predi
             #             llm_data.append([tmp_action, pair[2]])
             #         else:
             #             llm_data.append([tmp_action, "None"])
-            for pair in llm_output[str(subgoal_idx)]:
-                llm_data.append([action_dict[pair[0]], pair[1], pair[2]])
+            # for pair in llm_output[str(subgoal_idx)]:
+            #     llm_data.append([action_dict[pair[0]], pair[1], pair[2]])
                 
+            for pair in llm_output[str(subgoal_idx)]:
+                tmp_action = pair[0]
+                if tmp_action not in action_dict.keys():
+                    if tmp_action == "Leave" or tmp_action == "Place":
+                        tmp_action = "Put-At/In"
+                    elif tmp_action == "Grab":
+                        tmp_action = "Pickup"
+                llm_data.append([action_dict[tmp_action], pair[1], pair[2]])
                     
             
             # print(llm_data)

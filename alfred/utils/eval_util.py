@@ -299,7 +299,12 @@ def rule_based_planner(action,obj,llm_data,obj_predictor,m_pred,env,m_out,model,
             obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(llm_action) else None
             print("<Could not find class>", llm_target, class_name)
         else:
-            obj = obj_predictor.vocab_obj.word2index(llm_target) if model_util.has_interaction(llm_action) else None
+            # obj = obj_predictor.vocab_obj.word2index(llm_target) if model_util.has_interaction(llm_action) else None
+            try:
+                obj = obj_predictor.vocab_obj.word2index(llm_target) if model_util.has_interaction(llm_action) else None
+            except:
+                obj = None
+            
         mask, target = extract_rcnn_pred(llm_target, obj_predictor, env, verbose=False, is_idx=False)
         if mask is not None:
             m_pred['mask_rcnn'] = mask
@@ -319,7 +324,11 @@ def rule_based_planner(action,obj,llm_data,obj_predictor,m_pred,env,m_out,model,
             obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(llm_action) else None
             print("<Could not find class>", llm_destination, class_name)
         else:
-            obj = obj_predictor.vocab_obj.word2index(llm_destination) if model_util.has_interaction(llm_action) else None
+            # obj = obj_predictor.vocab_obj.word2index(llm_destination) if model_util.has_interaction(llm_action) else None
+            try:
+                obj = obj_predictor.vocab_obj.word2index(llm_destination) if model_util.has_interaction(llm_action) else None
+            except:
+                obj = None
 
         mask, target = extract_rcnn_pred(llm_destination, obj_predictor, env, verbose=False, is_idx=False)
         if mask is not None:
@@ -343,7 +352,10 @@ def rule_based_planner(action,obj,llm_data,obj_predictor,m_pred,env,m_out,model,
             obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(llm_action) else None
             print("<Could not find class>", moveto_obj, class_name)
         else:
-            obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(llm_action) else None
+            try:
+                obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(llm_action) else None
+            except:
+                obj = None
         
         mask, target = extract_rcnn_pred(moveto_obj, obj_predictor, env, verbose=False, is_idx=False)
         if mask is not None:
@@ -361,12 +373,16 @@ def rule_based_planner(action,obj,llm_data,obj_predictor,m_pred,env,m_out,model,
         elif llm_destination != "None":
             moveto_obj = llm_destination
         obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
-        if llm_target not in obj_list:
+        if moveto_obj not in obj_list:
             class_name = get_closest_object(moveto_obj, obj_list)
             obj = obj_predictor.vocab_obj.word2index(class_name) if model_util.has_interaction(llm_action) else None
             print("<Could not find class>", moveto_obj, class_name)
         else:
-            obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(llm_action) else None
+            # obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(llm_action) else None
+            try:
+                obj = obj_predictor.vocab_obj.word2index(moveto_obj) if model_util.has_interaction(llm_action) else None
+            except:
+                obj = None
         
         mask, target = extract_rcnn_pred(moveto_obj, obj_predictor, env, verbose=False, is_idx=False)
         if mask is not None:

@@ -34,3 +34,4 @@ id0529_2.txt
 id0529.txt
 alfred/utils/eval_util_backup.py
 alfred/utils/eval_util_backup2.py
+logs/*.pth

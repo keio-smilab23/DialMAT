@@ -454,7 +454,30 @@ def agent_step_mc(
 
         if not step_success:
             print(f"+++ ERROR: {err}")
-            if target:
+            if "not visible" in str(err):
+                print("+++ FIND ANOTHER OBJECT IF NOT VISIBLE")
+                rcnn_pred = obj_predictor.predict_objects(Image.fromarray(env.last_event.frame))
+                obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
+                if llm_target != "None":       
+                    moveto_obj = llm_target
+                elif llm_destination != "None":
+                    moveto_obj = llm_destination
+                if moveto_obj not in obj_list:
+                    class_name = get_closest_object(moveto_obj, obj_list)
+                    print("<Could not find class>", moveto_obj, class_name)
+                else:
+                    class_name = moveto_obj
+                candidates = list(filter(lambda p: p.label == class_name, rcnn_pred))
+                for candidate in candidates:
+                    mask = candidate.mask[0]
+                    
+                    step_success, _, target_instance_id, err, api_action = env.va_interact(
+                        action, interact_mask=mask, smooth_nav=args.smooth_nav, debug=args.debug)
+
+                    if step_success:
+                        env.last_interaction = (obj, mask)
+                        break
+            elif target:
                 box = target.box
                 c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
                 frame = env.last_event.frame

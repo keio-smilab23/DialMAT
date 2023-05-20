@@ -282,9 +282,15 @@ def rule_based_planner(action,obj,llm_data,obj_predictor,m_pred,env,m_out,model,
     is_rule_based_target = True
     will_execute = True
 
-    llm_action = llm_data[-1][0]
     llm_target = llm_data[-1][1]
+    llm_action = llm_data[-1][0]
     llm_destination = llm_data[-1][2]
+
+    for data in llm_data:
+        if data[0] != "MoveTo":
+            llm_target = data[1]
+            llm_action = data[0]
+            llm_destination = data[2]
 
     if llm_action == "PickupObject":
         obj_list = obj_predictor.vocab_obj.to_dict()["index2word"]  
@@ -404,11 +410,15 @@ def agent_step_mc(
     else:
         mask, target = None, None
 
+    llm_target = llm_data[-1][1]
     llm_action = llm_data[-1][0]
-    # rule-based action selection
+    llm_destination = llm_data[-1][2]
+
     for data in llm_data:
         if data[0] != "MoveTo":
+            llm_target = data[1]
             llm_action = data[0]
+            llm_destination = data[2]
 
     episode_end = False
     if action == constants.STOP_TOKEN:

@@ -1,4 +1,5 @@
 import os
+import re
 import torch
 import json
 import shutil
@@ -79,8 +80,8 @@ def process_feats(clip_model, traj_paths, extractor, obj_predictor, lock, image_
         # print("turk_annotation", traj_data['turk_annotations']['anns'][0]['high_descs'])
         
         high_descs = ""
-        for i in range(len(traj_data['turk_annotations']['anns'][0]['high_descs'])):
-            high_descs += traj_data['turk_annotations']['anns'][0]['high_descs'][i]
+        for d in traj_data['turk_annotations']['anns'][0]['high_descs']:
+            high_descs += d
         
         nouns = extract_nouns(high_descs)
 
@@ -102,7 +103,6 @@ def process_feats(clip_model, traj_paths, extractor, obj_predictor, lock, image_
         # print("len(images)", len(images)) #len(images) ex. 51...
         # print("images[0]: ", images[0]) #images[0]:  <PIL.Image.Image image mode=RGB size=300x300 at 0x7FCC5328E358>
         # print("feat.shape: ", feat.shape) #feat.shape:  torch.Size([51, 512, 7, 7])
-        
         if feat is not None:
             torch.save([feat,feat_clip,feat_maskrcnn_bboxs,feat_maskrcnn_label], save_path / 'feats' / filename_new)
         with lock:
@@ -251,7 +251,8 @@ def gather_data(output_path, num_workers):
                 path_symlink.symlink_to(path_file)
 
     # partitions = ('pseudo_valid', 'pseudo_test')
-    partitions = ('train', 'pseudo_test')
+    partitions = ('train', 'valid_seen', 'valid_unseen')
+    # partitions = ('valid_unseen')
     if not (output_path / '.deleting_worker_dirs').exists():
         for partition in partitions:
             print('Processing {} trajectories'.format(partition))
@@ -340,6 +341,7 @@ def main(args):
     obj_predictor = FeatureExtractor(archi='maskrcnn', device=args.device,
         checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
     
+    # clip_model, clip_preprocess = clip.load("ViT-L/14", device="cuda")
     clip_model, clip_preprocess = clip.load("RN50", device="cuda")
     for params in clip_model.parameters():
         params.requires_grad = False

@@ -3,12 +3,12 @@ import torch
 import json
 import collections
 import gtimer as gt
+import time
 import wandb
 from tqdm import tqdm
 from importlib import import_module
 from torch import nn
-import torch.multiprocessing as multiprocessing
-# from tensorboardX import SummaryWriter
+from tensorboardX import SummaryWriter
 
 from alfred.utils import data_util, model_util
 
@@ -43,7 +43,7 @@ class LearnedModel(nn.Module):
                      for loader in loaders.values()}
         epoch_length = len(next(iter(loaders_train.values())))
         # initialize summary writer for tensorboardX
-        # self.summary_writer = SummaryWriter(log_dir=self.args.dout)
+        self.summary_writer = SummaryWriter(log_dir=self.args.dout)
         # dump config
         with open(os.path.join(self.args.dout, 'config.json'), 'wt') as f:
             json.dump(vars(self.args), f, indent=2)
@@ -55,7 +55,7 @@ class LearnedModel(nn.Module):
         model_util.save_log(
             self.args.dout, progress=info['progress'], total=self.args.epochs,
             stage='train', best_loss=info['best_loss'], iters=info['iters'])
-        
+
         # display dout
         print("Saving to: %s" % self.args.dout)
         for epoch in range(info['progress'], self.args.epochs):
@@ -67,20 +67,15 @@ class LearnedModel(nn.Module):
             metrics = {key: collections.defaultdict(list) for key in tqdm(loaders_train)}
             gt.reset()
             print("after train_iterators")
-            multiprocessing.set_start_method('spawn', force=True)
-
             for _ in tqdm(range(epoch_length), desc='train'):
                 # sample batches
-                print("before sample_batches")
                 batches = data_util.sample_batches(
                     train_iterators, self.args.device, self.pad, self.args)
                 gt.stamp('data fetching', unique=False)
-                print("after sample_batches")
                 # do the forward passes
                 model_outs, losses_train = {}, {}
                 for batch_name, (task_path, traj_data, input_dict, gt_dict) in batches.items():
                     model_outs[batch_name] = self.model.forward(
-                        epoch,
                         task_path,
                         vocabs_in[batch_name.split(':')[-1]],
                         action=gt_dict['action'], **input_dict)
@@ -113,20 +108,19 @@ class LearnedModel(nn.Module):
                         sum_loss.detach().cpu().item())
 
                 gt.stamp('metrics', unique=False)
-            
+
                 if self.args.profile:
                     print(gt.report(include_itrs=False, include_stats=False))
 
-                # compute metrics for train
-                print('Computing train and validation metrics...')
-                metrics = {data: {k: sum(v) / len(v) for k, v in metr.items()}
-                        for data, metr in metrics.items()}
+            # compute metrics for train
+            print('Computing train and validation metrics...')
+            metrics = {data: {k: sum(v) / len(v) for k, v in metr.items()}
+                       for data, metr in metrics.items()}
 
             # compute metrics for valid_seen
             for loader_id, loader in loaders_valid.items():
                 with torch.no_grad():
                     metrics[loader_id] = self.run_validation(
-                        epoch,
                         loader, vocabs_in[loader_id.split(':')[-1]],
                         loader_id, info['iters'])
 
@@ -187,7 +181,7 @@ class LearnedModel(nn.Module):
         print('{} epochs are completed, all the models were saved to: {}'.format(
             self.args.epochs, self.args.dout))
 
-    def run_validation(self, epoch, loader, vocab_in, name, iters_valid):
+    def run_validation(self, loader, vocab_in, name, iters_valid):
         '''
         validation loop
         '''
@@ -198,7 +192,7 @@ class LearnedModel(nn.Module):
             task_path, traj_data, input_dict, gt_dict = data_util.tensorize_and_pad(
                 batch, self.args.device, self.pad)
             model_out = self.model.forward(
-                epoch, task_path, vocab_in, action=gt_dict['action'], **input_dict)
+                task_path, vocab_in, action=gt_dict['action'], **input_dict)
             loss = self.model.compute_batch_loss(model_out, gt_dict)
             for k, v in loss.items():
                 ln = 'loss/' + k
@@ -208,4 +202,4 @@ class LearnedModel(nn.Module):
             iters_valid[name] += len(traj_data)
             m_valid['loss/total'].append(sum(loss.values()).detach().cpu().item())
         m_valid = {k: sum(v) / len(v) for k, v in m_valid.items()}
-        return m_valid  
+        return m_valid

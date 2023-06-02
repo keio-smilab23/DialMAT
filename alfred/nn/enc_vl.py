@@ -36,33 +36,38 @@ class EncoderVL(nn.Module):
                 emb_lang,
                 emb_frames,
                 emb_actions,
+                emb_bbox,
+                emb_label,
                 lengths_lang,
                 lengths_frames,
                 lengths_actions,
                 length_frames_max,
+                lengths_subword,
                 is_maskrcnn=True,
                 is_clip_resnet=False,
-                attn_masks=True):
+                attn_masks=True,
+                num_of_use=2):
         '''
         pass embedded inputs through embeddings and encode them using a transformer
         '''
         # emb_lang is processed on each GPU separately so they size can vary
         length_lang_max = lengths_lang.max().item()
         length_actions_max = lengths_actions.max().item()
+        length_subword_max = lengths_subword.max().item()
         emb_lang = emb_lang[:, :length_lang_max]
         # create a mask for padded elements
 
         if is_clip_resnet:
             length_mask_pad = length_lang_max + length_frames_max * 2 + length_actions_max
         elif is_maskrcnn:
-            length_mask_pad = length_lang_max + length_frames_max * 5
+            length_mask_pad = length_lang_max + length_frames_max * 2 + length_actions_max + length_frames_max * length_subword_max * num_of_use * 2
         else:
             length_mask_pad = length_lang_max + length_frames_max + length_actions_max
             
         mask_pad = torch.zeros(
             (len(emb_lang), length_mask_pad), device=emb_lang.device).bool()
-        for i, (len_l, len_f, len_a) in enumerate(
-                zip(lengths_lang, lengths_frames, lengths_actions)):
+        for i, (len_l, len_f, len_a, len_s) in enumerate(
+                zip(lengths_lang, lengths_frames, lengths_actions, lengths_subword)):
             if is_clip_resnet:
                 # mask padded words
                 mask_pad[i, len_l: length_lang_max] = True
@@ -79,15 +84,13 @@ class EncoderVL(nn.Module):
                 # mask padded frames
                 mask_pad[i, length_lang_max + len_f:
                         length_lang_max + length_frames_max] = True
-                mask_pad[i, length_lang_max + length_frames_max + len_f:
-                        length_lang_max + length_frames_max * 2] = True
-                mask_pad[i, length_lang_max + length_frames_max * 2 + len_f:
-                        length_lang_max + length_frames_max * 3] = True
-                mask_pad[i, length_lang_max + length_frames_max * 3 + len_f:
-                        length_lang_max + length_frames_max * 4] = True
-                # mask padded actions
-                mask_pad[i, length_lang_max + length_frames_max * 4 + len_a:] = True
+                mask_pad[i, length_lang_max + length_frames_max + len_f * len_s * num_of_use:
+                         length_lang_max + length_frames_max + length_frames_max * length_subword_max * num_of_use] = True
+                mask_pad[i, length_lang_max + length_frames_max + length_frames_max * length_subword_max * num_of_use + len_f * len_s * num_of_use:
+                         length_lang_max + length_frames_max + length_frames_max * length_subword_max * num_of_use * 2] = True
+                mask_pad[i, length_lang_max + length_frames_max + length_frames_max * length_subword_max * num_of_use * 2 + len_a:] = True
                 
+
             else:
                 # mask padded words
                 mask_pad[i, len_l: length_lang_max] = True
@@ -99,41 +102,41 @@ class EncoderVL(nn.Module):
 
         # encode the inputs
         emb_all = self.encode_inputs(
-            emb_lang, emb_frames, emb_actions, lengths_lang, lengths_frames, mask_pad)
+            emb_lang, emb_frames, emb_actions, emb_bbox, emb_label, lengths_lang, lengths_frames, lengths_subword, mask_rcnn=is_maskrcnn)
         # create a mask for attention (prediction at t should not see frames at >= t+1)
         if attn_masks:
             # assert length_frames_max == max(lengths_actions)
             mask_attn = model_util.generate_attention_mask(
                 length_lang_max, length_frames_max, length_actions_max,
-                emb_all.device, self.num_input_actions, is_maskrcnn=True, is_clip_resnet=is_clip_resnet)
+                emb_all.device, length_subword_max, self.num_input_actions, is_maskrcnn=True, is_clip_resnet=is_clip_resnet, num_of_use=num_of_use)
         else:
             # allow every token to attend to all others
             mask_attn = torch.zeros(
                 (mask_pad.shape[1], mask_pad.shape[1]),
                 device=mask_pad.device).float()
-        
-        print("mask_pad.shape", mask_pad.shape)
-        print("mask_attn.shape", mask_attn.shape)
         # encode the inputs
         output = self.enc_transformer(
             emb_all.transpose(0, 1), mask_attn, mask_pad).transpose(0, 1)
         return output, mask_pad
 
-    def encode_inputs(self, emb_lang, emb_frames, emb_actions,
-                      lengths_lang, lengths_frames, mask_pad):
+    def encode_inputs(self, emb_lang, emb_frames, emb_actions, emb_bbox, emb_label,
+                      lengths_lang, lengths_frames, lengths_subword, mask_rcnn=False):
         '''
         add encodings (positional, token and so on)
         '''
         if self.enc_pos is not None:
-            emb_lang, emb_frames, emb_actions = self.enc_pos(
-                emb_lang, emb_frames, emb_actions, lengths_lang, lengths_frames)
+            emb_lang, emb_frames, emb_actions, emb_bboxes, emb_labels = self.enc_pos(
+                emb_lang, emb_frames, emb_actions, emb_bbox, emb_label, lengths_lang, lengths_subword)
         if self.enc_pos_learn is not None:
             emb_lang, emb_frames, emb_actions = self.enc_pos_learn(
                 emb_lang, emb_frames, emb_actions, lengths_lang, lengths_frames)
         if self.enc_token is not None:
             emb_lang, emb_frames, emb_actions = self.enc_token(
                 emb_lang, emb_frames, emb_actions)
-        emb_cat = torch.cat((emb_lang, emb_frames, emb_actions), dim=1)
+        if mask_rcnn:
+            emb_cat = torch.cat((emb_lang, emb_frames, emb_bboxes, emb_labels, emb_actions), dim=1)
+        else:
+            emb_cat = torch.cat((emb_lang, emb_frames, emb_actions), dim=1)
         emb_cat = self.enc_layernorm(emb_cat)
         emb_cat = self.enc_dropout(emb_cat)
         return emb_cat

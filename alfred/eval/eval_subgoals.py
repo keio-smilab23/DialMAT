@@ -2,6 +2,9 @@ import os
 import sys
 import json
 import collections
+import nltk
+from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.tag import pos_tag
 
 from datetime import datetime
 
@@ -147,7 +150,7 @@ def evaluate_subgoals_mc(
     return dict(**metrics, **task_info), mc_lists
 
 def evaluate_subgoals_start_qa(
-        env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor):
+        env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, clip_model):
     # set up the evaluation
     # load trajectory data from the dataset
     traj_data, traj_key = dataset.jsons_and_keys[dataset_idx]
@@ -162,8 +165,16 @@ def evaluate_subgoals_start_qa(
         model.reset_for_both()
     elif args.clip_resnet:
         model.reset_for_both()
+    elif args.maskrcnn:
+        model.reset_for_maskrcnn()
     else:
         model.reset()
+
+    high_descs = ""
+    for d in traj_data['turk_annotations']['anns'][0]['high_descs']:
+        high_descs += d
+    
+    nouns = extract_nouns(high_descs)
         
     eval_util.setup_scene(env, traj_data, reward_type='dense')
     vocab = {'word': dataset.vocab_in, 'action_low': model.vocab_out}
@@ -180,8 +191,11 @@ def evaluate_subgoals_start_qa(
 
     # expert teacher-forcing upto subgoal, get expert action
     for a_expert in expert_dict['actions']:
-
-        input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
+        if len(nouns) > 5:
+            nouns = nouns[:5]
+        bbox, label, length = eval_util.get_observation_maskrcnn(env.last_event, extractor, obj_predictor, clip_model, nouns, num_of_use=1)
+        input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor), bbox, label]
+        input_dict['lengths_subword'] = length
         init_failed, prev_action = eval_util.expert_step(
             a_expert['action'], expert_dict['masks'], model,
             input_dict, vocab, prev_action, env, args)
@@ -192,7 +206,7 @@ def evaluate_subgoals_start_qa(
     return init_states
 
 def evaluate_subgoals_middle_qa(
-        env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, num_rollout=5):
+        env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, clip_model, num_rollout=5):
     # modification of evaluate_subgoals: add qa and skip init
     # model.reset_for_clip()
     # add initial states from expert initialization
@@ -204,6 +218,12 @@ def evaluate_subgoals_middle_qa(
     if not traj_data['repeat_idx'] == r_idx:
         print(traj_data)
     
+    high_descs = ""
+    for d in traj_data['turk_annotations']['anns'][0]['high_descs']:
+        high_descs += d
+    
+    nouns = extract_nouns(high_descs)
+
     # load language features and append numericalized qa
     num_qa = []
     for w in qa.split():
@@ -236,8 +256,10 @@ def evaluate_subgoals_middle_qa(
             #     input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
             # else:
             #     input_dict['frames'] = eval_util.get_observation(env.last_event, extractor)
-
-            input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
+            if len(nouns) > 5:
+                nouns = nouns[:5]
+            bbox, label = eval_util.get_observation_maskrcnn(env.last_event, extractor, obj_predictor, clip_model, nouns, num_of_use=1)
+            input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor), bbox, label]
             
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,
@@ -256,6 +278,22 @@ def evaluate_subgoals_middle_qa(
     # compute metrics and dump a video
     metrics = compute_metrics(subgoal_success, subgoal_idx, reward, traj_data, t_agent, env.get_goal_conditions_met())
     return dict(**metrics, **task_info), interm_states
+
+def extract_nouns(text):
+    nouns = []
+    # 単語をトークン化
+    words = word_tokenize(text)
+    # 単語の品詞タグ付け
+    tagged_words = nltk.pos_tag(words)
+    
+    for word, tag in tagged_words:
+        # 名詞のみを抽出
+        if tag.startswith('NN'):
+            nouns.append(word)
+    
+    #nounsをアルファベット順にする
+    nouns.sort()
+    return nouns
 
 def process_eval_subgoals(results_path, model_paths, args):
     print('Processing evaluation results')

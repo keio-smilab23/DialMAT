@@ -99,6 +99,10 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
     env = ThorEnv(x_display=1)
     obj_predictor = FeatureExtractor(archi='maskrcnn', device=device,
         checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
+    
+    clip_model, _ = clip.load("RN50", device="cuda")
+    for params in clip_model.parameters():
+        params.requires_grad = False
 
     loc_ans, app_ans, dir_ans = all_ans
     encoder_optimizer = optim.Adam(encoder.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
@@ -156,7 +160,7 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
         trial_uid = "pad:" + str(0) + ":" + str(subgoal_idx)
         dataset_idx_qa = 0 + dataset_idx
         init_states = evaluate_subgoals_start_qa(
-            env, performer, dataset, extractor, trial_uid, dataset_idx_qa, args, obj_predictor)
+            env, performer, dataset, extractor, trial_uid, dataset_idx_qa, args, obj_predictor, clip_model)
         _, _, _, init_failed, _ = init_states
 
         task, trial = task_json[0]['task'].split("/")
@@ -279,7 +283,7 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
             # performer rollout for some steps
             with torch.no_grad():
                 log_entry, interm_states = evaluate_subgoals_middle_qa(env, performer, dataset, extractor, \
-                    trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, num_rollout=5)
+                    trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, clip_model, num_rollout=5)
 
             if log_entry['success']:
                 reward += REWARD_SUC
@@ -360,6 +364,10 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
     env = ThorEnv(x_display=1)
     obj_predictor = FeatureExtractor(archi='maskrcnn', device=device,
         checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
+    
+    clip_model, _ = clip.load("RN50", device="cuda")
+    for params in clip_model.parameters():
+        params.requires_grad = False
 
     loc_ans, app_ans, dir_ans = all_ans
     num_subgoals = len(dataset.jsons_and_keys)
@@ -404,7 +412,7 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
             trial_uid = "pad:" + str(0) + ":" + str(subgoal_idx)
             dataset_idx_qa = 0 + dataset_idx
             init_states = evaluate_subgoals_start_qa(
-                env, performer, dataset, extractor, trial_uid, dataset_idx_qa, args, obj_predictor)
+                env, performer, dataset, extractor, trial_uid, dataset_idx_qa, args, obj_predictor, clip_model)
             _, _, _, init_failed, _ = init_states
 
             task, trial = task_json[0]['task'].split("/")
@@ -592,7 +600,7 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
                 # performer rollout for some steps
                 with torch.no_grad():
                     log_entry, interm_states = evaluate_subgoals_middle_qa(env, performer, dataset, extractor, \
-                        trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, num_rollout=5)
+                        trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, clip_model, num_rollout=5)
 
                 if log_entry['success']:
                     reward += REWARD_SUC
@@ -689,8 +697,7 @@ def trainModel(args):
 def evalModel(args):
     np.random.seed(0)
     # data_split = "unseen"
-    data_split = "pseudo_test"
-    # data_split = "valid_unseen"
+    data_split = "valid_unseen"
     train_id = 1
     logging.basicConfig(filename='./logs/rl_anytime_eval_'+ data_split + str(train_id) + '.log', level=logging.INFO)
 
@@ -759,6 +766,10 @@ def main():
     # parser.add_argument("--wandb_run", type=str, default="tmp_run")
 
     args = parser.parse_args()
+
+    nltk.download('punkt')
+    nltk.download('averaged_perceptron_tagger')
+    nltk.download('wordnet')
 
     # wandb.init(project="DialFRED-2023", name=args.wandb_run)
 

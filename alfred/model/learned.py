@@ -76,6 +76,7 @@ class LearnedModel(nn.Module):
                 model_outs, losses_train = {}, {}
                 for batch_name, (task_path, traj_data, input_dict, gt_dict) in batches.items():
                     model_outs[batch_name] = self.model.forward(
+                        epoch,
                         task_path,
                         vocabs_in[batch_name.split(':')[-1]],
                         action=gt_dict['action'], **input_dict)
@@ -121,7 +122,7 @@ class LearnedModel(nn.Module):
             for loader_id, loader in loaders_valid.items():
                 with torch.no_grad():
                     metrics[loader_id] = self.run_validation(
-                        loader, vocabs_in[loader_id.split(':')[-1]],
+                        epoch, loader, vocabs_in[loader_id.split(':')[-1]],
                         loader_id, info['iters'])
 
             #追加
@@ -181,18 +182,21 @@ class LearnedModel(nn.Module):
         print('{} epochs are completed, all the models were saved to: {}'.format(
             self.args.epochs, self.args.dout))
 
-    def run_validation(self, loader, vocab_in, name, iters_valid):
+    def run_validation(self, epoch, loader, vocab_in, name, iters_valid):
         '''
         validation loop
         '''
         print('Validating on {}...'.format(name))
         m_valid = collections.defaultdict(list)
+        if not self.args.update_feat:
+            epoch = 10
+
         self.eval()
         for batch_idx, batch in tqdm(enumerate(loader), desc=name, total=len(loader)):
             task_path, traj_data, input_dict, gt_dict = data_util.tensorize_and_pad(
                 batch, self.args.device, self.pad)
             model_out = self.model.forward(
-                task_path, vocab_in, action=gt_dict['action'], **input_dict)
+                epoch, task_path, vocab_in, action=gt_dict['action'], **input_dict)
             loss = self.model.compute_batch_loss(model_out, gt_dict)
             for k, v in loss.items():
                 ln = 'loss/' + k

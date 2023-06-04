@@ -341,8 +341,8 @@ def main(args):
     obj_predictor = FeatureExtractor(archi='maskrcnn', device=args.device,
         checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
     
-    # clip_model, clip_preprocess = clip.load("ViT-L/14", device="cuda")
-    clip_model, clip_preprocess = clip.load("RN50", device="cuda")
+    clip_model, clip_preprocess = clip.load("ViT-L/14", device="cuda")
+    # clip_model, _ = clip.load("RN50", device="cuda")
     for params in clip_model.parameters():
         params.requires_grad = False
 

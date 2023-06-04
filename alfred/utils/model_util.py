@@ -273,7 +273,8 @@ def generate_attention_mask(len_lang, len_frames, len_actions,  device, len_subw
     elif is_maskrcnn:
         # 1. language should attend only to language
         lang_to_lang = torch.zeros((len_lang, len_lang), device=device).float()
-        lang_to_rest = torch.ones((len_lang, len_frames * 3 + len_frames * len_subword * num_of_use * 2), device=device).float() * float('-inf')
+        # lang_to_rest = torch.ones((len_lang, len_frames * 3 + len_frames * len_subword * num_of_use * 2), device=device).float() * float('-inf')
+        lang_to_rest = torch.zeros((len_lang, len_frames * 3 + len_frames * len_subword * num_of_use * 2), device=device).float()
         lang_to_all = torch.cat((lang_to_lang, lang_to_rest), dim=1)
         # 2.1 frames should attend to all language tokens
         frames_resnet_to_lang = torch.zeros((len_frames, len_lang), device=device).float()
@@ -285,7 +286,7 @@ def generate_attention_mask(len_lang, len_frames, len_actions,  device, len_subw
         # frames_resnet_to_frames_clip = triangular_mask(len_frames, device)
         frames_resnet_to_frames_bbox = torch.ones((len_frames, len_frames * len_subword * num_of_use), device=device).float() * float('-inf')
         for i in range(len_frames):
-            frames_resnet_to_frames_bbox[i, (i // len_subword * num_of_use) * len_subword * num_of_use: ((i + len_subword * num_of_use) // len_subword * num_of_use) * len_subword * num_of_use] = 0.
+            frames_resnet_to_frames_bbox[i, :(i+1) * len_subword * num_of_use] = 0.
         frames_resnet_to_frames_label = frames_resnet_to_frames_bbox.clone()
         # 2.3 frames should attend to actions with timestep < t. first make all actions invisibleeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
         #変更
@@ -304,27 +305,29 @@ def generate_attention_mask(len_lang, len_frames, len_actions,  device, len_subw
         frames_bbox_to_lang = torch.ones((len_frames * len_subword * num_of_use, len_lang), device=device).float() * float('-inf')
 
         frames_bbox_to_frames_resnet = torch.ones((len_frames * len_subword * num_of_use, len_frames), device=device).float() * float('-inf')
-        for i in range(0, len_frames, len_subword * num_of_use):
-            frames_bbox_to_frames_resnet[i:i + len_subword * num_of_use, :i + len_subword * num_of_use // len_subword * num_of_use] = 0.
+        # frames_bbox_to_frames_resnet = torch.zeros((len_frames * len_subword * num_of_use, len_frames), device=device).float()
+        for i in range(0, len_frames * len_subword * num_of_use, len_subword * num_of_use):
+            frames_bbox_to_frames_resnet[i:i+len_subword * num_of_use, :(i // (len_subword * num_of_use))+1] = 0.
         
         frames_bbox_to_frames_clip = frames_bbox_to_frames_resnet.clone()
 
         frames_bbox_to_frames_bbox = torch.ones((len_frames * len_subword * num_of_use, len_frames * len_subword * num_of_use), device=device).float() * float('-inf')
-        for i in range(0, len_frames, len_subword * num_of_use):
-            frames_bbox_to_frames_bbox[i:i + len_subword * num_of_use, :i + len_subword * num_of_use] = 0.
+        # frames_bbox_to_frames_bbox = torch.zeros((len_frames * len_subword * num_of_use, len_frames * len_subword * num_of_use), device=device).float()
+        for i in range(0, len_frames * len_subword * num_of_use, len_subword * num_of_use):
+            frames_bbox_to_frames_bbox[i:i+len_subword * num_of_use, :i + len_subword * num_of_use] = 0.
         
         frames_bbox_to_frames_label = frames_bbox_to_frames_bbox.clone()
 
         frames_bbox_to_actions = torch.ones((len_frames * len_subword * num_of_use, len_actions), device=device).float() * float('-inf')
+        # frames_bbox_to_actions = torch.zeros((len_frames * len_subword * num_of_use, len_actions), device=device).float()
 
         for a_idx in range(num_input_actions):
-            for i in range(0, len_frames, len_subword * num_of_use):
+            for i in range(len_frames * len_subword * num_of_use):
                 f_idx = i // (len_subword * num_of_use)
                 if f_idx - 1 - a_idx < 0:
                     # the index is out of bound
                     continue
-                frames_bbox_to_actions[i:i + len_subword * num_of_use, f_idx - 1 - a_idx] = 0.
-
+                frames_bbox_to_actions[i, f_idx - 1 - a_idx] = 0.
         frames_bbox_to_all = torch.cat((frames_bbox_to_lang, frames_bbox_to_frames_resnet, frames_bbox_to_frames_clip, frames_bbox_to_frames_bbox, frames_bbox_to_frames_label, frames_bbox_to_actions), dim=1)
         frames_label_to_all = frames_bbox_to_all.clone()
         # 3. actions should attend to the same indices as frames

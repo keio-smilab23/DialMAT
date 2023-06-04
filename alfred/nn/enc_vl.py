@@ -43,10 +43,10 @@ class EncoderVL(nn.Module):
                 lengths_actions,
                 length_frames_max,
                 lengths_subword,
-                is_maskrcnn=True,
+                is_maskrcnn=False,
                 is_clip_resnet=False,
                 attn_masks=True,
-                num_of_use=2):
+                num_of_use=1):
         '''
         pass embedded inputs through embeddings and encode them using a transformer
         '''
@@ -79,18 +79,21 @@ class EncoderVL(nn.Module):
                 # mask padded actions
                 mask_pad[i, length_lang_max + length_frames_max * 2 + len_a:] = True
             elif is_maskrcnn:
+                assert num_of_use == 1
                 # mask padded words
                 mask_pad[i, len_l: length_lang_max] = True
                 # mask padded frames
                 mask_pad[i, length_lang_max + len_f:
                         length_lang_max + length_frames_max] = True
-                mask_pad[i, length_lang_max + length_frames_max + len_f * len_s * num_of_use:
-                         length_lang_max + length_frames_max + length_frames_max * length_subword_max * num_of_use] = True
-                mask_pad[i, length_lang_max + length_frames_max + length_frames_max * length_subword_max * num_of_use + len_f * len_s * num_of_use:
-                         length_lang_max + length_frames_max + length_frames_max * length_subword_max * num_of_use * 2] = True
-                mask_pad[i, length_lang_max + length_frames_max + length_frames_max * length_subword_max * num_of_use * 2 + len_a:] = True
-                
-
+                mask_pad[i, length_lang_max + length_frames_max + len_f:
+                        length_lang_max + length_frames_max * 2] = True
+                for j in range(0, len_f*length_subword_max, length_subword_max):
+                    mask_pad[i, length_lang_max + length_frames_max * 2 + j+len_s:j+length_subword_max] = True
+                mask_pad[i, length_lang_max + length_frames_max * 2 + len_f*length_subword_max:length_frames_max + length_subword_max] = True
+                for j in range(0, len_f*length_subword_max, length_subword_max):
+                    mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * num_of_use + j+len_s:j+length_subword_max] = True
+                mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * num_of_use + len_f*length_subword_max:length_frames_max + length_subword_max] = True
+                mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * num_of_use * 2 + len_a:] = True
             else:
                 # mask padded words
                 mask_pad[i, len_l: length_lang_max] = True
@@ -108,13 +111,17 @@ class EncoderVL(nn.Module):
             # assert length_frames_max == max(lengths_actions)
             mask_attn = model_util.generate_attention_mask(
                 length_lang_max, length_frames_max, length_actions_max,
-                emb_all.device, length_subword_max, self.num_input_actions, is_maskrcnn=True, is_clip_resnet=is_clip_resnet, num_of_use=num_of_use)
+                emb_all.device, length_subword_max, self.num_input_actions, is_maskrcnn=is_maskrcnn, is_clip_resnet=is_clip_resnet, num_of_use=num_of_use)
         else:
             # allow every token to attend to all others
             mask_attn = torch.zeros(
                 (mask_pad.shape[1], mask_pad.shape[1]),
                 device=mask_pad.device).float()
         # encode the inputs
+        # print("emb_all.shape", emb_all.shape) #[4, 1663, 768]
+        # print("mask_attn.shape", mask_attn.shape) #[1663, 1663]
+        # print("mask_pad.shape", mask_pad.shape) #[4, 1663]
+        # print("emb_all_transpose.shape", emb_all.transpose(0, 1).shape) #[1663, 4, 768]
         output = self.enc_transformer(
             emb_all.transpose(0, 1), mask_attn, mask_pad).transpose(0, 1)
         return output, mask_pad

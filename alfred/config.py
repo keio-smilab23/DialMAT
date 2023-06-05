@@ -80,18 +80,19 @@ def cfg_eval():
 def cfg_train():
     #追加
     valid = False
-    wandb = False
-    wandb_name = 'deberta'
+    wandb = True
+    wandb_name = 'maskrcnn-new'
     clip_image = False
     clip_text = False
     clip_resnet = False
-    clip_deberta = False
+    clip_deberta = True
     clip_object = False
     maskrcnn = True
     deberta = False
-    mat_text = False
-    mat_image = False
-    mat_action = False
+    mat_text = True
+    mat_image = True
+    mat_action = True
+    update_feat = False
     
     # mat_object = False
 

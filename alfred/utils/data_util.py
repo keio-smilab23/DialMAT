@@ -158,8 +158,8 @@ def get_maskrcnn_features(image, obj_predictor, clip_model, subgoal_words, num_o
                 _regions.append(region_resized.unsqueeze(0))
 
     if len(_regions) == 0:
-        feats, _labels = torch.zeros(1, subgoal_limit, num_of_use, 1024).cuda(), torch.zeros(1, subgoal_limit, num_of_use, 1024).cuda()
-        return feats, _labels
+        feats, _labels = torch.zeros(1, subgoal_limit, num_of_use, 768).cuda(), torch.zeros(1, subgoal_limit, num_of_use, 768).cuda()
+        return feats, _labels, torch.tensor([0]).cuda()
 
     _regions = torch.cat(_regions,dim=0) # (N,3,224,224)
 
@@ -180,8 +180,8 @@ def get_maskrcnn_features(image, obj_predictor, clip_model, subgoal_words, num_o
     top_label_clip = torch.cat([label_clip[sort_idxs[i]].unsqueeze(0) for i in range(sort_idxs.shape[0])],dim=0)
 
     if len(top_bboxes) == 0:
-        feats, _labels = torch.zeros(1, subgoal_limit, num_of_use, 1024).cuda(), torch.zeros(1, subgoal_limit, num_of_use, 1024).cuda()
-        return feats, _labels
+        feats, _labels = torch.zeros(1, subgoal_limit, num_of_use, 768).cuda(), torch.zeros(1, subgoal_limit, num_of_use, 768).cuda()
+        return feats, _labels, torch.tensor([0]).cuda()
     
     # c.f. https://github.com/openai/CLIP/blob/main/clip/clip.py#L79
     my_transform = Compose([
@@ -192,14 +192,14 @@ def get_maskrcnn_features(image, obj_predictor, clip_model, subgoal_words, num_o
         batch_images = my_transform(top_bboxes) # (subgoal_words, num_of_use, 3, 224, 224)
         batch_images = batch_images.view(-1, 3, 224, 224) # (subgoal_words * num_of_use, 3, 224, 224)
         feats = clip_model.encode_image(batch_images) # (subgoal_words * num_of_use,768)
-        feats = feats.view(len(subgoal_words), sort_idxs.shape[1], 1024) # (subgoal_words, num_of_use, 768)
+        feats = feats.view(len(subgoal_words), sort_idxs.shape[1], 768) # (subgoal_words, num_of_use, 768)
         if sort_idxs.shape[1] < num_of_use:
-            top_label_clip = torch.cat([top_label_clip, torch.zeros(top_label_clip.shape[0], num_of_use-sort_idxs.shape[1], 1024).cuda()], dim=1)
-            feats = torch.cat([feats, torch.zeros(feats.shape[0], num_of_use-sort_idxs.shape[1], 1024).cuda()], dim=1)
+            top_label_clip = torch.cat([top_label_clip, torch.zeros(top_label_clip.shape[0], num_of_use-sort_idxs.shape[1], 768).cuda()], dim=1)
+            feats = torch.cat([feats, torch.zeros(feats.shape[0], num_of_use-sort_idxs.shape[1], 768).cuda()], dim=1)
         # subgoal_words.shape[0]がsubgoal_limitよりも小さい場合には、0でpaddingする
         if subgoal_words_clip.shape[0] < subgoal_limit:
-            top_label_clip = torch.cat([top_label_clip, torch.zeros(subgoal_limit-subgoal_words_clip.shape[0], num_of_use, 1024).cuda()], dim=0)
-            feats = torch.cat([feats, torch.zeros(subgoal_limit-subgoal_words_clip.shape[0], num_of_use, 1024).cuda()], dim=0)
+            top_label_clip = torch.cat([top_label_clip, torch.zeros(subgoal_limit-subgoal_words_clip.shape[0], num_of_use, 768).cuda()], dim=0)
+            feats = torch.cat([feats, torch.zeros(subgoal_limit-subgoal_words_clip.shape[0], num_of_use, 768).cuda()], dim=0)
 
         top_label_clip = top_label_clip.unsqueeze(0)
         feats = feats.unsqueeze(0)
@@ -209,7 +209,7 @@ def get_maskrcnn_features(image, obj_predictor, clip_model, subgoal_words, num_o
     else:
         length_subgoal_words = subgoal_limit
         
-    return feats, top_label_clip, length_subgoal_words
+    return feats, top_label_clip, torch.tensor([length_subgoal_words]).cuda()
 
 def get_maskrcnn_features_similarity_lmdb(images, obj_predictor,  clip_model, subgoal_words, subgoal_limit=8, num_of_use=2, batch_size=8):
     '''
@@ -458,7 +458,7 @@ def zero_pad_feats(feats, device):
     max_dim1 = max(tensor.size(1) for tensor in feats)
 
     # ゼロパディングを適用して、結果のテンソルを初期化
-    padded_tensor = torch.zeros(len(feats), max_dim0, max_dim1, 5, 1024).to(device)
+    padded_tensor = torch.zeros(len(feats), max_dim0, max_dim1, 2, 768).to(device)
 
     # 各要素のテンソルをゼロパディングして結果のテンソルに代入
     for i, tensor in enumerate(feats):

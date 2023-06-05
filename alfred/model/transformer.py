@@ -386,10 +386,16 @@ class Model(base.Model):
         if lengths_subword.max().item() > subword_limit:
             emb_bbox = emb_bbox[:, :, :subword_limit, :num_of_use, :]
             emb_label = emb_label[:, :, :subword_limit, :num_of_use, :]
-
+        else:
+            # max_subwordが5未満の場合は、0埋めする.
+            emb_bbox = emb_bbox[:, :, :, :num_of_use, :]
+            emb_label = emb_label[:, :, :, :num_of_use, :]
+            emb_bbox = torch.cat([emb_bbox, torch.zeros(emb_bbox.shape[0], emb_bbox.shape[1], subword_limit - emb_bbox.shape[2], num_of_use, emb_bbox.shape[4]).to(emb_bbox.device)], dim=2)
+            emb_label = torch.cat([emb_label, torch.zeros(emb_label.shape[0], emb_label.shape[1], subword_limit - emb_label.shape[2], num_of_use, emb_label.shape[4]).to(emb_label.device)], dim=2)
+            
         # emb_bbox、emb_labelは[batch, max_img, 5, 3, 1024]だが、これを[batch, max_img, 3, 5, 768]に変換する。
-        emb_bbox = self.maskrcnn_bbox_fc(emb_bbox)
-        emb_label = self.maskrcnn_label_fc(emb_label)
+        # emb_bbox = self.maskrcnn_bbox_fc(emb_bbox)
+        # emb_label = self.maskrcnn_label_fc(emb_label)
         # length_subwordも5以上の場合は、5になるようにする。
         lengths_subword[lengths_subword > subword_limit] = subword_limit
         
@@ -533,7 +539,7 @@ class Model(base.Model):
         reset internal states (used for real-time execution during eval)
         '''
         self.frames_traj = [torch.zeros(1, 0, *self.visual_tensor_shape), torch.zeros(1, 0, 768), 
-                            torch.zeros(1, 0, 5, 1, 1024), torch.zeros(1, 0, 5, 1, 1024)]
+                            torch.zeros(1, 0, 5, 1, 768), torch.zeros(1, 0, 5, 1, 768)]
         self.action_traj = torch.zeros(1, 0).long()
     
     def step(self, input_dict, vocab, prev_action=None):

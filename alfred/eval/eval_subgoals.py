@@ -258,9 +258,9 @@ def evaluate_subgoals_middle_qa(
             #     input_dict['frames'] = eval_util.get_observation(env.last_event, extractor)
             if len(nouns) > 5:
                 nouns = nouns[:5]
-            bbox, label = eval_util.get_observation_maskrcnn(env.last_event, extractor, obj_predictor, clip_model, nouns, num_of_use=1)
+            bbox, label, length = eval_util.get_observation_maskrcnn(env.last_event, extractor, obj_predictor, clip_model, nouns, num_of_use=1)
             input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor), bbox, label]
-            
+            input_dict['lengths_subword'] = length
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,
                 num_fails, obj_predictor)

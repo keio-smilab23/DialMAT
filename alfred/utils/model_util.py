@@ -271,6 +271,7 @@ def generate_attention_mask(len_lang, len_frames, len_actions,  device, len_subw
 
         all_to_all = torch.cat((lang_to_all, frames_resnet_to_all, frames_clip_to_all, actions_to_all), dim=0)
     elif is_maskrcnn:
+        len_subword = 5
         # 1. language should attend only to language
         lang_to_lang = torch.zeros((len_lang, len_lang), device=device).float()
         # lang_to_rest = torch.ones((len_lang, len_frames * 3 + len_frames * len_subword * num_of_use * 2), device=device).float() * float('-inf')

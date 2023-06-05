@@ -100,7 +100,8 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
     obj_predictor = FeatureExtractor(archi='maskrcnn', device=device,
         checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
     
-    clip_model, _ = clip.load("RN50", device="cuda")
+    clip_model, _ = clip.load("ViT-L/14", device="cuda")
+    # clip_model, _ = clip.load("RN50", device="cuda")
     for params in clip_model.parameters():
         params.requires_grad = False
 
@@ -365,7 +366,8 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
     obj_predictor = FeatureExtractor(archi='maskrcnn', device=device,
         checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
     
-    clip_model, _ = clip.load("RN50", device="cuda")
+    # clip_model, _ = clip.load("RN50", device="cuda")
+    clip_model, _ = clip.load("ViT-L/14", device="cuda")
     for params in clip_model.parameters():
         params.requires_grad = False
 

@@ -53,7 +53,8 @@ class EncoderVL(nn.Module):
         # emb_lang is processed on each GPU separately so they size can vary
         length_lang_max = lengths_lang.max().item()
         length_actions_max = lengths_actions.max().item()
-        length_subword_max = lengths_subword.max().item()
+        # length_subword_max = lengths_subword.max().item()
+        length_subword_max = 5
         emb_lang = emb_lang[:, :length_lang_max]
         # create a mask for padded elements
 
@@ -88,12 +89,16 @@ class EncoderVL(nn.Module):
                 mask_pad[i, length_lang_max + length_frames_max + len_f:
                         length_lang_max + length_frames_max * 2] = True
                 for j in range(0, len_f*length_subword_max, length_subword_max):
-                    mask_pad[i, length_lang_max + length_frames_max * 2 + j+len_s:j+length_subword_max] = True
-                mask_pad[i, length_lang_max + length_frames_max * 2 + len_f*length_subword_max:length_frames_max + length_subword_max] = True
+                    mask_pad[i, length_lang_max + length_frames_max * 2 + j + len_s:
+                            length_lang_max + length_frames_max * 2 + j + length_subword_max] = True
+                mask_pad[i, length_lang_max + length_frames_max * 2 + len_f * length_subword_max:
+                        length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max] = True
                 for j in range(0, len_f*length_subword_max, length_subword_max):
-                    mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * num_of_use + j+len_s:j+length_subword_max] = True
-                mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * num_of_use + len_f*length_subword_max:length_frames_max + length_subword_max] = True
-                mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * num_of_use * 2 + len_a:] = True
+                    mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max + j + len_s:
+                            length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max + j + length_subword_max] = True
+                mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max + len_f*length_subword_max:
+                        length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * 2] = True
+                mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * 2 + len_a:] = True
             else:
                 # mask padded words
                 mask_pad[i, len_l: length_lang_max] = True
@@ -118,10 +123,6 @@ class EncoderVL(nn.Module):
                 (mask_pad.shape[1], mask_pad.shape[1]),
                 device=mask_pad.device).float()
         # encode the inputs
-        # print("emb_all.shape", emb_all.shape) #[4, 1663, 768]
-        # print("mask_attn.shape", mask_attn.shape) #[1663, 1663]
-        # print("mask_pad.shape", mask_pad.shape) #[4, 1663]
-        # print("emb_all_transpose.shape", emb_all.transpose(0, 1).shape) #[1663, 4, 768]
         output = self.enc_transformer(
             emb_all.transpose(0, 1), mask_attn, mask_pad).transpose(0, 1)
         return output, mask_pad

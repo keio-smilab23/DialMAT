@@ -271,11 +271,10 @@ def generate_attention_mask(len_lang, len_frames, len_actions,  device, len_subw
 
         all_to_all = torch.cat((lang_to_all, frames_resnet_to_all, frames_clip_to_all, actions_to_all), dim=0)
     elif is_maskrcnn:
-        len_subword = 5
         # 1. language should attend only to language
         lang_to_lang = torch.zeros((len_lang, len_lang), device=device).float()
-        # lang_to_rest = torch.ones((len_lang, len_frames * 3 + len_frames * len_subword * num_of_use * 2), device=device).float() * float('-inf')
-        lang_to_rest = torch.zeros((len_lang, len_frames * 3 + len_frames * len_subword * num_of_use * 2), device=device).float()
+        lang_to_rest = torch.ones((len_lang, len_frames * 3 + len_frames * len_subword * num_of_use * 2), device=device).float() * float('-inf')
+        # lang_to_rest = torch.zeros((len_lang, len_frames * 3 + len_frames * len_subword * num_of_use * 2), device=device).float()
         lang_to_all = torch.cat((lang_to_lang, lang_to_rest), dim=1)
         # 2.1 frames should attend to all language tokens
         frames_resnet_to_lang = torch.zeros((len_frames, len_lang), device=device).float()
@@ -286,8 +285,9 @@ def generate_attention_mask(len_lang, len_frames, len_actions,  device, len_subw
         # frames_resnet_to_clip = torch.zeros((len_frames, len_frames), device=device).float()
         # frames_resnet_to_frames_clip = triangular_mask(len_frames, device)
         frames_resnet_to_frames_bbox = torch.ones((len_frames, len_frames * len_subword * num_of_use), device=device).float() * float('-inf')
-        for i in range(len_frames):
-            frames_resnet_to_frames_bbox[i, :(i+1) * len_subword * num_of_use] = 0.
+        # id:204
+        # for i in range(len_frames):
+        #     frames_resnet_to_frames_bbox[i, :(i+1) * len_subword * num_of_use] = 0.
         frames_resnet_to_frames_label = frames_resnet_to_frames_bbox.clone()
         # 2.3 frames should attend to actions with timestep < t. first make all actions invisibleeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
         #変更
@@ -303,7 +303,9 @@ def generate_attention_mask(len_lang, len_frames, len_actions,  device, len_subw
         frames_resnet_to_all = torch.cat((frames_resnet_to_lang, frames_resnet_to_frames_resnet, frames_resnet_to_frames_clip, frames_resnet_to_frames_bbox, frames_resnet_to_frames_label, frames_resnet_to_actions), dim=1)
         frames_clip_to_all = frames_resnet_to_all.clone()
         # bboxとlabelの次元は(length_frames * length_subgoal * 5)であり、次のフレームの情報をみないように階段状のマスクを作成する(幅がlength_subgoal * 5)
-        frames_bbox_to_lang = torch.ones((len_frames * len_subword * num_of_use, len_lang), device=device).float() * float('-inf')
+        # frames_bbox_to_lang = torch.ones((len_frames * len_subword * num_of_use, len_lang), device=device).float() * float('-inf')
+        #id:204
+        frames_bbox_to_lang = torch.zeros((len_frames * len_subword * num_of_use, len_lang), device=device).float()
 
         frames_bbox_to_frames_resnet = torch.ones((len_frames * len_subword * num_of_use, len_frames), device=device).float() * float('-inf')
         # frames_bbox_to_frames_resnet = torch.zeros((len_frames * len_subword * num_of_use, len_frames), device=device).float()

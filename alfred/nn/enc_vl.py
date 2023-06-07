@@ -43,6 +43,7 @@ class EncoderVL(nn.Module):
                 lengths_actions,
                 length_frames_max,
                 lengths_subword,
+                subword_limit = 5,
                 is_maskrcnn=False,
                 is_clip_resnet=False,
                 attn_masks=True,
@@ -54,7 +55,7 @@ class EncoderVL(nn.Module):
         length_lang_max = lengths_lang.max().item()
         length_actions_max = lengths_actions.max().item()
         # length_subword_max = lengths_subword.max().item()
-        length_subword_max = 5
+        length_subword_max = subword_limit
         emb_lang = emb_lang[:, :length_lang_max]
         # create a mask for padded elements
 

@@ -80,7 +80,7 @@ def cfg_eval():
 def cfg_train():
     #追加
     valid = False
-    wandb = True
+    wandb = False
     wandb_name = 'maskrcnn-new'
     clip_image = False
     clip_text = False
@@ -93,6 +93,8 @@ def cfg_train():
     mat_image = True
     mat_action = True
     update_feat = False
+
+    subword_limit=4
     
     # mat_object = False
 
@@ -116,7 +118,7 @@ def cfg_train():
     # learning rate settings
     lr = {
         # learning rate initial value
-        'init': 1e-4,
+        'init': 6e-5,
         # lr scheduler type: {'linear', 'cosine', 'triangular', 'triangular2'}
         'profile': 'linear',
         # (LINEAR PROFILE) num epoch to adjust learning rate
@@ -149,9 +151,9 @@ def cfg_train():
     # size of transformer embeddings
     demb = 768
     # number of heads in multi-head attention
-    encoder_heads = 12
+    encoder_heads = 8
     # number of layers in transformer encoder
-    encoder_layers = 2
+    encoder_layers = 4
     # how many previous actions to use as input
     num_input_actions = 1
     # which encoder to use for language encoder (by default no encoder)

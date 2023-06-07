@@ -150,7 +150,7 @@ def evaluate_subgoals_mc(
     return dict(**metrics, **task_info), mc_lists
 
 def evaluate_subgoals_start_qa(
-        env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, clip_model):
+        env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, clip_model, subword_limit=5):
     # set up the evaluation
     # load trajectory data from the dataset
     traj_data, traj_key = dataset.jsons_and_keys[dataset_idx]
@@ -191,9 +191,9 @@ def evaluate_subgoals_start_qa(
 
     # expert teacher-forcing upto subgoal, get expert action
     for a_expert in expert_dict['actions']:
-        if len(nouns) > 5:
-            nouns = nouns[:5]
-        bbox, label, length = eval_util.get_observation_maskrcnn(env.last_event, extractor, obj_predictor, clip_model, nouns, num_of_use=1)
+        if len(nouns) > subword_limit:
+            nouns = nouns[:subword_limit]
+        bbox, label, length = eval_util.get_observation_maskrcnn(env.last_event, extractor, obj_predictor, clip_model, nouns, num_of_use=1, subgoal_limit=subword_limit)
         input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor), bbox, label]
         input_dict['lengths_subword'] = length
         init_failed, prev_action = eval_util.expert_step(
@@ -206,7 +206,7 @@ def evaluate_subgoals_start_qa(
     return init_states
 
 def evaluate_subgoals_middle_qa(
-        env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, clip_model, num_rollout=5):
+        env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, clip_model, num_rollout=5, subword_limit=5):
     # modification of evaluate_subgoals: add qa and skip init
     # model.reset_for_clip()
     # add initial states from expert initialization
@@ -256,9 +256,9 @@ def evaluate_subgoals_middle_qa(
             #     input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
             # else:
             #     input_dict['frames'] = eval_util.get_observation(env.last_event, extractor)
-            if len(nouns) > 5:
-                nouns = nouns[:5]
-            bbox, label, length = eval_util.get_observation_maskrcnn(env.last_event, extractor, obj_predictor, clip_model, nouns, num_of_use=1)
+            if len(nouns) > subword_limit:
+                nouns = nouns[:subword_limit]
+            bbox, label, length = eval_util.get_observation_maskrcnn(env.last_event, extractor, obj_predictor, clip_model, nouns, num_of_use=1, subgoal_limit=subword_limit)
             input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor), bbox, label]
             input_dict['lengths_subword'] = length
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(

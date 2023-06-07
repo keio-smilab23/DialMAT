@@ -375,13 +375,13 @@ def get_observation(event, extractor, id=None, subgoal_idx=None, action_idx=None
 
     return frames
 
-def get_observation_maskrcnn(event, extractor, obj_predictor,  clip_model, subgoal_words, num_of_use=1):
+def get_observation_maskrcnn(event, extractor, obj_predictor,  clip_model, subgoal_words, num_of_use=1, subgoal_limit=6):
     '''
     get environment observation of maskrcnn
 
     returns list of tensors of shape (subgoal_words * 5, 768)
     '''
-    bboxes, labels, lengths = data_util.get_maskrcnn_features(Image.fromarray(event.frame), obj_predictor, clip_model, subgoal_words, num_of_use=num_of_use)
+    bboxes, labels, lengths = data_util.get_maskrcnn_features(Image.fromarray(event.frame), obj_predictor, clip_model, subgoal_words, num_of_use=num_of_use, subgoal_limit=subgoal_limit)
 
     return bboxes, labels, lengths
 

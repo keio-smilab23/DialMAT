@@ -127,7 +127,7 @@ def encode_clip_image(clip_preprocess, clip_model, images, device="cuda:0"):
 
     return feats
 
-def get_maskrcnn_features(image, obj_predictor, clip_model, subgoal_words, num_of_use=1, subgoal_limit=5):
+def get_maskrcnn_features(image, obj_predictor, clip_model, subgoal_words, num_of_use=1, subgoal_limit=4):
     '''
     get environment observation
     
@@ -159,7 +159,7 @@ def get_maskrcnn_features(image, obj_predictor, clip_model, subgoal_words, num_o
 
     if len(_regions) == 0:
         feats, _labels = torch.zeros(1, subgoal_limit, num_of_use, 768).cuda(), torch.zeros(1, subgoal_limit, num_of_use, 768).cuda()
-        return feats, _labels, torch.tensor([0]).cuda()
+        return feats, _labels, torch.tensor([subgoal_limit]).cuda()
 
     _regions = torch.cat(_regions,dim=0) # (N,3,224,224)
 
@@ -181,7 +181,7 @@ def get_maskrcnn_features(image, obj_predictor, clip_model, subgoal_words, num_o
 
     if len(top_bboxes) == 0:
         feats, _labels = torch.zeros(1, subgoal_limit, num_of_use, 768).cuda(), torch.zeros(1, subgoal_limit, num_of_use, 768).cuda()
-        return feats, _labels, torch.tensor([0]).cuda()
+        return feats, _labels, torch.tensor([subgoal_limit]).cuda()
     
     # c.f. https://github.com/openai/CLIP/blob/main/clip/clip.py#L79
     my_transform = Compose([

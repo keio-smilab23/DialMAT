@@ -20,7 +20,7 @@ class PosEncoding(nn.Module):
 
     def forward(self, lang, frames, actions, bboxes, labels, lens_lang, lens_subword, pos=None):
         if pos is None:
-            enc = self.pe[:, :lang.shape[1] + frames.shape[1] + bboxes.shape[1] + labels.shape[1]]
+            enc = self.pe[:, :lang.shape[1] + frames.shape[1] + bboxes.shape[1]]
         else:
             enc = [[] for _ in range(len(lang))]
             for batch_idx in range(pos.shape[0]):
@@ -37,7 +37,7 @@ class PosEncoding(nn.Module):
         for i in range(bboxes.shape[0]):
             bboxes[i] = bboxes[i] + enc[0, lens_lang[i] + frames.shape[1]: lens_lang[i] + frames.shape[1] + bboxes.shape[1]]
         for i in range(labels.shape[0]):
-            labels[i] = labels[i] + enc[0, lens_lang[i] + frames.shape[1] + bboxes.shape[1]: lens_lang[i] + frames.shape[1] + bboxes.shape[1] + labels.shape[1]]
+            labels[i] = labels[i] + enc[0, lens_lang[i] + frames.shape[1]: lens_lang[i] + frames.shape[1] + labels.shape[1]]
 
         return lang, frames, actions, bboxes, labels
 

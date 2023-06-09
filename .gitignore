@@ -24,4 +24,7 @@ testset/dialfred_testset_final/*
 submission_history/
 tmp/
 qualitative/
+__MACOSX/
+testset/
+data/extract_jsons
 >>>>>>> 8d14bb41bb92b558ad1413e8c24ed5dcf706ef7c

@@ -94,7 +94,7 @@ def cfg_train():
     mat_action = True
     update_feat = False
 
-    subword_limit=4
+    subword_limit=3
     
     # mat_object = False
 
@@ -118,7 +118,7 @@ def cfg_train():
     # learning rate settings
     lr = {
         # learning rate initial value
-        'init': 6e-5,
+        'init': 2e-4, #1e-4,
         # lr scheduler type: {'linear', 'cosine', 'triangular', 'triangular2'}
         'profile': 'linear',
         # (LINEAR PROFILE) num epoch to adjust learning rate
@@ -151,9 +151,9 @@ def cfg_train():
     # size of transformer embeddings
     demb = 768
     # number of heads in multi-head attention
-    encoder_heads = 8
+    encoder_heads = 6
     # number of layers in transformer encoder
-    encoder_layers = 4
+    encoder_layers = 6
     # how many previous actions to use as input
     num_input_actions = 1
     # which encoder to use for language encoder (by default no encoder)

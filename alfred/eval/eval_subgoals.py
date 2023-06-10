@@ -165,7 +165,7 @@ def evaluate_subgoals_start_qa(
         model.reset_for_both()
     elif args.clip_resnet:
         model.reset_for_both()
-    elif args.maskrcnn:
+    elif args.maskrcnn or args.parallel:
         model.reset_for_maskrcnn()
     else:
         model.reset()

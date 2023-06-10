@@ -62,7 +62,19 @@ class Model(base.Model):
         # checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
 
         # encoder and visual embeddings
-        self.encoder_vl = EncoderVL(args)
+        if self.args.parallel:
+            encoder_layers_base = args.base_layers
+            encoder_layers_parallel = args.parallel_layers
+            encoder_heads_base = args.base_heads
+            encoder_heads_parallel = args.parallel_heads
+            args.encoder_layers = encoder_layers_base
+            args.encoder_heads = encoder_heads_base
+            self.encoder_vl_base = EncoderVL(args)
+            args.encoder_layers = encoder_layers_parallel
+            args.encoder_heads = encoder_heads_parallel
+            self.encoder_vl_parallel = EncoderVL(args)
+        else:
+            self.encoder_vl = EncoderVL(args)
         # pre-encoder for language tokens
         self.encoder_lang = EncoderLang(
             args.encoder_lang['layers'], args, embs_ann)
@@ -86,14 +98,20 @@ class Model(base.Model):
         #         encoder_output_size, args.demb)
         # else:
         self.dec_action1 = nn.Linear(
-            encoder_output_size, encoder_output_size * 2)
-        
+            encoder_output_size * 2, encoder_output_size * 3)
+        self.bn1 = torch.nn.BatchNorm1d(encoder_output_size * 3)
+        self.dropout1 = torch.nn.Dropout(0.5)
+
         self.dec_action2 = nn.Linear(
-            encoder_output_size * 2, encoder_output_size)
+            encoder_output_size * 3, encoder_output_size * 2)
+        self.bn2 = torch.nn.BatchNorm1d(encoder_output_size * 2)
+        self.dropout2 = torch.nn.Dropout(0.5)
         
         self.dec_action3 = nn.Linear(
             encoder_output_size * 2, encoder_output_size)
         
+        self.relu = torch.nn.ReLU()
+
         self.maskrcnn_bbox_fc = nn.Linear(
             1024, args.demb
         )
@@ -111,9 +129,15 @@ class Model(base.Model):
 
         # progress monitoring heads
         if self.args.progress_aux_loss_wt > 0:
-            self.dec_progress = nn.Linear(encoder_output_size, 1)
+            if self.args.parallel:
+                self.dec_progress = nn.Linear(encoder_output_size * 2, 1)
+            else:
+                self.dec_progress = nn.Linear(encoder_output_size * 2, 1)
         if self.args.subgoal_aux_loss_wt > 0:
-            self.dec_subgoal = nn.Linear(encoder_output_size, 1)
+            if self.args.parallel:
+                self.dec_subgoal = nn.Linear(encoder_output_size * 2, 1)
+            else:
+                self.dec_subgoal = nn.Linear(encoder_output_size, 1)
 
         # final touch
         self.init_weights()
@@ -122,7 +146,7 @@ class Model(base.Model):
         if args.clip_image:
             # self.reset_for_clip()
             self.reset_for_both()
-        elif args.maskrcnn:
+        elif args.maskrcnn or args.parallel:
             self.reset_for_maskrcnn()
         elif args.clip_resnet:
             self.reset_for_both()
@@ -322,72 +346,197 @@ class Model(base.Model):
         '''
         # embed language
         output = {}
+        if not self.args.parallel:
+            #変更(CLIPのtext情報も用いる)
+            if self.args.clip_text:
+                emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
+                #emb_lang:[batch, max, 768](2つのデータの大きい方をmaxに入れる), lengths_lang:[batch](emb_langのbatch個のデータの長さを持つ.)
+                
+                # token to sentence
+                sentences = self.token_to_sentence_list(inputs['lang'], vocab)
+                
+                # encode clip
+                emb_clip, lengths_clip = self.encode_clip_text(epoch, task_path, sentences, device=inputs['lang'].device)
+                
+                # concat clip and lang
+                emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
+
+                emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
+
+            elif self.args.deberta:
+                emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
+
+                sentences = self.token_to_sentence_list(inputs['lang'], vocab)
+
+                emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, device=inputs['lang'].device)
+
+                emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device=inputs['lang'].device)
+
+                emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
         
-        #変更(CLIPのtext情報も用いる)
-        if self.args.clip_text:
-            emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
-            #emb_lang:[batch, max, 768](2つのデータの大きい方をmaxに入れる), lengths_lang:[batch](emb_langのbatch個のデータの長さを持つ.)
+            elif self.args.clip_deberta:
+                emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
+
+                sentences = self.token_to_sentence_list(inputs['lang'], vocab)
+
+                # encode clip
+                emb_clip, lengths_clip = self.encode_clip_text(epoch, task_path, sentences, device=inputs['lang'].device)
+
+                # encode deberta
+                emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, device=inputs['lang'].device)
+
+                # concat clip and lang
+                emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
+
+                # concat deberta and lang
+                emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device=inputs['lang'].device)
+
+                emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
+
+            else:
+                emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
+
+                emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
+
             
-            # token to sentence
-            sentences = self.token_to_sentence_list(inputs['lang'], vocab)
+            # embed frames
+            emb_resnet, emb_object = self.embed_frames(inputs['frames'][0])
+            emb_clip = inputs['frames'][1]
+            if self.args.clip_resnet:
+                emb_bbox = inputs['frames'][1]
+                emb_label = inputs['frames'][1]
+                lengths_subword = inputs['lengths_frames']
+                num_of_use = 1
+                subword_limit = 1
+            elif self.args.maskrcnn:
+                emb_bbox = inputs['frames'][2]
+                emb_label = inputs['frames'][3]
             
-            # encode clip
-            emb_clip, lengths_clip = self.encode_clip_text(epoch, task_path, sentences, device=inputs['lang'].device)
+                lengths_subword = inputs['lengths_subword']
+                num_of_use = 1
+                subword_limit = self.args.subword_limit #1~8
+                # [batch, max_img, max_subword, 5, 1024]において、max_subwordが5以上の場合は、5になるようにする。また、num_of_useを3にする。
+                if lengths_subword.max().item() > subword_limit:
+                    emb_bbox = emb_bbox[:, :, :subword_limit, :num_of_use, :]
+                    emb_label = emb_label[:, :, :subword_limit, :num_of_use, :]
+
+                else:
+                    # max_subwordが5未満の場合は、0埋めする.
+                    emb_bbox = emb_bbox[:, :, :, :num_of_use, :]
+                    emb_label = emb_label[:, :, :, :num_of_use, :]
+                    emb_bbox = torch.cat([emb_bbox, torch.zeros(emb_bbox.shape[0], emb_bbox.shape[1], subword_limit - emb_bbox.shape[2], num_of_use, emb_bbox.shape[4]).to(emb_bbox.device)], dim=2)
+                    emb_label = torch.cat([emb_label, torch.zeros(emb_label.shape[0], emb_label.shape[1], subword_limit - emb_label.shape[2], num_of_use, emb_label.shape[4]).to(emb_label.device)], dim=2)
+                    
+                # emb_bbox、emb_labelは[batch, max_img, 5, 3, 1024]だが、これを[batch, max_img, 3, 5, 768]に変換する。
+                # emb_bbox = self.maskrcnn_bbox_fc(emb_bbox)
+                # emb_label = self.maskrcnn_label_fc(emb_label)
+                # length_subwordも5以上の場合は、5になるようにする。
+                lengths_subword[lengths_subword > subword_limit] = subword_limit
+                
+                # [batch, max_img, max_subword, 5, 768]を[batch, max_img * max_subword * 5, 768]に変換する
+                emb_bbox = emb_bbox.reshape(emb_bbox.shape[0], emb_bbox.shape[1] * emb_bbox.shape[2] * emb_bbox.shape[3], emb_bbox.shape[4])
+                emb_label = emb_label.reshape(emb_label.shape[0], emb_label.shape[1] * emb_label.shape[2] * emb_label.shape[3], emb_label.shape[4])
+            # batch毎にmax_subwordの長さを持つtensorを作成
+            emb_frames = torch.cat([emb_resnet, emb_clip], dim=1)
+            lengths_frames = inputs['lengths_frames']
+            length_frames_max = inputs['length_frames_max']
+
+            lengths_actions = lengths_frames.clone()
+
+            #emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]
+            emb_actions = self.embed_actions(inputs['action'])
+
+            if self.args.mat_text:
+                emb_lang = self.mat(emb_lang)
+            if self.args.mat_image:
+                emb_frames = self.mat(emb_frames)
+            if self.args.mat_action:
+                emb_actions = self.mat(emb_actions)
+            # if self.args.mat_object:
+            #     emb_object = self.mat(emb_object)
+
+            # concatenate language, frames and actions and add encodings
+            encoder_out, _ = self.encoder_vl(
+                emb_lang, emb_frames, emb_actions, emb_bbox, emb_label, lengths_lang,
+                lengths_frames, lengths_actions, length_frames_max, lengths_subword, subword_limit=subword_limit, is_maskrcnn=self.args.maskrcnn,  is_clip_resnet=self.args.clip_resnet,num_of_use=num_of_use)
+            # use outputs corresponding to visual frames for prediction only
+            # print("encoder_out:", encoder_out.shape)
+            # print("encoder_out:", encoder_out)
+            # encoder_out_visual = encoder_out[
+            #     :, lengths_lang.max().item():
+            #     lengths_lang.max().item() + length_frames_max * 2]
+            # encoder_out_visual = encoder_out[
+            #     :, lengths_lang.max().item():
+            #     lengths_lang.max().item() + length_frames_max]
+            # print("encoder_single:", encoder_out[:, lengths_lang.max().item():
+                        # lengths_lang.max().item() + length_frames_max].shape) #[4, 72, 768]
+
+            # encoder_out_visual = torch.cat(
+            #     [encoder_out[:, lengths_lang.max().item():
+            #             lengths_lang.max().item() + length_frames_max],
+            #     encoder_out[:, lengths_lang.max().item() + length_frames_max:
+            #             lengths_lang.max().item() + length_frames_max * 2]], dim=2)
+            encoder_out_visual = encoder_out[:, lengths_lang.max().item():
+                        lengths_lang.max().item() + length_frames_max]
             
-            # concat clip and lang
-            emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
+            # print("be encoder_out_visual.shape:{}".format(encoder_out_visual.shape))
+            # encoder_out_visual = self.dec_output_fc(encoder_out_visual)
+            # print("af encoder_out_visual.shape:{}".format(encoder_out_visual.shape))
+            #encoder_out_visualを半分にして足し合わせる
+            # middle_shape = encoder_out_visual.shape[1] // 2
+            # encoder_out_visual = encoder_out_visual[:, :middle_shape] + encoder_out_visual[:, middle_shape:]
 
-            emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
+            # get the output actions
+            decoder_input = encoder_out_visual.reshape(-1, self.args.demb)
+            action_emb_flat1 = self.dec_action1(decoder_input)
+            action_emb_flat = self.dec_action2(action_emb_flat1)
+            action_flat = action_emb_flat.mm(self.emb_action.weight.t())
+            action = action_flat.view(
+                *encoder_out_visual.shape[:2], *action_flat.shape[1:])
+            
+            # get the output objects
+            emb_object_flat = emb_object.view(-1, self.args.demb)
 
-        elif self.args.deberta:
-            emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
+            decoder_input = action_emb_flat + emb_object_flat
+            
+            object_flat = self.dec_object(decoder_input)
 
-            sentences = self.token_to_sentence_list(inputs['lang'], vocab)
+            objects = object_flat.view(
+                *encoder_out_visual.shape[:2], *object_flat.shape[1:])
+            output.update({'action': action, 'object': objects})
 
-            emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, device=inputs['lang'].device)
+            # (optionally) get progress monitor predictions
+            if self.args.progress_aux_loss_wt > 0:
+                #追加
+                progress = torch.sigmoid(self.dec_progress(encoder_out_visual))
+                output['progress'] = progress
+            if self.args.subgoal_aux_loss_wt > 0:
+                subgoal = torch.sigmoid(self.dec_subgoal(encoder_out_visual))
+                output['subgoal'] = subgoal
+            return output
 
-            emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device=inputs['lang'].device)
-
-            emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
-    
-        elif self.args.clip_deberta:
-            emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
-
-            sentences = self.token_to_sentence_list(inputs['lang'], vocab)
-
-            # encode clip
-            emb_clip, lengths_clip = self.encode_clip_text(epoch, task_path, sentences, device=inputs['lang'].device)
-
-            # encode deberta
-            emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, device=inputs['lang'].device)
-
-            # concat clip and lang
-            emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
-
-            # concat deberta and lang
-            emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device=inputs['lang'].device)
-
-            emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
-
+        #parallelの場合
         else:
+            #lang
             emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
 
-            emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
+            sentences = self.token_to_sentence_list(inputs['lang'], vocab)
+            emb_clip_lang, lengths_clip_lang = self.encode_clip_text(epoch, task_path, sentences, device=inputs['lang'].device)
+            emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, device=inputs['lang'].device)
 
-         
-        # embed frames
-        emb_resnet, emb_object = self.embed_frames(inputs['frames'][0])
-        emb_clip = inputs['frames'][1]
-        if self.args.clip_resnet:
-            emb_bbox = inputs['frames'][1]
-            emb_label = inputs['frames'][1]
-            lengths_subword = inputs['lengths_frames']
-            num_of_use = 1
-            subword_limit = 1
-        elif self.args.maskrcnn:
+            emb_lang_base, lengths_lang_base = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device=inputs['lang'].device)
+            emb_lang_base = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang_base
+
+            emb_lang_parallel, lengths_lang_parallel = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip_lang, lengths_clip_lang, device=inputs['lang'].device)
+            emb_lang_parallel, lengths_lang_parallel = self.concat_embeddings_lang(emb_lang_parallel, lengths_lang_parallel, emb_deberta, lengths_deberta, device=inputs['lang'].device)
+            emb_lang_parallel = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang_parallel
+
+            #frames
+            emb_resnet, emb_object = self.embed_frames(inputs['frames'][0])
+            emb_clip_frames = inputs['frames'][1]
             emb_bbox = inputs['frames'][2]
             emb_label = inputs['frames'][3]
-        
+            
             lengths_subword = inputs['lengths_subword']
             num_of_use = 1
             subword_limit = self.args.subword_limit #1~8
@@ -403,93 +552,80 @@ class Model(base.Model):
                 emb_bbox = torch.cat([emb_bbox, torch.zeros(emb_bbox.shape[0], emb_bbox.shape[1], subword_limit - emb_bbox.shape[2], num_of_use, emb_bbox.shape[4]).to(emb_bbox.device)], dim=2)
                 emb_label = torch.cat([emb_label, torch.zeros(emb_label.shape[0], emb_label.shape[1], subword_limit - emb_label.shape[2], num_of_use, emb_label.shape[4]).to(emb_label.device)], dim=2)
                 
-            # emb_bbox、emb_labelは[batch, max_img, 5, 3, 1024]だが、これを[batch, max_img, 3, 5, 768]に変換する。
-            # emb_bbox = self.maskrcnn_bbox_fc(emb_bbox)
-            # emb_label = self.maskrcnn_label_fc(emb_label)
-            # length_subwordも5以上の場合は、5になるようにする。
             lengths_subword[lengths_subword > subword_limit] = subword_limit
-            
-            # [batch, max_img, max_subword, 5, 768]を[batch, max_img * max_subword * 5, 768]に変換する
+
             emb_bbox = emb_bbox.reshape(emb_bbox.shape[0], emb_bbox.shape[1] * emb_bbox.shape[2] * emb_bbox.shape[3], emb_bbox.shape[4])
             emb_label = emb_label.reshape(emb_label.shape[0], emb_label.shape[1] * emb_label.shape[2] * emb_label.shape[3], emb_label.shape[4])
-        # batch毎にmax_subwordの長さを持つtensorを作成
-        emb_frames = torch.cat([emb_resnet, emb_clip], dim=1)
-        lengths_frames = inputs['lengths_frames']
-        length_frames_max = inputs['length_frames_max']
 
-        lengths_actions = lengths_frames.clone()
+            # emb_frames = torch.cat([emb_resnet, emb_clip], dim=1)
+            lengths_frames = inputs['lengths_frames']
+            length_frames_max = inputs['length_frames_max']
+            emb_frames_base = emb_resnet
+            emb_frames_parallel = emb_clip_frames
 
-        #emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]
-        emb_actions = self.embed_actions(inputs['action'])
+            #actions
+            lengths_actions = lengths_frames.clone()
+            emb_actions = self.embed_actions(inputs['action'])
 
-        if self.args.mat_text:
-            emb_lang = self.mat(emb_lang)
-        if self.args.mat_image:
-            emb_frames = self.mat(emb_frames)
-        if self.args.mat_action:
-            emb_actions = self.mat(emb_actions)
-        # if self.args.mat_object:
-        #     emb_object = self.mat(emb_object)
+            if self.args.mat_text:
+                emb_lang_base = self.mat(emb_lang_base)
+                emb_lang_parallel = self.mat(emb_lang_parallel)
+            if self.args.mat_image:
+                emb_frames_base = self.mat(emb_frames_base)
+                emb_frames_parallel = self.mat(emb_frames_parallel)
+            if self.args.mat_action:
+                emb_actions = self.mat(emb_actions)
 
-        # concatenate language, frames and actions and add encodings
-        encoder_out, _ = self.encoder_vl(
-            emb_lang, emb_frames, emb_actions, emb_bbox, emb_label, lengths_lang,
-            lengths_frames, lengths_actions, length_frames_max, lengths_subword, subword_limit=subword_limit, is_maskrcnn=self.args.maskrcnn,  is_clip_resnet=self.args.clip_resnet,num_of_use=num_of_use)
-        # use outputs corresponding to visual frames for prediction only
-        # print("encoder_out:", encoder_out.shape)
-        # print("encoder_out:", encoder_out)
-        # encoder_out_visual = encoder_out[
-        #     :, lengths_lang.max().item():
-        #     lengths_lang.max().item() + length_frames_max * 2]
-        # encoder_out_visual = encoder_out[
-        #     :, lengths_lang.max().item():
-        #     lengths_lang.max().item() + length_frames_max]
-        # print("encoder_single:", encoder_out[:, lengths_lang.max().item():
-                    # lengths_lang.max().item() + length_frames_max].shape) #[4, 72, 768]
+            # concatenate language, frames and actions and add encodings
+            encoder_out_base, _ = self.encoder_vl_base(
+                emb_lang_base, emb_frames_base, emb_actions, emb_bbox, emb_label, lengths_lang_base,
+                lengths_frames, lengths_actions, length_frames_max, lengths_subword, subword_limit=subword_limit, is_maskrcnn=False,  is_clip_resnet=False,num_of_use=num_of_use, is_pallarel=False)
+            encoder_out_parallel, _ = self.encoder_vl_parallel(
+                emb_lang_parallel, emb_frames_parallel, emb_actions, emb_bbox, emb_label, lengths_lang_parallel,
+                lengths_frames, lengths_actions, length_frames_max, lengths_subword, subword_limit=subword_limit, is_maskrcnn=False,  is_clip_resnet=False,num_of_use=num_of_use, is_pallarel=True)
+            
+            encoder_out_visual_base = encoder_out_base[:, lengths_lang_base.max().item():
+                lengths_lang_base.max().item() + length_frames_max]
+            
+            encoder_out_visual_parallel = encoder_out_parallel[:, lengths_lang_parallel.max().item():
+                lengths_lang_parallel.max().item() + length_frames_max]
+            # get the output actions
+            decoder_input_base = encoder_out_visual_base.reshape(-1, self.args.demb)
+            decoder_input_parallel = encoder_out_visual_parallel.reshape(-1, self.args.demb)
 
-        # encoder_out_visual = torch.cat(
-        #     [encoder_out[:, lengths_lang.max().item():
-        #             lengths_lang.max().item() + length_frames_max],
-        #     encoder_out[:, lengths_lang.max().item() + length_frames_max:
-        #             lengths_lang.max().item() + length_frames_max * 2]], dim=2)
-        encoder_out_visual = encoder_out[:, lengths_lang.max().item():
-                    lengths_lang.max().item() + length_frames_max]
-        
-        # print("be encoder_out_visual.shape:{}".format(encoder_out_visual.shape))
-        # encoder_out_visual = self.dec_output_fc(encoder_out_visual)
-        # print("af encoder_out_visual.shape:{}".format(encoder_out_visual.shape))
-        #encoder_out_visualを半分にして足し合わせる
-        # middle_shape = encoder_out_visual.shape[1] // 2
-        # encoder_out_visual = encoder_out_visual[:, :middle_shape] + encoder_out_visual[:, middle_shape:]
+            decoder_input = torch.cat([decoder_input_base, decoder_input_parallel], dim=1)
+            # action_emb_flat1 =  self.dropout1(self.bn1(self.relu(self.dec_action1(decoder_input))))
+            # action_emb_flat2 = self.dropout2(self.bn2(self.relu(self.dec_action2(action_emb_flat1))))
+            action_emb_flat1 =  self.dec_action1(decoder_input)
+            action_emb_flat2 = self.dec_action2(action_emb_flat1)
+            action_emb_flat = self.dec_action3(action_emb_flat2)
+            action_flat = action_emb_flat.mm(self.emb_action.weight.t())
+            action = action_flat.view(
+                *encoder_out_visual_base.shape[:2], *action_flat.shape[1:])
+            
+            # get the output objects
+            emb_object_flat = emb_object.view(-1, self.args.demb)
 
-        # get the output actions
-        decoder_input = encoder_out_visual.reshape(-1, self.args.demb)
-        action_emb_flat1 = self.dec_action1(decoder_input)
-        action_emb_flat = self.dec_action2(action_emb_flat1)
-        action_flat = action_emb_flat.mm(self.emb_action.weight.t())
-        action = action_flat.view(
-            *encoder_out_visual.shape[:2], *action_flat.shape[1:])
-        
-        # get the output objects
-        emb_object_flat = emb_object.view(-1, self.args.demb)
+            decoder_input = action_emb_flat + emb_object_flat
+            
+            object_flat = self.dec_object(decoder_input)
 
-        decoder_input = action_emb_flat + emb_object_flat
-        
-        object_flat = self.dec_object(decoder_input)
+            objects = object_flat.view(
+                *encoder_out_visual_base.shape[:2], *object_flat.shape[1:])
+            output.update({'action': action, 'object': objects})
 
-        objects = object_flat.view(
-            *encoder_out_visual.shape[:2], *object_flat.shape[1:])
-        output.update({'action': action, 'object': objects})
+            # (optionally) get progress monitor predictions
+            encoder_out_visual = torch.cat([encoder_out_visual_base, encoder_out_visual_parallel], dim=2)
+            if self.args.progress_aux_loss_wt > 0:
+                #追加
+                progress = torch.sigmoid(self.dec_progress(encoder_out_visual))
+                output['progress'] = progress
+            if self.args.subgoal_aux_loss_wt > 0:
+                subgoal = torch.sigmoid(self.dec_subgoal(encoder_out_visual))
+                output['subgoal'] = subgoal
+            return output
 
-        # (optionally) get progress monitor predictions
-        if self.args.progress_aux_loss_wt > 0:
-            #追加
-            progress = torch.sigmoid(self.dec_progress(encoder_out_visual))
-            output['progress'] = progress
-        if self.args.subgoal_aux_loss_wt > 0:
-            subgoal = torch.sigmoid(self.dec_subgoal(encoder_out_visual))
-            output['subgoal'] = subgoal
-        return output
+
 
     def embed_lang(self, lang_pad, vocab):
         '''
@@ -559,7 +695,7 @@ class Model(base.Model):
         '''
         forward the model for a single time-step (used for real-time execution during eval)
         '''
-        if self.args.clip_image or self.args.clip_resnet or self.args.maskrcnn:
+        if self.args.clip_image or self.args.clip_resnet or self.args.maskrcnn or self.args.parallel:
             frames = input_dict['frames']
             device = frames[0].device
         else:
@@ -588,7 +724,7 @@ class Model(base.Model):
                 lengths_frames = torch.tensor([self.frames_traj[1].size(1)])
                 length_frames_max=self.frames_traj[1].size(1)
             lengths_subword=torch.tensor([0])
-        elif self.args.maskrcnn:
+        elif self.args.maskrcnn or self.args.parallel:
             self.frames_traj = [
                 torch.cat((self.frames_traj[0].to(device), frames[0][None]), dim=1),
                 torch.cat((self.frames_traj[1].to(device), frames[1][None]), dim=1),

@@ -85,17 +85,22 @@ def cfg_train():
     clip_image = False
     clip_text = False
     clip_resnet = False
-    clip_deberta = True
+    clip_deberta = False
     clip_object = False
-    maskrcnn = True
+    maskrcnn = False
     deberta = False
     mat_text = True
     mat_image = True
     mat_action = True
     update_feat = False
-
-    subword_limit=3
+    parallel = True #Trueのときはclip_deberta, clip_image, clip_text, clip_resnet, clip_object, maskrcnnはFalseにする
     
+    subword_limit=4
+
+    base_layers = 3
+    base_heads = 8
+    parallel_layers = 3
+    parallel_heads = 8
     # mat_object = False
 
     # GENERAL TRANING SETTINGS
@@ -118,7 +123,7 @@ def cfg_train():
     # learning rate settings
     lr = {
         # learning rate initial value
-        'init': 2e-4, #1e-4,
+        'init': 1e-4, #1e-4,
         # lr scheduler type: {'linear', 'cosine', 'triangular', 'triangular2'}
         'profile': 'linear',
         # (LINEAR PROFILE) num epoch to adjust learning rate
@@ -151,9 +156,9 @@ def cfg_train():
     # size of transformer embeddings
     demb = 768
     # number of heads in multi-head attention
-    encoder_heads = 6
+    encoder_heads = 12
     # number of layers in transformer encoder
-    encoder_layers = 6
+    encoder_layers = 2
     # how many previous actions to use as input
     num_input_actions = 1
     # which encoder to use for language encoder (by default no encoder)

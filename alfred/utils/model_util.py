@@ -228,7 +228,7 @@ def triangular_mask(size, device, diagonal_shift=1):
     return square
 
 
-def generate_attention_mask(len_lang, len_frames, len_actions,  device, len_subword, num_input_actions=0, is_maskrcnn=True,  is_clip_resnet=False, num_of_use=2):
+def generate_attention_mask(len_lang, len_frames, len_actions,  device, len_subword, num_input_actions=0, is_maskrcnn=True,  is_clip_resnet=False, is_pallarel=False, num_of_use=2):
     '''
     generate mask for attention (a timestep at t does not attend to timesteps after t)'''
 
@@ -339,7 +339,72 @@ def generate_attention_mask(len_lang, len_frames, len_actions,  device, len_subw
         # actions_to_all = frames_to_all.clone()
         # 4. concatenate all the masks
         all_to_all = torch.cat((lang_to_all, frames_resnet_to_all, frames_clip_to_all, frames_bbox_to_all, frames_label_to_all, actions_to_all), dim=0)
+    elif is_pallarel:
+        # 1. language should attend only to language
+        lang_to_lang = torch.zeros((len_lang, len_lang), device=device).float()
+        lang_to_rest = torch.ones((len_lang, len_frames * 2 + len_frames * len_subword * num_of_use * 2), device=device).float() * float('-inf')
+        # lang_to_rest = torch.zeros((len_lang, len_frames * 3 + len_frames * len_subword * num_of_use * 2), device=device).float()
+        lang_to_all = torch.cat((lang_to_lang, lang_to_rest), dim=1)
+        # 2.1 frames should attend to all language tokens
+        frames_clip_to_lang = torch.zeros((len_frames, len_lang), device=device).float()
+        # 2.2 frames should attend to frames with timestep <= t
+        frames_clip_to_frames_clip = triangular_mask(len_frames, device)
+        # frames_clip_to_resnet = torch.zeros((len_frames, len_frames), device=device).float()
+        # frames_resnet_to_clip = torch.zeros((len_frames, len_frames), device=device).float()
+        # frames_resnet_to_frames_clip = triangular_mask(len_frames, device)
+        frames_clip_to_frames_bbox = torch.ones((len_frames, len_frames * len_subword * num_of_use), device=device).float() * float('-inf')
+        # id:204
+        for i in range(len_frames):
+            frames_clip_to_frames_bbox[i, :(i+1) * len_subword * num_of_use] = 0.
 
+        frames_clip_to_frames_label = frames_clip_to_frames_bbox.clone()
+        # 2.3 frames should attend to actions with timestep < t. first make all actions invisibleeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        #変更
+        frames_clip_to_actions = torch.ones((len_frames, len_actions), device=device).float() * float('-inf')
+        # 2.3 then unmask `num_input_actions` previous actions for each frame (excluding index t)
+        for a_idx in range(num_input_actions):
+            for f_idx in range(len_frames):
+                if f_idx - 1 - a_idx < 0:
+                    # the index is out of bound
+                    continue
+                frames_clip_to_actions[f_idx, f_idx - 1 - a_idx] = 0.
+
+        frames_clip_to_all = torch.cat((frames_clip_to_lang, frames_clip_to_frames_clip, frames_clip_to_frames_bbox, frames_clip_to_frames_label, frames_clip_to_actions), dim=1)
+        # bboxとlabelの次元は(length_frames * length_subgoal * 5)であり、次のフレームの情報をみないように階段状のマスクを作成する(幅がlength_subgoal * 5)
+        # frames_bbox_to_lang = torch.ones((len_frames * len_subword * num_of_use, len_lang), device=device).float() * float('-inf')
+        #id:204
+        frames_bbox_to_lang = torch.zeros((len_frames * len_subword * num_of_use, len_lang), device=device).float()
+
+        frames_bbox_to_frames_clip = torch.ones((len_frames * len_subword * num_of_use, len_frames), device=device).float() * float('-inf')
+        # frames_bbox_to_frames_resnet = torch.zeros((len_frames * len_subword * num_of_use, len_frames), device=device).float()
+        for i in range(0, len_frames * len_subword * num_of_use, len_subword * num_of_use):
+            frames_bbox_to_frames_clip[i:i+len_subword * num_of_use, :(i // (len_subword * num_of_use))+1] = 0.
+        
+        frames_bbox_to_frames_bbox = torch.ones((len_frames * len_subword * num_of_use, len_frames * len_subword * num_of_use), device=device).float() * float('-inf')
+        # frames_bbox_to_frames_bbox = torch.zeros((len_frames * len_subword * num_of_use, len_frames * len_subword * num_of_use), device=device).float()
+        for i in range(0, len_frames * len_subword * num_of_use, len_subword * num_of_use):
+            frames_bbox_to_frames_bbox[i:i+len_subword * num_of_use, :i + len_subword * num_of_use] = 0.
+        
+        frames_bbox_to_frames_label = frames_bbox_to_frames_bbox.clone()
+
+        frames_bbox_to_actions = torch.ones((len_frames * len_subword * num_of_use, len_actions), device=device).float() * float('-inf')
+        # frames_bbox_to_actions = torch.zeros((len_frames * len_subword * num_of_use, len_actions), device=device).float()
+
+        for a_idx in range(num_input_actions):
+            for i in range(len_frames * len_subword * num_of_use):
+                f_idx = i // (len_subword * num_of_use)
+                if f_idx - 1 - a_idx < 0:
+                    # the index is out of bound
+                    continue
+                frames_bbox_to_actions[i, f_idx - 1 - a_idx] = 0.
+        frames_bbox_to_all = torch.cat((frames_bbox_to_lang, frames_bbox_to_frames_clip, frames_bbox_to_frames_bbox, frames_bbox_to_frames_label, frames_bbox_to_actions), dim=1)
+        frames_label_to_all = frames_bbox_to_all.clone()
+        # 3. actions should attend to the same indices as frames
+        # framesとactionsの次元は違う
+        actions_to_all = frames_clip_to_all.clone()
+        # actions_to_all = frames_to_all.clone()
+        # 4. concatenate all the masks
+        all_to_all = torch.cat((lang_to_all, frames_clip_to_all, frames_bbox_to_all, frames_label_to_all, actions_to_all), dim=0)
     else:
         # 1. language should attend only to language
         lang_to_lang = torch.zeros((len_lang, len_lang), device=device).float()

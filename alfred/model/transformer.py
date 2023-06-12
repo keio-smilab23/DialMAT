@@ -28,7 +28,7 @@ from alfred.nn.enc_vl import EncoderVL
 from alfred.nn.encodings import DatasetLearnedEncoding
 from alfred.nn.dec_object import ObjectClassifier
 from alfred.utils import model_util
-from alfred.utils.data_util import tokens_to_lang, save_features_to_path, load_features_from_path
+from alfred.utils.data_util import tokens_to_lang, save_features_to_path, load_features_from_path, get_maskrcnn_resnet_features, zero_pad_feats_maskrcnn
 
 #追加
 from alfred.model import mat
@@ -79,9 +79,15 @@ class Model(base.Model):
         self.encoder_lang = EncoderLang(
             args.encoder_lang['layers'], args, embs_ann)
         # feature embeddings
+        print("visual_tensor_shape", self.visual_tensor_shape)
         self.vis_feat = FeatureFlat(
             input_shape=self.visual_tensor_shape,
             output_size=args.demb)
+        
+        self.vis_feat_bbox = FeatureFlat(
+            input_shape=(4, 25, 25),
+            output_size=args.demb)
+        
         # dataset id learned encoding (applied after the encoder_lang)
         self.dataset_enc = None
         if args.enc['dataset']:
@@ -98,13 +104,13 @@ class Model(base.Model):
         #         encoder_output_size, args.demb)
         # else:
         self.dec_action1 = nn.Linear(
-            encoder_output_size * 2, encoder_output_size * 3)
-        self.bn1 = torch.nn.BatchNorm1d(encoder_output_size * 3)
+            encoder_output_size, encoder_output_size * 2)
+        self.bn1 = torch.nn.BatchNorm1d(encoder_output_size * 2)
         self.dropout1 = torch.nn.Dropout(0.5)
 
         self.dec_action2 = nn.Linear(
-            encoder_output_size * 3, encoder_output_size * 2)
-        self.bn2 = torch.nn.BatchNorm1d(encoder_output_size * 2)
+            encoder_output_size * 2, encoder_output_size)
+        self.bn2 = torch.nn.BatchNorm1d(encoder_output_size)
         self.dropout2 = torch.nn.Dropout(0.5)
         
         self.dec_action3 = nn.Linear(
@@ -118,6 +124,10 @@ class Model(base.Model):
 
         self.maskrcnn_label_fc = nn.Linear(
             1024, args.demb
+        )
+
+        self.mask_fc = nn.Linear(
+            1000, args.demb
         )
         
         self.dec_object = ObjectClassifier(encoder_output_size)
@@ -150,6 +160,8 @@ class Model(base.Model):
             self.reset_for_maskrcnn()
         elif args.clip_resnet:
             self.reset_for_both()
+        elif args.mask:
+            self.reset_for_mask()
         else:
             self.reset()
 
@@ -175,9 +187,12 @@ class Model(base.Model):
         for token in tokens:
             # tokens to text
             text = tokens_to_lang(token.tolist(), vocab)
-            # 先頭の"<<"の前の文字列を取得
-            text = text.split("<<")[0]
+            #textから<<*>>を排除
+            text = re.sub(r'<<.*?>>', '', text)
             nouns = self.extract_nouns(text)
+            #self.args.subword_limitの数で制限
+            if len(nouns) > self.args.subword_limit:
+                nouns = nouns[:self.args.subword_limit]
             sentences_list.append(nouns)
             #batchsize分のリストができる
 
@@ -303,6 +318,58 @@ class Model(base.Model):
 
         return batch_features, torch.tensor(batch_lengths).to(device)
 
+    def encode_maskrcnn(self, epoch, task_paths, subgoal_words_list, device="cuda:0"):
+        '''
+        get environment observation
+        '''
+        # frame = Image.fromarray(images)
+
+        if epoch != -1 and (epoch != 0 or not self.args.update_feat):
+            batch_feats = []
+            batch_lengths = []
+
+            is_saved = True
+            
+            for task_path in task_paths:
+                task_path = os.path.join(task_path, "maskrcnn.pth")
+                feats = load_features_from_path(task_path)
+
+                if feats is None:
+                    is_saved = False
+                    break
+
+                batch_lengths.append(feats.shape[1])
+                batch_feats.append(feats)
+
+            if is_saved:
+                return batch_feats, batch_lengths
+            
+        batch_feats = []
+        batch_lengths = []
+
+        #for each batch
+        for i, task_path in enumerate(task_paths):
+            image_paths = glob.glob(os.path.join(task_path, "raw_images", "*.png"))
+            image_paths.sort()
+            
+            subgoal_words = subgoal_words_list[i]
+            # feats, labels = get_maskrcnn_features_batch(image_paths, self.obj_predictor, self.clip_preprocess, self.clip_model, subgoal_words_list[idx], subgoal_words_clip)
+            feats = get_maskrcnn_resnet_features(image_paths, self.obj_predictor, self.clip_model, subgoal_words, subgoal_limit=self.args.subword_limit, num_of_use=1,batch_size=8)
+
+
+            batch_lengths.append(feats.shape[1])
+            batch_feats.append(feats) # [len(images), num_of_use, 768]
+            if epoch != -1:
+                task_path = os.path.join(task_path,  "maskrcnn.pth")
+                save_features_to_path(task_path, feats)
+            # batch_labels.append(feat_labels) # [len(images), num_of_use, 768]
+            # batch_lengths.append(lengths) # [len(images), 1]
+            # print("feat_bboxes.shape: ", feat_bboxes.shape)
+            # print("feat_labels.shape: ", feat_labels.shape)
+            # print("lengths: ", lengths)
+        
+        return zero_pad_feats_maskrcnn(batch_feats, device) ,  torch.tensor(batch_lengths).to(device)
+    
     #追加
     def concat_embeddings_lang(self, emb_lang, lengths_lang, emb_other, lengths_other, device="cuda:0"):
         if len(lengths_lang) == 1:
@@ -398,45 +465,25 @@ class Model(base.Model):
 
                 emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
 
-            
             # embed frames
             emb_resnet, emb_object = self.embed_frames(inputs['frames'][0])
             emb_clip = inputs['frames'][1]
-            if self.args.clip_resnet:
-                emb_bbox = inputs['frames'][1]
-                emb_label = inputs['frames'][1]
-                lengths_subword = inputs['lengths_frames']
-                num_of_use = 1
-                subword_limit = 1
-            elif self.args.maskrcnn:
-                emb_bbox = inputs['frames'][2]
-                emb_label = inputs['frames'][3]
-            
-                lengths_subword = inputs['lengths_subword']
-                num_of_use = 1
-                subword_limit = self.args.subword_limit #1~8
-                # [batch, max_img, max_subword, 5, 1024]において、max_subwordが5以上の場合は、5になるようにする。また、num_of_useを3にする。
-                if lengths_subword.max().item() > subword_limit:
-                    emb_bbox = emb_bbox[:, :, :subword_limit, :num_of_use, :]
-                    emb_label = emb_label[:, :, :subword_limit, :num_of_use, :]
+            emb_bbox = self.embed_frames_bbox(inputs['frames'][2])
+            emb_label = inputs['frames'][3]
+            emb_mask = self.mask_fc(inputs['frames'][4])
+            lengths_subword = inputs['lengths_subword']
 
-                else:
-                    # max_subwordが5未満の場合は、0埋めする.
-                    emb_bbox = emb_bbox[:, :, :, :num_of_use, :]
-                    emb_label = emb_label[:, :, :, :num_of_use, :]
-                    emb_bbox = torch.cat([emb_bbox, torch.zeros(emb_bbox.shape[0], emb_bbox.shape[1], subword_limit - emb_bbox.shape[2], num_of_use, emb_bbox.shape[4]).to(emb_bbox.device)], dim=2)
-                    emb_label = torch.cat([emb_label, torch.zeros(emb_label.shape[0], emb_label.shape[1], subword_limit - emb_label.shape[2], num_of_use, emb_label.shape[4]).to(emb_label.device)], dim=2)
-                    
-                # emb_bbox、emb_labelは[batch, max_img, 5, 3, 1024]だが、これを[batch, max_img, 3, 5, 768]に変換する。
-                # emb_bbox = self.maskrcnn_bbox_fc(emb_bbox)
-                # emb_label = self.maskrcnn_label_fc(emb_label)
-                # length_subwordも5以上の場合は、5になるようにする。
-                lengths_subword[lengths_subword > subword_limit] = subword_limit
+        
+            num_of_use = 1
+            subword_limit = self.args.subword_limit #1~4
+
+            if lengths_subword.max().item() > subword_limit:
+                emb_bbox = emb_bbox[:, :, :subword_limit, :]
+                emb_label = emb_label[:, :, :subword_limit, :]
+                emb_mask = emb_mask[:, :, :subword_limit, :]
+                # length_subwordもsubword_limit以上の場合は、subword_limitになるようにする。
+                lengths_subword[lengths_subword.max().item() > subword_limit] = subword_limit
                 
-                # [batch, max_img, max_subword, 5, 768]を[batch, max_img * max_subword * 5, 768]に変換する
-                emb_bbox = emb_bbox.reshape(emb_bbox.shape[0], emb_bbox.shape[1] * emb_bbox.shape[2] * emb_bbox.shape[3], emb_bbox.shape[4])
-                emb_label = emb_label.reshape(emb_label.shape[0], emb_label.shape[1] * emb_label.shape[2] * emb_label.shape[3], emb_label.shape[4])
-            # batch毎にmax_subwordの長さを持つtensorを作成
             emb_frames = torch.cat([emb_resnet, emb_clip], dim=1)
             lengths_frames = inputs['lengths_frames']
             length_frames_max = inputs['length_frames_max']
@@ -457,35 +504,12 @@ class Model(base.Model):
 
             # concatenate language, frames and actions and add encodings
             encoder_out, _ = self.encoder_vl(
-                emb_lang, emb_frames, emb_actions, emb_bbox, emb_label, lengths_lang,
-                lengths_frames, lengths_actions, length_frames_max, lengths_subword, subword_limit=subword_limit, is_maskrcnn=self.args.maskrcnn,  is_clip_resnet=self.args.clip_resnet,num_of_use=num_of_use)
-            # use outputs corresponding to visual frames for prediction only
-            # print("encoder_out:", encoder_out.shape)
-            # print("encoder_out:", encoder_out)
-            # encoder_out_visual = encoder_out[
-            #     :, lengths_lang.max().item():
-            #     lengths_lang.max().item() + length_frames_max * 2]
-            # encoder_out_visual = encoder_out[
-            #     :, lengths_lang.max().item():
-            #     lengths_lang.max().item() + length_frames_max]
-            # print("encoder_single:", encoder_out[:, lengths_lang.max().item():
-                        # lengths_lang.max().item() + length_frames_max].shape) #[4, 72, 768]
-
-            # encoder_out_visual = torch.cat(
-            #     [encoder_out[:, lengths_lang.max().item():
-            #             lengths_lang.max().item() + length_frames_max],
-            #     encoder_out[:, lengths_lang.max().item() + length_frames_max:
-            #             lengths_lang.max().item() + length_frames_max * 2]], dim=2)
+                emb_lang, emb_frames, emb_actions, emb_bbox, emb_label, emb_mask, lengths_lang,
+                lengths_frames, lengths_actions, length_frames_max, lengths_subword, subword_limit=subword_limit, is_maskrcnn=self.args.maskrcnn, is_mask=self.args.mask,  is_clip_resnet=self.args.clip_resnet)
+            
             encoder_out_visual = encoder_out[:, lengths_lang.max().item():
                         lengths_lang.max().item() + length_frames_max]
             
-            # print("be encoder_out_visual.shape:{}".format(encoder_out_visual.shape))
-            # encoder_out_visual = self.dec_output_fc(encoder_out_visual)
-            # print("af encoder_out_visual.shape:{}".format(encoder_out_visual.shape))
-            #encoder_out_visualを半分にして足し合わせる
-            # middle_shape = encoder_out_visual.shape[1] // 2
-            # encoder_out_visual = encoder_out_visual[:, :middle_shape] + encoder_out_visual[:, middle_shape:]
-
             # get the output actions
             decoder_input = encoder_out_visual.reshape(-1, self.args.demb)
             action_emb_flat1 = self.dec_action1(decoder_input)
@@ -639,6 +663,24 @@ class Model(base.Model):
             emb_lang = emb_lang.clone().detach()
         return emb_lang, lengths_lang
 
+    def embed_frames_bbox(self, frames_pad):
+        '''
+        take a list of frames tensors, pad it, apply dropout and extract embeddings
+        '''
+        # print("frames_pad.shape", frames_pad.shape) # torch.Size([2, 65, 5, 4, 25, 25])
+        frames_pad_ = frames_pad.reshape(frames_pad.shape[0], -1, *frames_pad.shape[3:])#torch.Size([2, 65 * 5, 4, 25, 25])
+        self.dropout_vis(frames_pad_)
+        frames_4d = frames_pad.view(-1, *frames_pad.shape[2:])#torch.Size([2 * 65 * 5, 4, 25, 25])
+        print("frames_4d_bbox.shape", frames_4d.shape) 
+        frames_pad_emb = self.vis_feat_bbox(frames_4d).view(
+            *frames_pad.shape[:3], -1)
+        # print("frames_pad_emb.shape", frames_pad_emb.shape) #torch.Size([2, 89, 768])
+        # frames_pad_emb_skip = self.object_feat(
+        #     frames_4d).view(*frames_pad.shape[:2], -1)
+        # print("frames_pad_emb.shape", frames_pad_emb.shape) # torch.Size([2, 72, 768])
+        # print("frames_pad_emb_skip.shape", frames_pad_emb_skip.shape) # torch.Size([2, 72, 768])
+        return frames_pad_emb
+    
     def embed_frames(self, frames_pad):
         '''
         take a list of frames tensors, pad it, apply dropout and extract embeddings
@@ -646,8 +688,10 @@ class Model(base.Model):
         # print("frames_pad.shape", frames_pad.shape) # torch.Size([2, 72, 512, 7, 7])
         self.dropout_vis(frames_pad)
         frames_4d = frames_pad.view(-1, *frames_pad.shape[2:])
+        print("frames_4d.shape", frames_4d.shape) #torch.Size([178, 512, 7, 7])
         frames_pad_emb = self.vis_feat(frames_4d).view(
             *frames_pad.shape[:2], -1)
+        print("frames_pad_emb.shape", frames_pad_emb.shape) #torch.Size([2, 89, 768])
         frames_pad_emb_skip = self.object_feat(
             frames_4d).view(*frames_pad.shape[:2], -1)
         # print("frames_pad_emb.shape", frames_pad_emb.shape) # torch.Size([2, 72, 768])
@@ -690,12 +734,21 @@ class Model(base.Model):
         self.frames_traj = [torch.zeros(1, 0, *self.visual_tensor_shape), torch.zeros(1, 0, 768), 
                             torch.zeros(1, 0, self.args.subword_limit, 1, 768), torch.zeros(1, 0, self.args.subword_limit, 1, 768)]
         self.action_traj = torch.zeros(1, 0).long()
-    
+
+    def reset_for_mask(self):
+        '''
+        reset internal states (used for real-time execution during eval)
+        '''
+        self.frames_traj = [torch.zeros(1, 0, *self.visual_tensor_shape), torch.zeros(1, 0, 768), 
+                            torch.zeros(1, 0, self.args.subword_limit, 4, 25, 25), torch.zeros(1, 0, self.args.subword_limit, 768),  torch.zeros(1, 0, self.args.subword_limit, 1000)]
+        self.length_traj = torch.q_per_channel_zero_points(0)
+        self.action_traj = torch.zeros(1, 0).long()
+
     def step(self, input_dict, vocab, prev_action=None):
         '''
         forward the model for a single time-step (used for real-time execution during eval)
         '''
-        if self.args.clip_image or self.args.clip_resnet or self.args.maskrcnn or self.args.parallel:
+        if self.args.clip_image or self.args.clip_resnet or self.args.maskrcnn or self.args.parallel or self.args.mask:
             frames = input_dict['frames']
             device = frames[0].device
         else:
@@ -734,6 +787,18 @@ class Model(base.Model):
             frames = [self.frames_traj[0].clone(), self.frames_traj[1].clone(), self.frames_traj[2].clone(), self.frames_traj[3].clone()]
             lengths_frames = torch.tensor([self.frames_traj[0].size(1)])
             lengths_subword = input_dict['lengths_subword']
+            length_frames_max=self.frames_traj[0].size(1)
+        elif self.args.mask:
+            self.frames_traj = [
+                torch.cat((self.frames_traj[0].to(device), frames[0][None]), dim=1),
+                torch.cat((self.frames_traj[1].to(device), frames[1][None]), dim=1),
+                torch.cat((self.frames_traj[2].to(device), frames[2][None]), dim=1),
+                torch.cat((self.frames_traj[3].to(device), frames[3][None]), dim=1),
+                torch.cat((self.frames_traj[4].to(device), frames[4][None]), dim=1)]
+            frames = [self.frames_traj[0].clone(), self.frames_traj[1].clone(), self.frames_traj[2].clone(), self.frames_traj[3].clone(), self.frames_traj[4].clone()]
+            lengths_frames = torch.tensor([self.frames_traj[0].size(1)])
+            length_subword = input_dict['lengths_subword']
+            lengths_subword = torch.cat([self.length_traj, length_subword], dim=0)
             length_frames_max=self.frames_traj[0].size(1)
         else:
             self.frames_traj = torch.cat(

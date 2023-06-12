@@ -6,6 +6,7 @@ import shutil
 import pickle
 import threading
 import copy
+import random
 
 import nltk
 from nltk.tokenize import word_tokenize, sent_tokenize
@@ -16,6 +17,7 @@ from pathlib import Path
 from sacred import Ingredient, Experiment
 from vocab import Vocab
 import clip
+import torchvision.models as models
 
 from alfred.gen import constants
 from alfred.nn.enc_visual import FeatureExtractor
@@ -41,13 +43,15 @@ def cfg_args():
 
     # VISUAL FEATURES SETTINGS
     # visual archi (resnet18, fasterrcnn, maskrcnn)
-    visual_archi = 'fasterrcnn'
+    # visual_archi = 'fasterrcnn'
+    visual_archi = 'maskrcnn'
     # where to load a pretrained model from
-    visual_checkpoint = None
+    # visual_checkpoint = None
+    visual_checkpoint = "./logs/pretrained/maskrcnn_model.pth"
     # which images to use (by default: RGBs)
     image_folder = 'raw_images'
     # feature compression
-    compress_type = '4x'
+    compress_type = '16x'
     # which device to use
     device = 'cuda'
 
@@ -58,7 +62,7 @@ def cfg_args():
     vocab_path = 'files/base.vocab'
 
 
-def process_feats(clip_model, traj_paths, extractor, obj_predictor, lock, image_folder, save_path):
+def process_feats(clip_model, traj_paths, extractor, extractor_bbox, pretrained_resnet, lock, image_folder, save_path):
     (save_path / 'feats').mkdir(exist_ok=True)
     if str(save_path).endswith('/worker00'):
         with lock:
@@ -80,31 +84,26 @@ def process_feats(clip_model, traj_paths, extractor, obj_predictor, lock, image_
         # print("turk_annotation", traj_data['turk_annotations']['anns'][0]['high_descs'])
         
         high_descs = ""
-        for d in traj_data['turk_annotations']['anns'][0]['high_descs']:
+        for d in traj_data['turk_annotations']['anns'][-1]['high_descs']:
             high_descs += d
-        
+        #high_descsから<や>を削除
+        high_descs = re.sub('<[^>]*>', '', high_descs)
         nouns = extract_nouns(high_descs)
+        subword_limit = 4
+        if len(nouns) > subword_limit:
+            nouns = nouns[:subword_limit]
 
         images = data_util.read_traj_images(traj_path, image_folder)
         feat = data_util.extract_features(images, extractor)
         feat_clip = data_util.extract_clip_features(images, extractor)
-        feat_maskrcnn_bboxs, feat_maskrcnn_label = data_util.get_maskrcnn_features_similarity_lmdb(images, obj_predictor, clip_model, nouns)
-        # print("nouns", len(nouns))
-        # print("feat_maskrcnn_bbox.shape: ", feat_maskrcnn_bbox.shape)
-        # print("feat_maskrcnn_label.shape: ", feat_maskrcnn_label.shape)
-        # print("lengths", lengths)
+        feat_bbox_maskrcnn, feat_label, feat_mask, lengths = data_util.get_maskrcnn_features_similarity_lmdb(images, extractor_bbox, pretrained_resnet, clip_model, nouns)
+        # print("feat.shape: ", feat.shape) # torch.Size([65, 128, 25, 25])
+        # print("feat_bbox_maskrcnn.shape: ", feat_bbox_maskrcnn.shape) # torch.Size([65, 5, 4, 25, 25])
+        # print("feat_label.shape: ", feat_label.shape) # torch.Size([65, 5, 768])
+        # print("feat_mask.shape: ", feat_mask.shape) # torch.Size([65, 5, 1000])
 
-        # feat_region, feat_labels = data_util.extract_region_features(images, extractor, obj_predictor)#feat_maskrcnn.shape:  torch.Size([2, 32, 1, 1024]), feat.shape:  torch.Size([32, 512, 7, 7]), 32
-        # print("feat.shape: ", feat.shape) torch.Size([46, 512, 7, 7])
-        # print("feat_clip.shape: ", feat_clip.shape) torch.Size([46, 768])
-        # print("feat_region.shape: ", feat_region.shape) torch.Size([46, 3, 768])
-        # print("feat_labels.shape: ", feat_labels.shape) torch.Size([46, 3, 768])
-        # print("feat.shape: ", feat.shape)
-        # print("len(images)", len(images)) #len(images) ex. 51...
-        # print("images[0]: ", images[0]) #images[0]:  <PIL.Image.Image image mode=RGB size=300x300 at 0x7FCC5328E358>
-        # print("feat.shape: ", feat.shape) #feat.shape:  torch.Size([51, 512, 7, 7])
         if feat is not None:
-            torch.save([feat,feat_clip,feat_maskrcnn_bboxs,feat_maskrcnn_label], save_path / 'feats' / filename_new)
+            torch.save([feat,feat_clip,feat_bbox_maskrcnn, feat_label, feat_mask, lengths], save_path / 'feats' / filename_new)
         with lock:
             with open(save_path.parents[0] / 'processed_feats.txt', 'a') as f:
                 f.write(str(traj_path) + '\n')
@@ -127,8 +126,12 @@ def extract_nouns(text):
         if tag.startswith('NN'):
             nouns.append(word)
     
-    #nounsをアルファベット順にする
-    nouns.sort()
+    #重複があれば削除
+    nouns = list(set(nouns))
+
+    #nounsをシャッフルする
+    random.shuffle(nouns)
+
     return nouns
     
 def process_jsons(traj_paths, preprocessor, lock, save_path):
@@ -139,6 +142,7 @@ def process_jsons(traj_paths, preprocessor, lock, save_path):
         with lock:
             progressbar = ProgressBar(max_value=len(traj_paths))
             progressbar.start()
+
     while True:
         with lock:
             if len(traj_paths) == 0:
@@ -336,10 +340,19 @@ def main(args):
     # then extract features
     extractor = FeatureExtractor(
         args.visual_archi, args.device, args.visual_checkpoint,
-        share_memory=True, compress_type=args.compress_type)
+        share_memory=True, compress_type=args.compress_type, load_heads=True)
     
-    obj_predictor = FeatureExtractor(archi='maskrcnn', device=args.device,
-        checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
+    extractor_bbox = FeatureExtractor(
+        args.visual_archi, args.device, args.visual_checkpoint,
+        share_memory=True, compress_type='512x', load_heads=True)
+    
+    pretraind_resnet = models.resnet50(pretrained=True)
+    pretraind_resnet.eval()
+    pretraind_resnet.to(args.device)
+    for params in pretraind_resnet.parameters():
+        params.requires_grad = False
+    # obj_predictor = FeatureExtractor(archi='maskrcnn', device=args.device,
+    #     checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
     
     clip_model, clip_preprocess = clip.load("ViT-L/14", device="cuda")
     # clip_model, _ = clip.load("RN50", device="cuda")
@@ -354,7 +367,7 @@ def main(args):
         trajs_queue = manager.Queue()
         for path in trajs_list:
             trajs_queue.put(path)
-        args_process_feats = [clip_model, trajs_queue, extractor, obj_predictor, lock, args.image_folder]
+        args_process_feats = [clip_model, trajs_queue, extractor, extractor_bbox, pretraind_resnet, lock, args.image_folder]
         run_in_parallel(
             process_feats, args.num_workers, output_path,
             args=args_process_feats, use_processes=True)

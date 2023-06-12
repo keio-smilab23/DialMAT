@@ -385,6 +385,16 @@ def get_observation_maskrcnn(event, extractor, obj_predictor,  clip_model, subgo
 
     return bboxes, labels, lengths
 
+def get_observation_maskrcnn_with_mask(event, extractor_bbox, pretrained_resnet, clip_model, subgoal_words, subgoal_limit=4):
+    '''
+    get environment observation of maskrcnn
+
+    returns list of tensors of shape (subgoal_words * 5, 768)
+    '''
+    bboxes, labels, masks, lengths = data_util.get_maskrcnn_features_with_mask(Image.fromarray(event.frame), extractor_bbox, pretrained_resnet, clip_model, subgoal_words, subgoal_limit=subgoal_limit)
+    #images, extractor_bbox, pretrained_resnet, clip_model, nouns)
+    return bboxes, labels, masks, lengths
+
 #追加
 def get_observation_clip(event, extractor):
     '''

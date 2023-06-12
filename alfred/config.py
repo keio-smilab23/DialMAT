@@ -85,15 +85,16 @@ def cfg_train():
     clip_image = False
     clip_text = False
     clip_resnet = False
-    clip_deberta = False
+    clip_deberta = True
     clip_object = False
     maskrcnn = False
+    mask = True #from id 213
     deberta = False
     mat_text = True
     mat_image = True
     mat_action = True
-    update_feat = False
-    parallel = True #Trueのときはclip_deberta, clip_image, clip_text, clip_resnet, clip_object, maskrcnnはFalseにする
+    update_feat = True
+    parallel = False #Trueのときはclip_deberta, clip_image, clip_text, clip_resnet, clip_object, maskrcnnはFalseにする
     
     subword_limit=4
 

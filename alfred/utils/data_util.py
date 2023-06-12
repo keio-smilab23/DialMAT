@@ -127,6 +127,108 @@ def encode_clip_image(clip_preprocess, clip_model, images, device="cuda:0"):
 
     return feats
 
+
+def get_maskrcnn_resnet_features(images_path, obj_predictor,  clip_model, subgoal_words, subgoal_limit=8, num_of_use=2, batch_size=8):
+    '''
+    get environment observation
+    
+    get_maskrcnn_featuresの処理をbatch化したもの
+
+    returns list of tensors of shape (subgoal_words * 5, 768)
+    '''
+    images = [Image.open(img_path) for img_path in images_path]
+
+    # len(subgoal_words) <= subgoal_limit
+    if len(subgoal_words) > subgoal_limit:
+        subgoal_words = subgoal_words[:subgoal_limit]
+
+    subgoal_words_clip = clip.tokenize(subgoal_words).to("cuda")
+    subgoal_words_clip = clip_model.encode_text(subgoal_words_clip) # (N,D)
+
+    original_images = images
+
+    all_bboxes = []
+
+    #divide into batch
+    images = [original_images[i:i+batch_size] for i in range(0, len(original_images), batch_size)]
+
+    for images_batch in images:
+        tensor_images = torch.stack([F.to_tensor(img).cuda() for img in images_batch]).to(torch.device('cuda'))
+        outputs = obj_predictor.model.model(tensor_images)
+
+        regions, labels = [], []
+
+        #for single image
+        for idx, output in enumerate(outputs):
+            _regions, _labels = [], []
+
+            #for single bbox
+            for pred_idx in range(len(output['scores'])):
+                label = obj_predictor.model.vocab_pred[output['labels'][pred_idx].cpu().item()]
+                box = output['boxes'][pred_idx].detach().cpu().numpy() 
+                mask = output['masks'][pred_idx].detach().cpu().numpy()
+                image = tensor_images[idx]
+                c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
+                region = tensor_images[idx,:,c1[0]:c1[1], c2[0]:c2[1]] # TODO: H,W逆かも
+                if region.shape[1] * region.shape[2] > 0:
+                        region_resized = torchvision.transforms.functional.resize(region,size=(300,300))
+                        _labels.append(label)
+                        _regions.append(region_resized.unsqueeze(0).cuda())
+                        print("")
+
+            if len(_regions) == 0:
+                feats, _labels = torch.zeros(1, len(subgoal_words), num_of_use,  2048, 25, 25).cuda(), torch.zeros(1, len(subgoal_words), num_of_use, 768).cuda()
+                regions.append(feats)
+                labels.append(_labels)
+                continue
+            
+            _regions = torch.cat(_regions,dim=0) # (N,3,224,224)
+
+            tokenized_labels = clip.tokenize(_labels).to("cuda")
+            label_clip = clip_model.encode_text(tokenized_labels) # (N,D)
+            cossim = FF.cosine_similarity(subgoal_words_clip.unsqueeze(1), label_clip, dim=-1) # (M,D) @ (D,N)
+            sort_idxs = torch.argsort(cossim, dim=1, descending=True)
+            #sort_idxsの各行において、subgoal_words_clipの各単語との類似度が高い順にソートされている
+            #上位num_of_use個のインデックスを取得
+            sort_idxs = sort_idxs[:,:num_of_use]
+
+            # 各行で一番大きい値が格納されたインデックスを取得
+            # sort_idxs = torch.argmax(sort_idxs, dim=1)
+
+            # print("subgoal_words_clip", subgoal_words_clip.shape)
+            #top1bboxes
+            top_bboxes = torch.cat([_regions[sort_idxs[i]].unsqueeze(0) for i in range(sort_idxs.shape[0])],dim=0)
+            # top_label_clip = torch.cat([label_clip[sort_idxs[i]].unsqueeze(0) for i in range(sort_idxs.shape[0])],dim=0)
+
+            if len(top_bboxes) == 0:
+                feats, _labels = torch.zeros(1, len(subgoal_words), num_of_use, 2048, 25, 25).cuda(), torch.zeros(1, len(subgoal_words), num_of_use, 768).cuda()
+                regions.append(feats)
+                # labels.append(_labels)
+                continue
+            
+            
+            with torch.no_grad():
+                batch_images = top_bboxes.view(-1, 3, 300, 300) # (subgoal_words * num_of_use, 3, 224, 224)
+                # feats = clip_model.encode_image(batch_images) # (subgoal_words * num_of_use,768)
+                #batch_imagesを<PIL.Image.Image image mode=RGB size=300x300>のような形式のリストに変換
+                batch_images = [transforms.ToPILImage()(img) for img in batch_images]
+
+                feats = extract_features(batch_images, obj_predictor)
+                feats = feats.view(len(subgoal_words), sort_idxs.shape[1], 2048, 25, 25) # (subgoal_words, num_of_use, 768)
+                if sort_idxs.shape[1] < num_of_use:
+                    # top_label_clip = torch.cat([top_label_clip, torch.zeros(top_label_clip.shape[0], num_of_use-sort_idxs.shape[1], 768).cuda()], dim=1)
+                    feats = torch.cat([feats, torch.zeros(feats.shape[0], num_of_use-sort_idxs.shape[1], 2048, 25, 25).cuda()], dim=1)
+            regions.append(feats.unsqueeze(0).cuda()) #(1, subgoal_words, num_of_use, 768)
+            # labels.append(top_label_clip.unsqueeze(0))#(1, subgoal_words, num_of_use, 768)
+        all_bboxes.append(torch.cat(regions,dim=0)) #(batch_size, subgoal_words, num_of_use, 768)
+        # all_labels.append(torch.cat(labels,dim=0)) #(batch_size,subgoal_words, num_of_use, 768)
+    
+    all_bboxes = torch.cat(all_bboxes,dim=0) #(len(images), subgoal_words, num_of_use, 768)
+    # all_labels = torch.cat(all_labels,dim=0) #(len(images), subgoal_words, num_of_use, 768)
+    print("all_bboxes", all_bboxes.shape)
+    return all_bboxes.cuda()
+
+
 def get_maskrcnn_features(image, obj_predictor, clip_model, subgoal_words, num_of_use=1, subgoal_limit=4):
     '''
     get environment observation
@@ -211,7 +313,110 @@ def get_maskrcnn_features(image, obj_predictor, clip_model, subgoal_words, num_o
         
     return feats, top_label_clip, torch.tensor([length_subgoal_words]).cuda()
 
-def get_maskrcnn_features_similarity_lmdb(images, obj_predictor,  clip_model, subgoal_words, subgoal_limit=8, num_of_use=2, batch_size=8):
+def get_maskrcnn_features_with_mask(image,  extractor_bbox, pretrained_resnet, clip_model, subgoal_words, subgoal_limit=4):
+    '''
+    get environment observation
+    
+    get_maskrcnn_featuresの処理をbatch化したもの
+
+    returns list of tensors of shape (subgoal_words * 5, 768)
+    '''
+    # len(subgoal_words) <= subgoal_limit
+    if len(subgoal_words) > subgoal_limit:
+        subgoal_words = subgoal_words[:subgoal_limit]
+
+    subgoal_words_clip = clip.tokenize(subgoal_words).to("cuda")
+    subgoal_words_clip = clip_model.encode_text(subgoal_words_clip) # (N,D)
+
+    # ResNetの前処理を適用
+    resnet_preprocess = transforms.Compose([
+        transforms.ToPILImage(),  # テンソルをPIL画像に変換
+        transforms.Resize((224, 224)),  # 画像サイズをリサイズ
+        transforms.ToTensor(),  # PIL画像をテンソルに変換
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # 正規化
+    ])
+
+    #divide into batch
+
+    tensor_image = F.to_tensor(image).cuda() 
+    output = extractor_bbox.model.model(tensor_image[None])[0]
+
+    _regions, _labels, _mask = [], [], []
+
+    #for single bbox
+    for pred_idx in range(len(output['scores'])):
+        label = extractor_bbox.model.vocab_pred[output['labels'][pred_idx].cpu().item()]
+        box = output['boxes'][pred_idx].detach().cpu().numpy() 
+        c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
+        region = tensor_image[:, c1[0]:c1[1], c2[0]:c2[1]] # TODO: H,W逆かも
+        if region.shape[1] * region.shape[2] > 0:
+                region_resized = torchvision.transforms.functional.resize(region,size=(224,224))
+                _labels.append(label)
+                _regions.append(region_resized.unsqueeze(0))
+                mask = output['masks'][pred_idx].detach().cpu().numpy()
+                #to tensor
+                mask = torch.from_numpy(mask)
+                mask_rgb = torch.cat([mask, mask, mask], dim=0) 
+                masked_image = image.cuda() * mask_rgb.cuda()
+                _mask.append(masked_image.unsqueeze(0))
+
+    if len(_regions) == 0:
+        return torch.zeros(1, subgoal_limit, 4, 25, 25).cuda(), torch.zeros(1, subgoal_limit, 768).cuda(),\
+            torch.zeros(1, subgoal_limit, 768).cuda(), torch.zeros(1, subgoal_limit, 1000).cuda()
+    
+    _regions = torch.cat(_regions,dim=0) # (N,3,224,224)
+    _mask = torch.cat(_mask,dim=0) # (N, 1, 300,300)
+    # print("_mask", _mask)
+    tokenized_labels = clip.tokenize(_labels).to("cuda")
+    label_clip = clip_model.encode_text(tokenized_labels) # (N,D)
+    cossim = FF.cosine_similarity(subgoal_words_clip.unsqueeze(1).float(), label_clip.float(), dim=-1) # (M,D) @ (D,N)
+    sort_idxs = torch.argsort(cossim, dim=1, descending=True)
+
+    use_index = []
+    for i in range(sort_idxs.shape[0]):
+        use_index.append(int(sort_idxs[i][0]))
+
+    #重複があったら1,2,...のようにインデックスをずらして取得、重複がなければそのまま
+    for i in range(len(use_index)):
+        # temp_list = use_index.copy()
+        # temp_list.pop(i)
+        if use_index[i] in use_index[:i]:
+            for j in range(int(sort_idxs.shape[1])):
+                if int(sort_idxs[i][j]) not in use_index[:i]:
+                    use_index[i] = int(sort_idxs[i][j])
+                    break
+    # top_bboxes = torch.cat([_regions[sort_idxs[i]].unsqueeze(0) for i in range(sort_idxs.shape[0])],dim=0)
+    top_bboxes = torch.cat([_regions[use_index[i]].unsqueeze(0) for i in range(len(use_index))],dim=0)
+    top_label_clip = torch.cat([label_clip[use_index[i]].unsqueeze(0) for i in range(len(use_index))],dim=0)
+    if len(top_bboxes) == 0:
+        return torch.zeros(1, subgoal_limit, 4, 25, 25).cuda(), torch.zeros(1, subgoal_limit, 768).cuda(),\
+            torch.zeros(1, subgoal_limit, 768).cuda(), torch.zeros(1, subgoal_limit, 1000).cuda()
+
+    # 特徴量の結合
+    # print("output_resnet.shape", output_resnet.shape)
+    # c.f. https://github.com/openai/CLIP/blob/main/clip/clip.py#L79
+    my_transform = Compose([
+        Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+    ])
+    
+    with torch.no_grad():
+        batch_images = top_bboxes.view(-1, 3, 224, 224) # (subgoal_words * num_of_use, 3, 224, 224)
+        batch_images_maskrcnn = [transforms.ToPILImage()(img) for img in batch_images]
+
+        feats_mask = extract_features(batch_images_maskrcnn, extractor_bbox)
+
+        mask = torch.stack([resnet_preprocess(_mask[use_index[i]]) for i in range(len(use_index))])
+        output_resnet = pretrained_resnet(mask.cuda()) # [subgoal_word, 1000]
+        
+        if subgoal_limit > len(use_index):
+            top_label_clip = torch.cat([top_label_clip, torch.zeros(subgoal_limit - len(use_index), 768).cuda()], dim=0)
+            feats_mask = torch.cat([feats_mask.cuda(), torch.zeros(subgoal_limit - len(use_index), 4, 25, 25).cuda()], dim=0)
+            # feats_clip = torch.cat([feats_clip, torch.zeros(subgoal_limit - len(use_index), 768).cuda()], dim=0)
+            output_resnet = torch.cat([output_resnet, torch.zeros(subgoal_limit - len(use_index), 1000).cuda()], dim=0)
+    
+    return feats_mask, top_label_clip, output_resnet, len(use_index)
+
+def get_maskrcnn_features_similarity_lmdb(images, obj_predictor, pretrained_resnet, clip_model, subgoal_words, subgoal_limit=5, num_of_use=1, batch_size=7):
     '''
     get environment observation
     
@@ -228,7 +433,15 @@ def get_maskrcnn_features_similarity_lmdb(images, obj_predictor,  clip_model, su
 
     original_images = images
 
-    all_bboxes, all_labels = [], []
+    all_bboxes_maskrcnn, all_labels, all_masks, all_lengths = [], [], [], []
+
+    # ResNetの前処理を適用
+    resnet_preprocess = transforms.Compose([
+        transforms.ToPILImage(),  # テンソルをPIL画像に変換
+        transforms.Resize((224, 224)),  # 画像サイズをリサイズ
+        transforms.ToTensor(),  # PIL画像をテンソルに変換
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # 正規化
+    ])
 
     #divide into batch
     images = [original_images[i:i+batch_size] for i in range(0, len(original_images), batch_size)]
@@ -237,11 +450,11 @@ def get_maskrcnn_features_similarity_lmdb(images, obj_predictor,  clip_model, su
         tensor_images = torch.stack([F.to_tensor(img).cuda() for img in images_batch]).to(torch.device('cuda'))
         outputs = obj_predictor.model.model(tensor_images)
 
-        regions, labels = [], []
+        regions_maskrcnn, labels, masks = [], [], []
 
         #for single image
         for idx, output in enumerate(outputs):
-            _regions, _labels = [], []
+            _regions, _labels, _mask= [], [], []
 
             #for single bbox
             for pred_idx in range(len(output['scores'])):
@@ -249,65 +462,114 @@ def get_maskrcnn_features_similarity_lmdb(images, obj_predictor,  clip_model, su
                 box = output['boxes'][pred_idx].detach().cpu().numpy() 
                 c1, c2 = (int(box[0].item()), int(box[1].item())), (int(box[2].item()), int(box[3].item()))
                 region = tensor_images[idx,:,c1[0]:c1[1], c2[0]:c2[1]] # TODO: H,W逆かも
+                image = tensor_images[idx]
                 if region.shape[1] * region.shape[2] > 0:
                         region_resized = torchvision.transforms.functional.resize(region,size=(224,224))
                         _labels.append(label)
                         _regions.append(region_resized.unsqueeze(0))
+                        mask = output['masks'][pred_idx].detach().cpu().numpy()
+                        #to tensor
+                        mask = torch.from_numpy(mask)
+                        mask_rgb = torch.cat([mask, mask, mask], dim=0) 
+                        masked_image = image.cuda() * mask_rgb.cuda()
+                        _mask.append(masked_image.unsqueeze(0))
 
             if len(_regions) == 0:
-                feats, _labels = torch.zeros(1, len(subgoal_words), num_of_use, 768).cuda(), torch.zeros(1, len(subgoal_words), num_of_use, 768).cuda()
-                regions.append(feats)
+                region_clip, _labels = torch.zeros(1, subgoal_limit, 768).cuda(), torch.zeros(1, subgoal_limit, 768).cuda()
+                region_maskrcnn = torch.zeros(1, subgoal_limit, 4, 25, 25).cuda()
+                regions_maskrcnn.append(region_maskrcnn)
                 labels.append(_labels)
+                masks.append(torch.zeros(1, subgoal_limit, 1000).cuda())
+                all_lengths.append(0)
                 continue
             
             _regions = torch.cat(_regions,dim=0) # (N,3,224,224)
-
+            _mask = torch.cat(_mask,dim=0) # (N, 1, 300,300)
+            # print("_mask", _mask)
             tokenized_labels = clip.tokenize(_labels).to("cuda")
             label_clip = clip_model.encode_text(tokenized_labels) # (N,D)
-            cossim = FF.cosine_similarity(subgoal_words_clip.unsqueeze(1), label_clip, dim=-1) # (M,D) @ (D,N)
+            cossim = FF.cosine_similarity(subgoal_words_clip.unsqueeze(1).float(), label_clip.float(), dim=-1) # (M,D) @ (D,N)
             sort_idxs = torch.argsort(cossim, dim=1, descending=True)
+
             #sort_idxsの各行において、subgoal_words_clipの各単語との類似度が高い順にソートされている
             #上位num_of_use個のインデックスを取得
-            sort_idxs = sort_idxs[:,:num_of_use]
-
+            # sort_idxs = sort_idxs[:,:]
             # 各行で一番大きい値が格納されたインデックスを取得
             # sort_idxs = torch.argmax(sort_idxs, dim=1)
 
             # print("subgoal_words_clip", subgoal_words_clip.shape)
             #top1bboxes
-            top_bboxes = torch.cat([_regions[sort_idxs[i]].unsqueeze(0) for i in range(sort_idxs.shape[0])],dim=0)
-            top_label_clip = torch.cat([label_clip[sort_idxs[i]].unsqueeze(0) for i in range(sort_idxs.shape[0])],dim=0)
+            use_index = []
+            for i in range(sort_idxs.shape[0]):
+                use_index.append(int(sort_idxs[i][0]))
 
+            #重複があったら1,2,...のようにインデックスをずらして取得、重複がなければそのまま
+            for i in range(len(use_index)):
+                # temp_list = use_index.copy()
+                # temp_list.pop(i)
+                if use_index[i] in use_index[:i]:
+                    for j in range(int(sort_idxs.shape[1])):
+                        if int(sort_idxs[i][j]) not in use_index[:i]:
+                            use_index[i] = int(sort_idxs[i][j])
+                            break
+            # top_bboxes = torch.cat([_regions[sort_idxs[i]].unsqueeze(0) for i in range(sort_idxs.shape[0])],dim=0)
+            top_bboxes = torch.cat([_regions[use_index[i]].unsqueeze(0) for i in range(len(use_index))],dim=0)
+            top_label_clip = torch.cat([label_clip[use_index[i]].unsqueeze(0) for i in range(len(use_index))],dim=0)
             if len(top_bboxes) == 0:
-                feats, _labels = torch.zeros(1, len(subgoal_words), num_of_use, 768).cuda(), torch.zeros(1, len(subgoal_words), num_of_use, 768).cuda()
-                regions.append(feats)
+                region_clip, _labels = torch.zeros(1, subgoal_limit, 768).cuda(), torch.zeros(1, subgoal_limit, 768).cuda()
+                region_maskrcnn = torch.zeros(1, subgoal_limit, 4, 25, 25).cuda()
+                regions_maskrcnn.append(region_maskrcnn)
                 labels.append(_labels)
+                masks.append(torch.zeros(1, subgoal_limit, 1000).cuda())
+                all_lengths.append(0)
                 continue
-            
+
+                # 特徴量の結合
+                # print("output_resnet.shape", output_resnet.shape)
             # c.f. https://github.com/openai/CLIP/blob/main/clip/clip.py#L79
             my_transform = Compose([
                 Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
             ])
             
             with torch.no_grad():
-                batch_images = my_transform(top_bboxes) # (subgoal_words, num_of_use, 3, 224, 224)
-                batch_images = batch_images.view(-1, 3, 224, 224) # (subgoal_words * num_of_use, 3, 224, 224)
-                feats = clip_model.encode_image(batch_images) # (subgoal_words * num_of_use,768)
-                feats = feats.view(len(subgoal_words), sort_idxs.shape[1], 768) # (subgoal_words, num_of_use, 768)
-                if sort_idxs.shape[1] < num_of_use:
-                    top_label_clip = torch.cat([top_label_clip, torch.zeros(top_label_clip.shape[0], num_of_use-sort_idxs.shape[1], 768).cuda()], dim=1)
-                    feats = torch.cat([feats, torch.zeros(feats.shape[0], num_of_use-sort_idxs.shape[1], 768).cuda()], dim=1)
+                batch_images = top_bboxes.view(-1, 3, 224, 224) # (subgoal_words * num_of_use, 3, 224, 224)
+                #batch_imagesを<PIL.Image.Image image mode=RGB size=300x300>のような形式のリストに変換
+                batch_images_maskrcnn = [transforms.ToPILImage()(img) for img in batch_images]
 
-            regions.append(feats.unsqueeze(0)) #(1, subgoal_words, num_of_use, 768)
-            labels.append(top_label_clip.unsqueeze(0))#(1, subgoal_words, num_of_use, 768)
-        
-        all_bboxes.append(torch.cat(regions,dim=0)) #(batch_size, subgoal_words, num_of_use, 768)
+                feats_mask = extract_features(batch_images_maskrcnn, obj_predictor)
+                # feats_mask = feats_mask.view(len(subgoal_words), sort_idxs.shape[1], 512, 25, 25) # (subgoal_words, num_of_use, 768)
+                # batch_images = my_transform(top_bboxes) # (subgoal_words, num_of_use, 3, 224, 224)
+                # batch_images = batch_images.view(-1, 3, 224, 224) # (subgoal_words * num_of_use, 3, 224, 224)
+                # feats_clip = clip_model.encode_image(batch_images) # (subgoal_words * num_of_use,768)
+                # feats_clip = feats_clip.view(len(subgoal_words), sort_idxs.shape[1], 768) # (subgoal_words, num_of_use, 768)
+
+                mask = torch.stack([resnet_preprocess(_mask[use_index[i]]) for i in range(len(use_index))])
+                output_resnet = pretrained_resnet(mask.cuda()) # [subgoal_word, 1000]
+                
+                if subgoal_limit > len(use_index):
+                    top_label_clip = torch.cat([top_label_clip, torch.zeros(subgoal_limit - len(use_index), 768).cuda()], dim=0)
+                    feats_mask = torch.cat([feats_mask.cuda(), torch.zeros(subgoal_limit - len(use_index), 4, 25, 25).cuda()], dim=0)
+                    # feats_clip = torch.cat([feats_clip, torch.zeros(subgoal_limit - len(use_index), 768).cuda()], dim=0)
+                    output_resnet = torch.cat([output_resnet, torch.zeros(subgoal_limit - len(use_index), 1000).cuda()], dim=0)
+            # regions.append(feats.unsqueeze(0))
+            labels.append(top_label_clip.unsqueeze(0))
+            regions_maskrcnn.append(feats_mask.unsqueeze(0).cuda()) 
+            # regions_clip.append(feats_clip.unsqueeze(0))
+            all_lengths.append(len(use_index))
+            masks.append(output_resnet.unsqueeze(0))
+
+        # all_bboxes.append(torch.cat(regions,dim=0)) #(batch_size, subgoal_words, num_of_use, 768)
         all_labels.append(torch.cat(labels,dim=0)) #(batch_size,subgoal_words, num_of_use, 768)
-    
-    all_bboxes = torch.cat(all_bboxes,dim=0) #(len(images), subgoal_words, num_of_use, 768)
-    all_labels = torch.cat(all_labels,dim=0) #(len(images), subgoal_words, num_of_use, 768)
-    
-    return all_bboxes.cpu(), all_labels.cpu()
+        all_bboxes_maskrcnn.append(torch.cat(regions_maskrcnn,dim=0))
+        # all_bboxes_clip.append(torch.cat(regions_clip,dim=0))
+        all_masks.append(torch.cat(masks,dim=0))
+
+    all_bboxes_maskrcnn = torch.cat(all_bboxes_maskrcnn,dim=0) 
+    # all_bboxes_clip = torch.cat(all_bboxes_clip,dim=0) 
+    all_labels = torch.cat(all_labels,dim=0)
+    all_masks = torch.cat(all_masks,dim=0) 
+    all_lengths = torch.tensor(all_lengths)
+    return all_bboxes_maskrcnn.cpu(), all_labels.cpu(), all_masks.cpu(), all_lengths.cpu()
 
 
 
@@ -466,6 +728,25 @@ def zero_pad_feats(feats, device):
 
     return padded_tensor
 
+def zero_pad_feats_maskrcnn(feats, device):
+    '''
+    pad feats with zeros to max_len
+    '''
+    # 入力テンソルの定義（可変長のリスト）
+
+    # 各次元の最大サイズを計算
+    max_dim0 = max(tensor.size(0) for tensor in feats)
+    max_dim1 = max(tensor.size(1) for tensor in feats)
+
+    # ゼロパディングを適用して、結果のテンソルを初期化
+    padded_tensor = torch.zeros(len(feats), max_dim0, max_dim1, 1, 2048, 25, 25).to(device)
+
+    # 各要素のテンソルをゼロパディングして結果のテンソルに代入
+    for i, tensor in enumerate(feats):
+        padded_tensor[i, :tensor.size(0), :tensor.size(1)] = tensor
+
+    return padded_tensor
+
 def tensorize_and_pad(batch, device, pad):
     '''
     cast values to torch tensors, put them to the correct device and pad sequences
@@ -521,17 +802,20 @@ def tensorize_and_pad(batch, device, pad):
             # print("pad_seq.shape",pad_seq.shape)#torch.Size([2, 72, 512, 7, 7])
             clip = pad_sequence([vv[1].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
 
+            bbox = pad_sequence([vv[2].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
+            label = pad_sequence([vv[3].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
+            mask = pad_sequence([vv[4].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
             #bboxの次元は[batch, len_img, len_subword, 5, 1024]であるが、pad_sequenceを使うと[batch, max_img, max_subword, 5, 1024]になる
-            dict_assign['lengths_subword'] = torch.tensor([vv[2].clone().detach().to(device).type(torch.float).shape[1] for vv in v])
+            dict_assign['lengths_subword'] = torch.cat([vv[5].clone().detach().to(device).type(torch.int) for vv in v], dim=0)
             # [49, 9, 5, 1024]次元のtensorと[49, 4, 5, 1024]次元のtensorをゼロパディングして[49, 9, 5, 1024]次元のtensorにする
 
             # 入力テンソルをリストとしてまとめる
-            bbox = zero_pad_feats([vv[2].clone().detach().to(device).type(torch.float) for vv in v], device)
-            label = zero_pad_feats([vv[3].clone().detach().to(device).type(torch.float) for vv in v], device)
+            # bbox = zero_pad_feats([vv[2].clone().detach().to(device).type(torch.float) for vv in v], device)
+            # label = zero_pad_feats([vv[3].clone().detach().to(device).type(torch.float) for vv in v], device)
             # bbox = pad_sequence([vv[2].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
             # label = pad_sequence([vv[3].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
 
-            dict_assign[k] = [resnet, clip, bbox, label]
+            dict_assign[k] = [resnet, clip, bbox, label, mask]
             dict_assign['lengths_' + k] = torch.tensor(list(map(len, seqs)))
             dict_assign['length_' + k + '_max'] = max(map(len, seqs))
         else:
@@ -587,7 +871,8 @@ def get_feat_shape(visual_archi, compress_type=None):
         feat_shape = (-1, 2048, 7, 7)
     elif visual_archi == 'maskrcnn':
         # the RCNN model should be trained with min_size=800
-        feat_shape = (-1, 2048, 10, 10)
+        # feat_shape = (-1, 2048, 10, 10)
+        feat_shape = (-1, 2048, 25, 25)
     elif visual_archi == 'resnet18':
         feat_shape = (-1, 512, 7, 7)
     else:

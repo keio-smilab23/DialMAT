@@ -18,7 +18,7 @@ class PosEncoding(nn.Module):
         pe[:, 1::2] = torch.cos(position * div_term)
         self.register_buffer('pe', pe[None])
 
-    def forward(self, lang, frames, actions, bboxes, labels, lens_lang, lens_subword, pos=None):
+    def forward(self, lang, frames, actions, bboxes, labels, masks, lens_lang, lens_subword, pos=None):
         if pos is None:
             enc = self.pe[:, :lang.shape[1] + frames.shape[1] + bboxes.shape[1]]
         else:
@@ -38,8 +38,10 @@ class PosEncoding(nn.Module):
             bboxes[i] = bboxes[i] + enc[0, lens_lang[i] + frames.shape[1]: lens_lang[i] + frames.shape[1] + bboxes.shape[1]]
         for i in range(labels.shape[0]):
             labels[i] = labels[i] + enc[0, lens_lang[i] + frames.shape[1]: lens_lang[i] + frames.shape[1] + labels.shape[1]]
+        for i in range(masks.shape[0]):
+            masks[i] = masks[i] + enc[0, lens_lang[i] + frames.shape[1]: lens_lang[i] + frames.shape[1] + masks.shape[1]]
 
-        return lang, frames, actions, bboxes, labels
+        return lang, frames, actions, bboxes, labels, masks
 
 
 class LearnedEncoding(nn.Module):

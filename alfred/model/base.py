@@ -12,7 +12,8 @@ class Model(nn.Module):
         self.args = args
         self.vocab_out = vocab_out
         self.pad, self.seg = pad, seg
-        self.visual_tensor_shape = data_util.read_dataset_info(
+        # self.visual_tensor_shape = (2048, 25, 25)
+        self.visual_tensor_shape =  data_util.read_dataset_info(
             args.data['train'][0])['feat_shape'][1:]
 
         # create language and action embeddings

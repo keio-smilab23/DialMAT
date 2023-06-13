@@ -88,17 +88,17 @@ class EncoderVL(nn.Module):
                 mask_pad[i, length_lang_max + length_frames_max + len_f:
                         length_lang_max + length_frames_max * 2] = True
                 for j in range(len_f):
-                    mask_pad[i, length_lang_max + length_frames_max * 2 + j * length_subword_max + lengths_subword[i, j]:
+                    mask_pad[i, length_lang_max + length_frames_max * 2 + j * length_subword_max + lengths_subword[i][j]:
                             length_lang_max + length_frames_max * 2 + j * length_subword_max + length_subword_max] = True 
                 mask_pad[i, length_lang_max + length_frames_max * 2 + len_f * length_subword_max:
                         length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max] = True
                 for j in range(len_f):
-                    mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max + j * length_subword_max + lengths_subword[i, j]:
+                    mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max + j * length_subword_max + lengths_subword[i][j]:
                              length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max + j * length_subword_max + length_subword_max] = True 
                 mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max + len_f * length_subword_max:
                         length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * 2] = True
                 for j in range(len_f):
-                    mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * 2 + j * length_subword_max + lengths_subword[i, j]:
+                    mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * 2 + j * length_subword_max + lengths_subword[i][j]:
                              length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * 2 + j * length_subword_max + length_subword_max] = True
                 mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * 2 + len_f * length_subword_max:
                         length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * 3] = True
@@ -174,7 +174,7 @@ class EncoderVL(nn.Module):
             mask_attn = torch.zeros(
                 (mask_pad.shape[1], mask_pad.shape[1]),
                 device=mask_pad.device).float()
-            
+
         # encode the inputs
         output = self.enc_transformer(
             emb_all.transpose(0, 1), mask_attn, mask_pad).transpose(0, 1)
@@ -187,7 +187,7 @@ class EncoderVL(nn.Module):
         '''
         if self.enc_pos is not None:
             emb_lang, emb_frames, emb_actions, emb_bboxes, emb_labels, emb_masks = self.enc_pos(
-                emb_lang, emb_frames, emb_actions, emb_bbox, emb_label, lengths_lang, lengths_subword)
+                emb_lang, emb_frames, emb_actions, emb_bbox, emb_label, emb_masks, lengths_lang, lengths_subword)
         if self.enc_pos_learn is not None:
             emb_lang, emb_frames, emb_actions = self.enc_pos_learn(
                 emb_lang, emb_frames, emb_actions, lengths_lang, lengths_frames)
@@ -195,11 +195,12 @@ class EncoderVL(nn.Module):
             emb_lang, emb_frames, emb_actions = self.enc_token(
                 emb_lang, emb_frames, emb_actions)
         if is_mask:
-            emb_cat = torch.cat((emb_lang, emb_frames, emb_bboxes, emb_labels, emb_masks, emb_actions), dim=1)
-        if mask_rcnn or is_parallel:
+            emb_cat = torch.cat([emb_lang, emb_frames, emb_bboxes, emb_labels, emb_masks, emb_actions], dim=1)
+        elif mask_rcnn or is_parallel:
             emb_cat = torch.cat((emb_lang, emb_frames, emb_bboxes, emb_labels, emb_actions), dim=1)
         else:
             emb_cat = torch.cat((emb_lang, emb_frames, emb_actions), dim=1)
+
         emb_cat = self.enc_layernorm(emb_cat)
         emb_cat = self.enc_dropout(emb_cat)
         return emb_cat

@@ -314,7 +314,7 @@ def generate_attention_mask(len_lang, len_frames, len_actions,  device, len_subw
         for i in range(0, len_frames * len_subword, len_subword ):
             bbox_to_frames_resnet[i:i+len_subword, :(i // (len_subword))+1] = 0.
         
-        bbox_to_frames_clip = frames_bbox_to_frames_resnet.clone()
+        bbox_to_frames_clip = bbox_to_frames_resnet.clone()
 
         bbox_to_bbox = torch.ones((len_frames * len_subword, len_frames * len_subword), device=device).float() * float('-inf')
         # frames_bbox_to_frames_bbox = torch.zeros((len_frames * len_subword * num_of_use, len_frames * len_subword * num_of_use), device=device).float()
@@ -334,7 +334,7 @@ def generate_attention_mask(len_lang, len_frames, len_actions,  device, len_subw
                     # the index is out of bound
                     continue
                 bbox_to_actions[i, f_idx - 1 - a_idx] = 0.
-        bbox_to_all = torch.cat((bbox_to_lang, bbox_to_frames_resnet, bbox_to_frames_clip, bbox_to_bbox, bbox_to_label, bbox_to_actions), dim=1)
+        bbox_to_all = torch.cat((bbox_to_lang, bbox_to_frames_resnet, bbox_to_frames_clip, bbox_to_bbox, bbox_to_label, bbox_to_mask, bbox_to_actions), dim=1)
         label_to_all = bbox_to_all.clone()
         mask_to_all = bbox_to_all.clone()
         # 3. actions should attend to the same indices as frames

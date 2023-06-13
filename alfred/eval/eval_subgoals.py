@@ -169,6 +169,8 @@ def evaluate_subgoals_start_qa(
         model.reset_for_both()
     elif args.maskrcnn or args.parallel:
         model.reset_for_maskrcnn()
+    elif args.mask:
+        model.reset_for_mask()
     else:
         model.reset()
 

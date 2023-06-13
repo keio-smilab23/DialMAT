@@ -93,7 +93,7 @@ def cfg_train():
     mat_text = True
     mat_image = True
     mat_action = True
-    update_feat = True
+    update_feat = False
     parallel = False #Trueのときはclip_deberta, clip_image, clip_text, clip_resnet, clip_object, maskrcnnはFalseにする
     
     subword_limit=4
@@ -114,7 +114,7 @@ def cfg_train():
 
     # HYPER PARAMETERS
     # batch size
-    batch = 2
+    batch = 1
     # number of epochs
     epochs = 20
     # optimizer type, must be in ('adam', 'adamw')

@@ -113,7 +113,7 @@ class RCNN(nn.Module):
         if hasattr(self.model, 'backbone'):
             model_body = self.model.backbone.body
         features = model_body(images_normalized)
-        
+
         return features[self.feat_layer]
 
     def load_from_checkpoint(self, checkpoint_path, load_heads, device, archi, prefix):

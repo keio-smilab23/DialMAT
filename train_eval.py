@@ -98,14 +98,18 @@ def extractFeatureOnlineClip(env, extractor):
 def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, n_iters, split_id, max_steps, print_every=1, save_every=100):
     start = time.time()
     env = ThorEnv(x_display=1)
-    # obj_predictor = FeatureExtractor(archi='maskrcnn', device=device,
-    #     checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
+    obj_predictor = FeatureExtractor(archi='maskrcnn', device=device,
+        checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
     
     extractor = FeatureExtractor(
+        "fasterrcnn", 'cuda', '/home/initial/workspase/CVPR/DialFRED-Challenge/logs/pretrained/fasterrcnn_model.pth',
+        compress_type='4x')
+    
+    encoder_extractor = FeatureExtractor(
         archi='maskrcnn', device=device, checkpoint="./logs/pretrained/maskrcnn_model.pth",
         compress_type='16x', load_heads=True)
     
-    extractor_bbox = FeatureExtractor(
+    encoder_extractor_bbox = FeatureExtractor(
         archi='maskrcnn', device=device, checkpoint="./logs/pretrained/maskrcnn_model.pth",
         compress_type='512x', load_heads=True)
     
@@ -177,7 +181,7 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
         trial_uid = "pad:" + str(0) + ":" + str(subgoal_idx)
         dataset_idx_qa = 0 + dataset_idx
         init_states = evaluate_subgoals_start_qa(
-            env, performer, dataset, extractor,extractor_bbox, pretraind_resnet, trial_uid, dataset_idx_qa, args, extractor, clip_model, subword_limit=args.subword_limit)
+            env, performer, dataset, encoder_extractor, encoder_extractor_bbox, pretraind_resnet, trial_uid, dataset_idx_qa, args, obj_predictor, clip_model, subword_limit=args.subword_limit)
         _, _, _, init_failed, _ = init_states
 
         task, trial = task_json[0]['task'].split("/")
@@ -299,8 +303,8 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
 
             # performer rollout for some steps
             with torch.no_grad():
-                log_entry, interm_states = evaluate_subgoals_middle_qa(env, performer, dataset, extractor, extractor_bbox, pretraind_resnet, \
-                    trial_uid, dataset_idx_qa, args, extractor, init_states, interm_states, qa, clip_model, num_rollout=5, subword_limit=args.subword_limit)
+                log_entry, interm_states = evaluate_subgoals_middle_qa(env, performer, dataset, encoder_extractor, encoder_extractor_bbox, pretraind_resnet, \
+                    trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, clip_model, num_rollout=5, subword_limit=args.subword_limit)
 
             if log_entry['success']:
                 reward += REWARD_SUC
@@ -379,14 +383,14 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
 def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extractor, all_ans, split_id, max_steps, print_every=1, save_every=100, use_qa_everytime=False):
     start = time.time()
     env = ThorEnv(x_display=1)
-    # obj_predictor = FeatureExtractor(archi='maskrcnn', device=device,
-    #     checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
+    obj_predictor = FeatureExtractor(archi='maskrcnn', device=device,
+        checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
     
-    extractor = FeatureExtractor(
+    encoder_extractor = FeatureExtractor(
         archi='maskrcnn', device=device, checkpoint="./logs/pretrained/maskrcnn_model.pth",
         compress_type='16x', load_heads=True)
     
-    extractor_bbox = FeatureExtractor(
+    encoder_extractor_bbox = FeatureExtractor(
         archi='maskrcnn', device=device, checkpoint="./logs/pretrained/maskrcnn_model.pth",
         compress_type='512x', load_heads=True)
     
@@ -444,7 +448,7 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
             trial_uid = "pad:" + str(0) + ":" + str(subgoal_idx)
             dataset_idx_qa = 0 + dataset_idx
             init_states = evaluate_subgoals_start_qa(
-                env, performer, dataset, extractor, extractor_bbox, pretraind_resnet,  trial_uid, dataset_idx_qa, args, extractor, clip_model, subword_limit=args.subword_limit)
+                env, performer, dataset, encoder_extractor, encoder_extractor_bbox, pretraind_resnet,  trial_uid, dataset_idx_qa, args, obj_predictor, clip_model, subword_limit=args.subword_limit)
             _, _, _, init_failed, _ = init_states
 
             task, trial = task_json[0]['task'].split("/")
@@ -631,8 +635,8 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
 
                 # performer rollout for some steps
                 with torch.no_grad():
-                    log_entry, interm_states = evaluate_subgoals_middle_qa(env, performer, dataset, extractor, extractor_bbox, pretraind_resnet, \
-                        trial_uid, dataset_idx_qa, args, extractor, init_states, interm_states, qa, clip_model, num_rollout=5, subword_limit=args.subword_limit)
+                    log_entry, interm_states = evaluate_subgoals_middle_qa(env, performer, dataset, encoder_extractor, encoder_extractor_bbox, pretraind_resnet, \
+                        trial_uid, dataset_idx_qa, args, obj_predictor, init_states, interm_states, qa, clip_model, num_rollout=5, subword_limit=args.subword_limit)
 
                 if log_entry['success']:
                     reward += REWARD_SUC

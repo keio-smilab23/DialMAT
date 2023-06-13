@@ -142,7 +142,7 @@ class Model(base.Model):
             if self.args.parallel:
                 self.dec_progress = nn.Linear(encoder_output_size * 2, 1)
             else:
-                self.dec_progress = nn.Linear(encoder_output_size * 2, 1)
+                self.dec_progress = nn.Linear(encoder_output_size, 1)
         if self.args.subgoal_aux_loss_wt > 0:
             if self.args.parallel:
                 self.dec_subgoal = nn.Linear(encoder_output_size * 2, 1)
@@ -471,19 +471,30 @@ class Model(base.Model):
             emb_bbox = self.embed_frames_bbox(inputs['frames'][2])
             emb_label = inputs['frames'][3]
             emb_mask = self.mask_fc(inputs['frames'][4])
+
             lengths_subword = inputs['lengths_subword']
 
         
             num_of_use = 1
             subword_limit = self.args.subword_limit #1~4
 
-            if lengths_subword.max().item() > subword_limit:
+            # lengths_subword_max = max(len(sub_array) for sub_array in lengths_subword) 
+            if emb_bbox.shape[2] > subword_limit:
                 emb_bbox = emb_bbox[:, :, :subword_limit, :]
                 emb_label = emb_label[:, :, :subword_limit, :]
                 emb_mask = emb_mask[:, :, :subword_limit, :]
                 # length_subwordもsubword_limit以上の場合は、subword_limitになるようにする。
-                lengths_subword[lengths_subword.max().item() > subword_limit] = subword_limit
-                
+                for i in range(len(lengths_subword)):
+                    for j in range(len(lengths_subword[i])):
+                        if lengths_subword[i][j] > subword_limit:
+                            lengths_subword[i][j] = subword_limit
+                    
+                # lengths_subword[lengths_subword.max().item() > subword_limit] = subword_limit
+            
+            emb_bbox = emb_bbox.reshape(emb_bbox.shape[0], -1, 768)
+            emb_label = emb_label.reshape(emb_label.shape[0], -1, 768)
+            emb_mask = emb_mask.reshape(emb_mask.shape[0], -1, 768)
+
             emb_frames = torch.cat([emb_resnet, emb_clip], dim=1)
             lengths_frames = inputs['lengths_frames']
             length_frames_max = inputs['length_frames_max']
@@ -670,8 +681,7 @@ class Model(base.Model):
         # print("frames_pad.shape", frames_pad.shape) # torch.Size([2, 65, 5, 4, 25, 25])
         frames_pad_ = frames_pad.reshape(frames_pad.shape[0], -1, *frames_pad.shape[3:])#torch.Size([2, 65 * 5, 4, 25, 25])
         self.dropout_vis(frames_pad_)
-        frames_4d = frames_pad.view(-1, *frames_pad.shape[2:])#torch.Size([2 * 65 * 5, 4, 25, 25])
-        print("frames_4d_bbox.shape", frames_4d.shape) 
+        frames_4d = frames_pad.view(-1, *frames_pad_.shape[2:])#torch.Size([2 * 65 * 5, 4, 25, 25])
         frames_pad_emb = self.vis_feat_bbox(frames_4d).view(
             *frames_pad.shape[:3], -1)
         # print("frames_pad_emb.shape", frames_pad_emb.shape) #torch.Size([2, 89, 768])
@@ -688,10 +698,8 @@ class Model(base.Model):
         # print("frames_pad.shape", frames_pad.shape) # torch.Size([2, 72, 512, 7, 7])
         self.dropout_vis(frames_pad)
         frames_4d = frames_pad.view(-1, *frames_pad.shape[2:])
-        print("frames_4d.shape", frames_4d.shape) #torch.Size([178, 512, 7, 7])
         frames_pad_emb = self.vis_feat(frames_4d).view(
             *frames_pad.shape[:2], -1)
-        print("frames_pad_emb.shape", frames_pad_emb.shape) #torch.Size([2, 89, 768])
         frames_pad_emb_skip = self.object_feat(
             frames_4d).view(*frames_pad.shape[:2], -1)
         # print("frames_pad_emb.shape", frames_pad_emb.shape) # torch.Size([2, 72, 768])
@@ -739,9 +747,9 @@ class Model(base.Model):
         '''
         reset internal states (used for real-time execution during eval)
         '''
-        self.frames_traj = [torch.zeros(1, 0, *self.visual_tensor_shape), torch.zeros(1, 0, 768), 
+        self.frames_traj = [torch.zeros(1, 0, 128, 25, 25), torch.zeros(1, 0, 768), 
                             torch.zeros(1, 0, self.args.subword_limit, 4, 25, 25), torch.zeros(1, 0, self.args.subword_limit, 768),  torch.zeros(1, 0, self.args.subword_limit, 1000)]
-        self.length_traj = torch.q_per_channel_zero_points(0)
+        self.length_traj = []
         self.action_traj = torch.zeros(1, 0).long()
 
     def step(self, input_dict, vocab, prev_action=None):
@@ -789,16 +797,40 @@ class Model(base.Model):
             lengths_subword = input_dict['lengths_subword']
             length_frames_max=self.frames_traj[0].size(1)
         elif self.args.mask:
+            # frames[0][None]: torch.Size([1, 1, 128, 25, 25])
+            # frames[1][None]: torch.Size([1, 1, 768])
+            # frames[2][None]: torch.Size([1, 4, 4, 25, 25])
+            # frames[3][None]: torch.Size([1, 4, 768])
+            # frames[4][None]: torch.Size([1, 4, 1000])
+            # print("self.frames_traj[0]", self.frames_traj[0].shape)
+            # print("frames[0][None]", frames[0][None].shape)
+            # print("self.frames_traj[1]", self.frames_traj[1].shape)
+            # print("frames[1][None]", frames[1][None].shape)
+            # print("self.frames_traj[2]", self.frames_traj[2].shape)
+            # print("frames[2][None]", frames[2][None].shape)
+            # print("self.frames_traj[3]", self.frames_traj[3].shape)
+            # print("frames[3][None]", frames[3][None].shape)
+            # print("self.frames_traj[4]", self.frames_traj[4].shape)
+            # print("frames[4][None]", frames[4][None].shape)
+            # print("device", device)
+            # #self.frames_traj[0]のデバイス表示
+            # print("self.frames_traj[0].device", self.frames_traj[0].device)
+            # #frames[0][None]のデバイス表示
+            # print("frames[0][None].device", frames[0][None].device)
             self.frames_traj = [
-                torch.cat((self.frames_traj[0].to(device), frames[0][None]), dim=1),
-                torch.cat((self.frames_traj[1].to(device), frames[1][None]), dim=1),
-                torch.cat((self.frames_traj[2].to(device), frames[2][None]), dim=1),
-                torch.cat((self.frames_traj[3].to(device), frames[3][None]), dim=1),
-                torch.cat((self.frames_traj[4].to(device), frames[4][None]), dim=1)]
+                torch.cat((self.frames_traj[0].to(device), frames[0][None].to(device)), dim=1),
+                torch.cat((self.frames_traj[1].to(device), frames[1][None].to(device)), dim=1),
+                torch.cat((self.frames_traj[2].to(device), frames[2][None].to(device)), dim=1),
+                torch.cat((self.frames_traj[3].to(device), frames[3][None].to(device)), dim=1),
+                torch.cat((self.frames_traj[4].to(device), frames[4][None].to(device)), dim=1)]
             frames = [self.frames_traj[0].clone(), self.frames_traj[1].clone(), self.frames_traj[2].clone(), self.frames_traj[3].clone(), self.frames_traj[4].clone()]
             lengths_frames = torch.tensor([self.frames_traj[0].size(1)])
             length_subword = input_dict['lengths_subword']
-            lengths_subword = torch.cat([self.length_traj, length_subword], dim=0)
+            # lengths_subword = torch.cat([self.length_traj, length_subword], dim=0)
+            #self.length_trajの形式は[[]]である。これにlength_subwordを追加することで、[[...,length_subword]]とする.
+            self.length_traj.append(length_subword)
+            lengths_subword = [copy.deepcopy(self.length_traj)]
+            # print("lengths_subword",lengths_subword)
             length_frames_max=self.frames_traj[0].size(1)
         else:
             self.frames_traj = torch.cat(

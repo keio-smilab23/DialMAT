@@ -1,33 +1,25 @@
-# DialFRED: Dialogue-Enabled Agents for Embodied Instruction Following
+# DialMAT: Dialogue-Enabled Transformer with Moment-based Adversarial Training
 
-Language-guided Embodied AI benchmarks requiring an agent to navigate an environment and manipulate objects typically allow one-way communication: the human user gives a natural language command to the agent, and the agent can only follow the command passively. In this work, we present DialFRED, a dialogue-enabled embodied instruction following benchmark based on the ALFRED benchmark. DialFRED allows an agent to actively ask questions to the human user; the additional information in the user’s response is used by the agent to better complete its task. We release a human-annotated dataset with 53K task-relevant questions and answers and an oracle to answer questions. To solve DialFRED, we propose a questioner-performer framework wherein the questioner is pre-trained with the human-annotated data and fine-tuned with reinforcement learning. Experimental results show that asking the right questions leads to significantly improved task performance.
+[[paper](#)]
 
-## Dependency
+Kanta Kaneda*, Ryosuke Korekata*, Yuiga Wada*, Shunya Nagashima*, Motonari Kambara,
+Yui Iioka, Haruka Matsuo, Yuto Imai, Takayuki Nishimura and Komei Sugiura
 
-Inherited from the E.T. repo, the package is depending on:
-- numpy
-- pandas
-- opencv-python
-- tqdm
-- vocab
-- revtok
-- numpy
-- Pillow
-- sacred
-- etaprogress
-- scikit-video
-- lmdb
-- gtimer
-- filelock
-- networkx
-- termcolor
-- torch==1.7.1?
-- torchvision==0.8.2?
-- tensorboardX==1.8
-- ai2thor==2.1.0
-- stanza
-- Werkzeug==2.1.1
-- E.T. (https://github.com/alexpashevich/E.T.)
+![model (1)](https://github.com/keio-smilab23/DialMAT/assets/51681991/00fb772b-2590-4269-a05b-24db71e1aef4)
+
+
+This paper focuses on the DialFRED task, which is the
+task of embodied instruction following in a setting where
+an agent can actively ask questions to the human user. To
+address this task, we propose DialMAT. DialMAT introduces Moment-based Adversarial Training, which incorporates adversarial perturbations into the latent space of
+language, image, and action. Additionally, it introduces a
+crossmodal parallel feature extraction mechanism that applies foundation models to both language and image. We
+evaluated our model using a dataset constructed from the
+DialFRED dataset and demonstrated superior performance
+compared to the baseline method in terms of success rate
+and path weighted success rate. The model secured the top
+position in the DialFRED Challenge, which took place at
+the CVPR 2023 Embodied AI workshop.
 
 ## Setup
 Set up macro:
@@ -113,33 +105,6 @@ python -m alfred.data.create_lmdb with args.visual_checkpoint=$LOGS/pretrained/f
 
 ```
 
-## Human QA data
-
-We use crowd-sourcing to collect 53K human task-oriented questions and answers. The dataset are available at:
-```
-./data/dialfred_human_qa.csv
-```
-Each line contains one annotation for an augmented sub-goal. The definition of each columns are:
-```
-1   Data splits. Can be training, validation_seen or validation_unseen.
-2   Task ID.
-3   Trial ID.
-4   Room type. 
-5   Task type in the original ALFRED dataset.
-6   Subgoal start time. Start time of the augmented sub-goal in the corresponding task video.    
-7   Subgoal end time. End time of the augmented sub-goal in the corresponding task video.
-8   Number of low level actions in the sub-goal. 
-9   Sub-goal Index. The index of the sub-goal in the high-level task.
-10  Instruction for the augmented subgoal.
-11  Verb. The low level actions contained in the sub-goal.
-12  Noun1. The first noun involved in the sub-goal.
-13  Noun2. The optional second noun involved in the sub-goal.
-14  Question type. The type of question asked by the annotator. Can be location, appearance, direction or other types.
-15  Question. The question asked by the annotator.
-16  Answer. The answer to the question provided by the annotator.
-17  Necessary. Whether the annotator thinks the question and answer are necessary for the task completion.
-```
-
 ## Questioner and performer evaluation
 
 **If the `aws` command is not available ([reference](https://docs.aws.amazon.com/ja_jp/cli/latest/userguide/getting-started-install.html)):**
@@ -198,7 +163,6 @@ The testset contains 1092 tasks. For each task, json data and the oracle answers
 To create a submission file, execute the following command:
 ```bash
 python generate_submission.py --mode eval --questioner-path ./logs/questioner_rl/questioner_anytime_seen1.pt
-
 ```
 
 ## Evaluate your model from any metadata
@@ -206,7 +170,7 @@ python generate_submission.py --mode eval --questioner-path ./logs/questioner_rl
 As Eval.AI evaluates metrics from metadata, we have prepared a script to compute SR from arbitrary metadata.
 This script evaluates the SR from `submission_file/{traj_key_str}.json`.
 
-```
+```bash
 python eval_from_metadata.py --mode eval  --performer-path model_09.pth --questioner-path questioner_anytime_seen1.pt  --clip_resnet=true
 ```
 
@@ -215,10 +179,13 @@ python eval_from_metadata.py --mode eval  --performer-path model_09.pth --questi
 
 If you use our code or data, please consider citing our paper.
 ```bash
-@article{gao2022dialfred,
-  title={Dialfred: Dialogue-enabled agents for embodied instruction following},
-  author={Gao, Xiaofeng and Gao, Qiaozi and Gong, Ran and Lin, Kaixiang and Thattai, Govind and Sukhatme, Gaurav S},
-  journal={arXiv preprint arXiv:2202.13330},
-  year={2022}
-}
+
 ```
+
+## License
+
+Our implementation uses code from the following repositories:
+
+- [DialFRED](https://github.com/xfgao/DialFRED) for experiment pipeline
+- [HLSM-MAT](https://github.com/keio-smilab22/HLSM-MAT) for [Moment-based Adversarial Training](https://arxiv.org/abs/2204.00889)
+

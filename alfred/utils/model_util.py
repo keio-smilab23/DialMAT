@@ -307,7 +307,8 @@ def generate_attention_mask(len_lang, len_frames, len_actions,  device, len_subw
         # bboxとlabelの次元は(length_frames * length_subgoal * 5)であり、次のフレームの情報をみないように階段状のマスクを作成する(幅がlength_subgoal * 5)
         # frames_bbox_to_lang = torch.ones((len_frames * len_subword * num_of_use, len_lang), device=device).float() * float('-inf')
         #id:204
-        bbox_to_lang = torch.zeros((len_frames * len_subword, len_lang), device=device).float()
+        # bbox_to_lang = torch.zeros((len_frames * len_subword, len_lang), device=device).float()
+        bbox_to_lang = torch.ones((len_frames * len_subword, len_lang), device=device).float() * float('-inf')
 
         bbox_to_frames_resnet = torch.ones((len_frames * len_subword, len_frames), device=device).float() * float('-inf')
         # frames_bbox_to_frames_resnet = torch.zeros((len_frames * len_subword * num_of_use, len_frames), device=device).float()

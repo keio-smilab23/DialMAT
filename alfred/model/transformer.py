@@ -34,6 +34,11 @@ from alfred.utils.data_util import tokens_to_lang, save_features_to_path, load_f
 from alfred.model import mat
 from alfred.nn.enc_visual import FeatureExtractor
 
+deberta_model = AutoModel.from_pretrained("microsoft/mdeberta-v3-base").cuda()
+deberta_tokenizer = AutoTokenizer.from_pretrained("microsoft/mdeberta-v3-base")
+for param in deberta_model.parameters():
+    param.requires_grad = False
+
 class Model(base.Model):
     def __init__(self, args, embs_ann, vocab_out, pad, seg, dim_size: int=768, rho1=0.9, rho2=0.999, lr_reduce=2e-3 / 8e-5, step_size=4):
         '''
@@ -50,10 +55,10 @@ class Model(base.Model):
             params.requires_grad = False
 
         # if args.deberta:
-        self.deberta_model = AutoModel.from_pretrained("microsoft/mdeberta-v3-base").cuda()
-        self.deberta_tokenizer = AutoTokenizer.from_pretrained("microsoft/mdeberta-v3-base")
-        for param in self.deberta_model.parameters():
-            param.requires_grad = False
+        # self.deberta_model = AutoModel.from_pretrained("microsoft/mdeberta-v3-base").cuda()
+        # self.deberta_tokenizer = AutoTokenizer.from_pretrained("microsoft/mdeberta-v3-base")
+        # for param in self.deberta_model.parameters():
+        #     param.requires_grad = False
 
         # if args.mat_action:
         self.mat = mat.AdversarialPerturbationAdder(dim_size)
@@ -117,14 +122,6 @@ class Model(base.Model):
             encoder_output_size * 2, encoder_output_size)
         
         self.relu = torch.nn.ReLU()
-
-        self.maskrcnn_bbox_fc = nn.Linear(
-            1024, args.demb
-        )
-
-        self.maskrcnn_label_fc = nn.Linear(
-            1024, args.demb
-        )
 
         self.mask_fc = nn.Linear(
             1000, args.demb
@@ -218,7 +215,6 @@ class Model(base.Model):
         """
         Encode two sentences with the deberta model.
         """
-        
         if epoch != -1 and (epoch != 0 or not self.args.update_feat):
             batch_features = []
             batch_lengths = []
@@ -241,6 +237,9 @@ class Model(base.Model):
                 batch_features = pad_sequence(batch_features, batch_first=True) #(batch_size, words_length, 768)
                 return batch_features, torch.tensor(batch_lengths).to(device)
         
+        global deberta_model
+        global deberta_tokenizer
+
         batch_features = []
         batch_lengths = []
         for i in range(len(sentences)):
@@ -248,8 +247,8 @@ class Model(base.Model):
             # 全ての文を.で結合
             sentence = ".".join(sentence)
 
-            tokenized = self.deberta_tokenizer(sentence, return_tensors="pt", padding=True, truncation=True, max_length=1000).input_ids.to(device)
-            text_features = self.deberta_model(tokenized).last_hidden_state.squeeze(0).to(device) #ex. (64, 768)
+            tokenized = deberta_tokenizer(sentence, return_tensors="pt", padding=True, truncation=True, max_length=1000).input_ids.to(device)
+            text_features = deberta_model(tokenized).last_hidden_state.squeeze(0).to(device) #ex. (64, 768)
             # print("text_features.shape: ", text_features.shape)
 
             batch_features.append(text_features)

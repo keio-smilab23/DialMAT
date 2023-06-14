@@ -190,9 +190,8 @@ def evaluate_subgoals_start_qa(
 
     init_states = (task_info, vocab, prev_action, init_failed, expert_dict)
     return init_states
-
 def evaluate_subgoals_middle_qa(
-        env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, num_rollout=5):
+        env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, num_rollout=5, teacher_forcing=True):
     # modification of evaluate_subgoals: add qa and skip init
     # model.reset_for_clip()
     # add initial states from expert initialization
@@ -223,20 +222,14 @@ def evaluate_subgoals_middle_qa(
         t_agent, t_expert, num_fails, reward, mc_lists, episode_end, prev_action = interm_states
 
     subgoal_success = False
+    
     if not init_failed:
-        # this should be set during the teacher-forcing but sometimes it fails
-        env.task.goal_idx = task_info['subgoal_idx']
-        env.task.finished = task_info['subgoal_idx'] - 1
+        if teacher_forcing:
+            # this should be set during the teacher-forcing but sometimes it fails
+            env.task.goal_idx = task_info['subgoal_idx']
+            env.task.finished = task_info['subgoal_idx'] - 1
         t_current = 0
         while t_agent < args.max_steps and t_current < num_rollout:
-            # get an observation and do an agent step
-            # if args.clip_image:
-            #     input_dict['frames'] = eval_util.get_observation_clip(env.last_event, extractor)
-            # if args.clip_resnet or args.clip_image:
-            #     input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
-            # else:
-            #     input_dict['frames'] = eval_util.get_observation(env.last_event, extractor)
-
             input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor)]
             
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(

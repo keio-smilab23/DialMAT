@@ -43,15 +43,16 @@ def cfg_args():
 
     # VISUAL FEATURES SETTINGS
     # visual archi (resnet18, fasterrcnn, maskrcnn)
-    # visual_archi = 'fasterrcnn'
-    visual_archi = 'maskrcnn'
+    visual_archi = 'fasterrcnn'
+    # visual_archi = 'maskrcnn'
     # where to load a pretrained model from
     # visual_checkpoint = None
     visual_checkpoint = "./logs/pretrained/maskrcnn_model.pth"
     # which images to use (by default: RGBs)
     image_folder = 'raw_images'
     # feature compression
-    compress_type = '16x'
+    # compress_type = '16x'
+    compress_type = '4x'
     # which device to use
     device = 'cuda'
 
@@ -94,16 +95,17 @@ def process_feats(clip_model, traj_paths, extractor, extractor_bbox, pretrained_
             nouns = nouns[:subword_limit]
 
         images = data_util.read_traj_images(traj_path, image_folder)
-        feat = data_util.extract_features(images, extractor)
+        # feat = data_util.extract_features(images, extractor)
         feat_clip = data_util.extract_clip_features(images, extractor)
-        feat_bbox_maskrcnn, feat_label, feat_mask, lengths = data_util.get_maskrcnn_features_similarity_lmdb(images, extractor_bbox, pretrained_resnet, clip_model, nouns)
-        # print("feat.shape: ", feat.shape) # torch.Size([65, 128, 25, 25])
-        # print("feat_bbox_maskrcnn.shape: ", feat_bbox_maskrcnn.shape) # torch.Size([65, 5, 4, 25, 25])
-        # print("feat_label.shape: ", feat_label.shape) # torch.Size([65, 5, 768])
-        # print("feat_mask.shape: ", feat_mask.shape) # torch.Size([65, 5, 1000])
-
-        if feat is not None:
-            torch.save([feat,feat_clip,feat_bbox_maskrcnn, feat_label, feat_mask, lengths], save_path / 'feats' / filename_new)
+        feat_bbox_clip, feat_label, feat_mask, lengths = data_util.get_maskrcnn_features_similarity_lmdb(images, extractor_bbox, pretrained_resnet, clip_model, nouns)
+        # feat_bbox_clip.shape:  torch.Size([62, 5, 768])
+        # feat_label.shape:  torch.Size([62, 5, 768])
+        # feat_mask.shape:  torch.Size([62, 5, 1000])
+        # lengths tensor([3, 3, 3, 3, 3, 3, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+        #         3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+        #         3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3])
+        # if feat is not None:
+        torch.save([feat_clip,feat_bbox_clip, feat_label, feat_mask, lengths], save_path / 'feats' / filename_new)
         with lock:
             with open(save_path.parents[0] / 'processed_feats.txt', 'a') as f:
                 f.write(str(traj_path) + '\n')
@@ -142,7 +144,6 @@ def process_jsons(traj_paths, preprocessor, lock, save_path):
         with lock:
             progressbar = ProgressBar(max_value=len(traj_paths))
             progressbar.start()
-
     while True:
         with lock:
             if len(traj_paths) == 0:
@@ -343,7 +344,7 @@ def main(args):
         share_memory=True, compress_type=args.compress_type, load_heads=True)
     
     extractor_bbox = FeatureExtractor(
-        args.visual_archi, args.device, args.visual_checkpoint,
+        'maskrcnn', args.device, "./logs/pretrained/maskrcnn_model.pth",
         share_memory=True, compress_type='512x', load_heads=True)
     
     pretraind_resnet = models.resnet50(pretrained=True)

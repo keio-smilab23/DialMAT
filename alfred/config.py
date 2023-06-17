@@ -83,9 +83,9 @@ def cfg_train():
     wandb = False
     wandb_name = 'maskrcnn-new'
     clip_image = False
-    clip_text = False
+    clip_text = True
     clip_resnet = False
-    clip_deberta = True
+    clip_deberta = False
     clip_object = False
     maskrcnn = False
     mask = True #from id 213
@@ -116,7 +116,7 @@ def cfg_train():
     # batch size
     batch = 1
     # number of epochs
-    epochs = 20
+    epochs = 40
     # optimizer type, must be in ('adam', 'adamw')
     optimizer = 'adamw'
     # L2 regularization weight
@@ -124,7 +124,7 @@ def cfg_train():
     # learning rate settings
     lr = {
         # learning rate initial value
-        'init': 1e-4, #1e-4,
+        'init': 3e-5, #1e-4,
         # lr scheduler type: {'linear', 'cosine', 'triangular', 'triangular2'}
         'profile': 'linear',
         # (LINEAR PROFILE) num epoch to adjust learning rate
@@ -157,9 +157,9 @@ def cfg_train():
     # size of transformer embeddings
     demb = 768
     # number of heads in multi-head attention
-    encoder_heads = 8
+    encoder_heads = 12
     # number of layers in transformer encoder
-    encoder_layers = 4
+    encoder_layers = 6
     # how many previous actions to use as input
     num_input_actions = 1
     # which encoder to use for language encoder (by default no encoder)
@@ -183,17 +183,17 @@ def cfg_train():
     # DROPOUTS
     dropout = {
         # dropout rate for language (goal + instr)
-        'lang': 0.0,
+        'lang': 0.4,
         # dropout rate for Resnet feats
-        'vis': 0.3,
+        'vis': 0.4,
         # dropout rate for processed lang and visual embeddings
-        'emb': 0.0,
+        'emb': 0.4,
         # transformer model specific dropouts
         'transformer': {
             # dropout for transformer encoder
-            'encoder': 0.1,
+            'encoder': 0.4,
             # remove previous actions
-            'action': 0.0,
+            'action': 0.4,
         },
     }
 

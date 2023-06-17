@@ -434,7 +434,7 @@ def get_maskrcnn_features_similarity_lmdb(images, obj_predictor, pretrained_resn
 
     original_images = images
 
-    all_bboxes_maskrcnn, all_labels, all_masks, all_lengths = [], [], [], []
+    all_bboxes_clip, all_labels, all_masks, all_lengths = [], [], [], []
 
     # ResNetの前処理を適用
     resnet_preprocess = transforms.Compose([
@@ -451,7 +451,7 @@ def get_maskrcnn_features_similarity_lmdb(images, obj_predictor, pretrained_resn
         tensor_images = torch.stack([F.to_tensor(img).cuda() for img in images_batch]).to(torch.device('cuda'))
         outputs = obj_predictor.model.model(tensor_images)
 
-        regions_maskrcnn, labels, masks = [], [], []
+        regions_clip, labels, masks = [], [], []
 
         #for single image
         for idx, output in enumerate(outputs):
@@ -477,8 +477,9 @@ def get_maskrcnn_features_similarity_lmdb(images, obj_predictor, pretrained_resn
 
             if len(_regions) == 0:
                 region_clip, _labels = torch.zeros(1, subgoal_limit, 768).cuda(), torch.zeros(1, subgoal_limit, 768).cuda()
-                region_maskrcnn = torch.zeros(1, subgoal_limit, 4, 25, 25).cuda()
-                regions_maskrcnn.append(region_maskrcnn)
+                # region_maskrcnn = torch.zeros(1, subgoal_limit, 4, 25, 25).cuda()
+                # regions_maskrcnn.append(region_maskrcnn)
+                regions_clip.append(region_clip)
                 labels.append(_labels)
                 masks.append(torch.zeros(1, subgoal_limit, 1000).cuda())
                 all_lengths.append(0)
@@ -518,8 +519,9 @@ def get_maskrcnn_features_similarity_lmdb(images, obj_predictor, pretrained_resn
             top_label_clip = torch.cat([label_clip[use_index[i]].unsqueeze(0) for i in range(len(use_index))],dim=0)
             if len(top_bboxes) == 0:
                 region_clip, _labels = torch.zeros(1, subgoal_limit, 768).cuda(), torch.zeros(1, subgoal_limit, 768).cuda()
-                region_maskrcnn = torch.zeros(1, subgoal_limit, 4, 25, 25).cuda()
-                regions_maskrcnn.append(region_maskrcnn)
+                # region_maskrcnn = torch.zeros(1, subgoal_limit, 4, 25, 25).cuda()
+                # regions_maskrcnn.append(region_maskrcnn)
+                regions_clip.append(region_clip)
                 labels.append(_labels)
                 masks.append(torch.zeros(1, subgoal_limit, 1000).cuda())
                 all_lengths.append(0)
@@ -533,44 +535,44 @@ def get_maskrcnn_features_similarity_lmdb(images, obj_predictor, pretrained_resn
             ])
             
             with torch.no_grad():
-                batch_images = top_bboxes.view(-1, 3, 224, 224) # (subgoal_words * num_of_use, 3, 224, 224)
+                # batch_images = top_bboxes.view(-1, 3, 224, 224) # (subgoal_words * num_of_use, 3, 224, 224)
                 #batch_imagesを<PIL.Image.Image image mode=RGB size=300x300>のような形式のリストに変換
-                batch_images_maskrcnn = [transforms.ToPILImage()(img) for img in batch_images]
+                # batch_images_maskrcnn = [transforms.ToPILImage()(img) for img in batch_images]
 
-                feats_mask = extract_features(batch_images_maskrcnn, obj_predictor)
+                # feats_mask = extract_features(batch_images_maskrcnn, obj_predictor)
                 # feats_mask = feats_mask.view(len(subgoal_words), sort_idxs.shape[1], 512, 25, 25) # (subgoal_words, num_of_use, 768)
-                # batch_images = my_transform(top_bboxes) # (subgoal_words, num_of_use, 3, 224, 224)
-                # batch_images = batch_images.view(-1, 3, 224, 224) # (subgoal_words * num_of_use, 3, 224, 224)
-                # feats_clip = clip_model.encode_image(batch_images) # (subgoal_words * num_of_use,768)
-                # feats_clip = feats_clip.view(len(subgoal_words), sort_idxs.shape[1], 768) # (subgoal_words, num_of_use, 768)
+                batch_images = my_transform(top_bboxes) # (subgoal_words, num_of_use, 3, 224, 224)
+                batch_images = batch_images.view(-1, 3, 224, 224) # (subgoal_words * num_of_use, 3, 224, 224)
+                feats_clip = clip_model.encode_image(batch_images) # (subgoal_words * num_of_use,768)
+                feats_clip = feats_clip.view(len(use_index), 768) # (subgoal_words, num_of_use, 768)
 
                 mask = torch.stack([resnet_preprocess(_mask[use_index[i]]) for i in range(len(use_index))])
                 output_resnet = pretrained_resnet(mask.cuda()) # [subgoal_word, 1000]
                 
                 if subgoal_limit > len(use_index):
                     top_label_clip = torch.cat([top_label_clip, torch.zeros(subgoal_limit - len(use_index), 768).cuda()], dim=0)
-                    feats_mask = torch.cat([feats_mask.cuda(), torch.zeros(subgoal_limit - len(use_index), 4, 25, 25).cuda()], dim=0)
-                    # feats_clip = torch.cat([feats_clip, torch.zeros(subgoal_limit - len(use_index), 768).cuda()], dim=0)
+                    # feats_mask = torch.cat([feats_mask.cuda(), torch.zeros(subgoal_limit - len(use_index), 4, 25, 25).cuda()], dim=0)
+                    feats_clip = torch.cat([feats_clip, torch.zeros(subgoal_limit - len(use_index), 768).cuda()], dim=0)
                     output_resnet = torch.cat([output_resnet, torch.zeros(subgoal_limit - len(use_index), 1000).cuda()], dim=0)
             # regions.append(feats.unsqueeze(0))
             labels.append(top_label_clip.unsqueeze(0))
-            regions_maskrcnn.append(feats_mask.unsqueeze(0).cuda()) 
-            # regions_clip.append(feats_clip.unsqueeze(0))
+            # regions_maskrcnn.append(feats_mask.unsqueeze(0).cuda()) 
+            regions_clip.append(feats_clip.unsqueeze(0))
             all_lengths.append(len(use_index))
             masks.append(output_resnet.unsqueeze(0))
 
         # all_bboxes.append(torch.cat(regions,dim=0)) #(batch_size, subgoal_words, num_of_use, 768)
         all_labels.append(torch.cat(labels,dim=0)) #(batch_size,subgoal_words, num_of_use, 768)
-        all_bboxes_maskrcnn.append(torch.cat(regions_maskrcnn,dim=0))
-        # all_bboxes_clip.append(torch.cat(regions_clip,dim=0))
+        # all_bboxes_maskrcnn.append(torch.cat(regions_maskrcnn,dim=0))
+        all_bboxes_clip.append(torch.cat(regions_clip,dim=0))
         all_masks.append(torch.cat(masks,dim=0))
 
-    all_bboxes_maskrcnn = torch.cat(all_bboxes_maskrcnn,dim=0) 
-    # all_bboxes_clip = torch.cat(all_bboxes_clip,dim=0) 
+    # all_bboxes_maskrcnn = torch.cat(all_bboxes_maskrcnn,dim=0) 
+    all_bboxes_clip = torch.cat(all_bboxes_clip,dim=0) 
     all_labels = torch.cat(all_labels,dim=0)
     all_masks = torch.cat(all_masks,dim=0) 
     all_lengths = torch.tensor(all_lengths)
-    return all_bboxes_maskrcnn.cpu(), all_labels.cpu(), all_masks.cpu(), all_lengths.cpu()
+    return all_bboxes_clip.cpu(), all_labels.cpu(), all_masks.cpu(), all_lengths.cpu()
 
 
 
@@ -799,15 +801,15 @@ def tensorize_and_pad(batch, device, pad):
             # print("v[0][1].shape", v[0][1].shape)#torch.Size([27, 768])
             # print("v[1][0].shape", v[1][0].shape)#torch.Size([72, 512, 7, 7])
             # print("v[1][1].shape", v[1][1].shape)#torch.Size([72, 768])
-            resnet = pad_sequence([vv[0].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True, padding_value=pad)
+            # resnet = pad_sequence([vv[0].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True, padding_value=pad)
             # print("pad_seq.shape",pad_seq.shape)#torch.Size([2, 72, 512, 7, 7])
-            clip = pad_sequence([vv[1].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
+            clip = pad_sequence([vv[0].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
 
-            bbox = pad_sequence([vv[2].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
-            label = pad_sequence([vv[3].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
-            mask = pad_sequence([vv[4].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
+            bbox = pad_sequence([vv[1].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
+            label = pad_sequence([vv[2].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
+            mask = pad_sequence([vv[3].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
             #bboxの次元は[batch, len_img, len_subword, 5, 1024]であるが、pad_sequenceを使うと[batch, max_img, max_subword, 5, 1024]になる
-            dict_assign['lengths_subword'] = [copy.deepcopy(vv[5].tolist()) for vv in v]
+            dict_assign['lengths_subword'] = [copy.deepcopy(vv[4].tolist()) for vv in v]
             # [49, 9, 5, 1024]次元のtensorと[49, 4, 5, 1024]次元のtensorをゼロパディングして[49, 9, 5, 1024]次元のtensorにする
 
             # 入力テンソルをリストとしてまとめる
@@ -816,7 +818,7 @@ def tensorize_and_pad(batch, device, pad):
             # bbox = pad_sequence([vv[2].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
             # label = pad_sequence([vv[3].clone().detach().to(device).type(torch.float) for vv in v], batch_first=True,padding_value=pad)
 
-            dict_assign[k] = [resnet, clip, bbox, label, mask]
+            dict_assign[k] = [clip, bbox, label, mask]
             dict_assign['lengths_' + k] = torch.tensor(list(map(len, seqs)))
             dict_assign['length_' + k + '_max'] = max(map(len, seqs))
         else:

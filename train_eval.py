@@ -102,7 +102,7 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
         checkpoint="./logs/pretrained/maskrcnn_model.pth", load_heads=True)
     
     extractor = FeatureExtractor(
-        "fasterrcnn", 'cuda', '/home/initial/workspase/CVPR/DialFRED-Challenge/logs/pretrained/fasterrcnn_model.pth',
+        "fasterrcnn", 'cuda', './logs/pretrained/fasterrcnn_model.pth',
         compress_type='4x')
     
     encoder_extractor = FeatureExtractor(

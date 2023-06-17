@@ -34,10 +34,10 @@ from alfred.utils.data_util import tokens_to_lang, save_features_to_path, load_f
 from alfred.model import mat
 from alfred.nn.enc_visual import FeatureExtractor
 
-deberta_model = AutoModel.from_pretrained("microsoft/mdeberta-v3-base").cuda()
-deberta_tokenizer = AutoTokenizer.from_pretrained("microsoft/mdeberta-v3-base")
-for param in deberta_model.parameters():
-    param.requires_grad = False
+# deberta_model = AutoModel.from_pretrained("microsoft/mdeberta-v3-base").cuda()
+# deberta_tokenizer = AutoTokenizer.from_pretrained("microsoft/mdeberta-v3-base")
+# for param in deberta_model.parameters():
+#     param.requires_grad = False
 
 class Model(base.Model):
     def __init__(self, args, embs_ann, vocab_out, pad, seg, dim_size: int=768, rho1=0.9, rho2=0.999, lr_reduce=2e-3 / 8e-5, step_size=4):
@@ -84,14 +84,14 @@ class Model(base.Model):
         self.encoder_lang = EncoderLang(
             args.encoder_lang['layers'], args, embs_ann)
         # feature embeddings
-        print("visual_tensor_shape", self.visual_tensor_shape)
-        self.vis_feat = FeatureFlat(
-            input_shape=self.visual_tensor_shape,
-            output_size=args.demb)
+        # print("visual_tensor_shape", self.visual_tensor_shape)
+        # self.vis_feat = FeatureFlat(
+        #     input_shape=self.visual_tensor_shape,
+        #     output_size=args.demb)
         
-        self.vis_feat_bbox = FeatureFlat(
-            input_shape=(4, 25, 25),
-            output_size=args.demb)
+        # self.vis_feat_bbox = FeatureFlat(
+        #     input_shape=(4, 25, 25),
+        #     output_size=args.demb)
         
         # dataset id learned encoding (applied after the encoder_lang)
         self.dataset_enc = None
@@ -197,19 +197,27 @@ class Model(base.Model):
     
     def token_to_sentence_list(self, tokens, vocab):
         sentences_list = []
+        nouns_list = []
         for token in tokens:
             # tokens to text
             text = tokens_to_lang(token.tolist(), vocab)
             # remove tokens enclosed in << >>
             text = re.sub(r'<<.*?>>', '.', text)
 
+            nouns = self.extract_nouns(text)
+
             # split text into sentences using period as delimiter
             sentences = text.split('.')
 
             # remove leading and trailing white space from each sentence
             sentences = [s.strip() for s in sentences if s.strip() and (s != "" or s != " " or s != ", ")]
+            nouns = [n.strip() for n in nouns if n.strip() and (n != "" or n != " " or n != ", ")]
             sentences_list.append(sentences)
-        return sentences_list
+            nouns_list.append(nouns)
+
+        #nouns_listの中で重複しているものを削除
+        nouns_list = [list(set(nouns)) for nouns in nouns_list]
+        return sentences_list, nouns_list
     
     def encode_deberta(self, epoch, task_paths, sentences, device="cuda:0"):
         """
@@ -273,11 +281,12 @@ class Model(base.Model):
         return feats
     
     #追加
-    def encode_clip_text(self, epoch, task_paths, sentences, device="cuda:0"):
+    def encode_clip_text(self, epoch, task_paths, sentences, nouns, device="cuda:0"):
         """
         Encode sentences with the CLIP model.
         """
-        if epoch != -1 and (epoch != 0 or not self.args.update_feat):
+        if False:
+        # if epoch != -1 and (epoch != 0 or not self.args.update_feat):
             batch_features = []
             batch_lengths = []
 
@@ -302,7 +311,10 @@ class Model(base.Model):
         batch_lengths = []
 
         for i in range(len(sentences)):
+            # print("sentences[i]: ", sentences[i])
             tokenized = clip.tokenize(sentences[i]).to(device)
+            tokenized_nouns = clip.tokenize(nouns[i]).to(device)
+            tokenized = torch.cat([tokenized, tokenized_nouns], dim=0)
             text_features = self.clip_model.encode_text(tokenized) #(len(sentences), 768)
             batch_features.append(text_features)
             batch_lengths.append(tokenized.shape[0])
@@ -419,10 +431,10 @@ class Model(base.Model):
                 #emb_lang:[batch, max, 768](2つのデータの大きい方をmaxに入れる), lengths_lang:[batch](emb_langのbatch個のデータの長さを持つ.)
                 
                 # token to sentence
-                sentences = self.token_to_sentence_list(inputs['lang'], vocab)
+                sentences, nouns = self.token_to_sentence_list(inputs['lang'], vocab)
                 
                 # encode clip
-                emb_clip, lengths_clip = self.encode_clip_text(epoch, task_path, sentences, device=inputs['lang'].device)
+                emb_clip, lengths_clip = self.encode_clip_text(epoch, task_path, sentences, nouns, device=inputs['lang'].device)
                 
                 # concat clip and lang
                 emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
@@ -465,11 +477,11 @@ class Model(base.Model):
                 emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
 
             # embed frames
-            emb_resnet, emb_object = self.embed_frames(inputs['frames'][0])
-            emb_clip = inputs['frames'][1]
-            emb_bbox = self.embed_frames_bbox(inputs['frames'][2])
-            emb_label = inputs['frames'][3]
-            emb_mask = self.mask_fc(inputs['frames'][4])
+            emb_clip, emb_object = inputs['frames'][0], inputs['frames'][0]
+            # emb_bbox = self.embed_frames_bbox(inputs['frames'][2])
+            emb_bbox = inputs['frames'][1]
+            emb_label = inputs['frames'][2]
+            emb_mask = self.mask_fc(inputs['frames'][3])
 
             lengths_subword = inputs['lengths_subword']
 
@@ -494,7 +506,8 @@ class Model(base.Model):
             emb_label = emb_label.reshape(emb_label.shape[0], -1, 768)
             emb_mask = emb_mask.reshape(emb_mask.shape[0], -1, 768)
 
-            emb_frames = torch.cat([emb_resnet, emb_clip], dim=1)
+            # emb_frames = torch.cat([emb_resnet, emb_clip], dim=1)
+            emb_frames = emb_clip
             lengths_frames = inputs['lengths_frames']
             length_frames_max = inputs['length_frames_max']
 

@@ -221,6 +221,7 @@ def evaluate_subgoals_middle_qa(
     
     # load trajectory data from the dataset
     traj_data, traj_key = dataset.jsons_and_keys[dataset_idx]
+    
     r_idx, subgoal_idx = int(trial_uid.split(':')[1]), int(trial_uid.split(':')[2])
     if not traj_data['repeat_idx'] == r_idx:
         print(traj_data)

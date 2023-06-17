@@ -65,7 +65,10 @@ class EncoderVL(nn.Module):
         # create a mask for padded elements
 
         if is_mask:
-            length_mask_pad = length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max  * 3 + length_actions_max
+            # length_mask_pad = length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max  * 3 + length_actions_max
+            #id 215
+            length_mask_pad = length_lang_max + length_frames_max + length_frames_max * length_subword_max  * 2 + length_actions_max
+
         elif is_clip_resnet:
             length_mask_pad = length_lang_max + length_frames_max * 2 + length_actions_max
         elif is_maskrcnn:
@@ -85,25 +88,25 @@ class EncoderVL(nn.Module):
                 # mask padded frames
                 mask_pad[i, length_lang_max + len_f:
                         length_lang_max + length_frames_max] = True
-                mask_pad[i, length_lang_max + length_frames_max + len_f:
-                        length_lang_max + length_frames_max * 2] = True
+                # mask_pad[i, length_lang_max + length_frames_max + len_f:
+                #         length_lang_max + length_frames_max * 2] = True
                 for j in range(len_f):
-                    mask_pad[i, length_lang_max + length_frames_max * 2 + j * length_subword_max + lengths_subword[i][j]:
-                            length_lang_max + length_frames_max * 2 + j * length_subword_max + length_subword_max] = True 
-                mask_pad[i, length_lang_max + length_frames_max * 2 + len_f * length_subword_max:
-                        length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max] = True
+                    mask_pad[i, length_lang_max + length_frames_max  + j * length_subword_max + lengths_subword[i][j]:
+                            length_lang_max + length_frames_max + j * length_subword_max + length_subword_max] = True 
+                mask_pad[i, length_lang_max + length_frames_max + len_f * length_subword_max:
+                        length_lang_max + length_frames_max + length_frames_max * length_subword_max] = True
                 for j in range(len_f):
-                    mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max + j * length_subword_max + lengths_subword[i][j]:
-                             length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max + j * length_subword_max + length_subword_max] = True 
-                mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max + len_f * length_subword_max:
-                        length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * 2] = True
-                for j in range(len_f):
-                    mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * 2 + j * length_subword_max + lengths_subword[i][j]:
-                             length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * 2 + j * length_subword_max + length_subword_max] = True
-                mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * 2 + len_f * length_subword_max:
-                        length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * 3] = True
+                    mask_pad[i, length_lang_max + length_frames_max + length_frames_max * length_subword_max + j * length_subword_max + lengths_subword[i][j]:
+                             length_lang_max + length_frames_max + length_frames_max * length_subword_max + j * length_subword_max + length_subword_max] = True 
+                mask_pad[i, length_lang_max + length_frames_max + length_frames_max * length_subword_max + len_f * length_subword_max:
+                        length_lang_max + length_frames_max + length_frames_max * length_subword_max * 2] = True
+                # for j in range(len_f):
+                #     mask_pad[i, length_lang_max + length_frames_max + length_frames_max * length_subword_max * 2 + j * length_subword_max + lengths_subword[i][j]:
+                #              length_lang_max + length_frames_max + length_frames_max * length_subword_max * 2 + j * length_subword_max + length_subword_max] = True
+                # mask_pad[i, length_lang_max + length_frames_max + length_frames_max * length_subword_max * 2 + len_f * length_subword_max:
+                #         length_lang_max + length_frames_max + length_frames_max * length_subword_max * 3] = True
                 # mask padded actions
-                mask_pad[i, length_lang_max + length_frames_max * 2 + length_frames_max * length_subword_max * 3 + len_a:] = True
+                mask_pad[i, length_lang_max + length_frames_max + length_frames_max * length_subword_max * 2 + len_a:] = True
                 
             if is_clip_resnet:
                 # mask padded words
@@ -195,7 +198,8 @@ class EncoderVL(nn.Module):
             emb_lang, emb_frames, emb_actions = self.enc_token(
                 emb_lang, emb_frames, emb_actions)
         if is_mask:
-            emb_cat = torch.cat([emb_lang, emb_frames, emb_bboxes, emb_labels, emb_masks, emb_actions], dim=1)
+            # emb_cat = torch.cat([emb_lang, emb_frames, emb_bboxes, emb_labels, emb_masks, emb_actions], dim=1)
+            emb_cat = torch.cat([emb_lang, emb_frames, emb_bboxes, emb_masks, emb_actions], dim=1)
         elif mask_rcnn or is_parallel:
             emb_cat = torch.cat((emb_lang, emb_frames, emb_bboxes, emb_labels, emb_actions), dim=1)
         else:

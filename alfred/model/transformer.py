@@ -50,9 +50,9 @@ class Model(base.Model):
         nltk.download('averaged_perceptron_tagger')
         nltk.download('wordnet')
 
-        self.clip_model, self.clip_preprocess = clip.load("ViT-L/14", device="cuda")
-        for params in self.clip_model.parameters():
-            params.requires_grad = False
+        # self.clip_model, self.clip_preprocess = clip.load("ViT-L/14", device="cuda")
+        # for params in self.clip_model.parameters():
+        #     params.requires_grad = False
 
         # if args.deberta:
         # self.deberta_model = AutoModel.from_pretrained("microsoft/mdeberta-v3-base").cuda()
@@ -466,7 +466,7 @@ class Model(base.Model):
 
             # embed frames
             emb_resnet, emb_object = self.embed_frames(inputs['frames'][0])
-            emb_clip = inputs['frames'][1]
+            # emb_clip = inputs['frames'][1]
             emb_bbox = self.embed_frames_bbox(inputs['frames'][2])
             emb_label = inputs['frames'][3]
             emb_mask = self.mask_fc(inputs['frames'][4])
@@ -494,13 +494,14 @@ class Model(base.Model):
             emb_label = emb_label.reshape(emb_label.shape[0], -1, 768)
             emb_mask = emb_mask.reshape(emb_mask.shape[0], -1, 768)
 
-            emb_frames = torch.cat([emb_resnet, emb_clip], dim=1)
+            # emb_frames = torch.cat([emb_resnet, emb_clip], dim=1)
+            emb_frames = emb_resnet
             lengths_frames = inputs['lengths_frames']
             length_frames_max = inputs['length_frames_max']
 
             lengths_actions = lengths_frames.clone()
 
-            #emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]
+            # emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]
             emb_actions = self.embed_actions(inputs['action'])
 
             if self.args.mat_text:

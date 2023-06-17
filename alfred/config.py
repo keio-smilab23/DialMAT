@@ -85,18 +85,18 @@ def cfg_train():
     clip_image = False
     clip_text = False
     clip_resnet = False
-    clip_deberta = True
+    clip_deberta = False
     clip_object = False
     maskrcnn = False
-    mask = True #from id 213
-    deberta = False
+    mask = True #id 214
+    deberta = True
     mat_text = True
     mat_image = True
     mat_action = True
     update_feat = False
     parallel = False #Trueのときはclip_deberta, clip_image, clip_text, clip_resnet, clip_object, maskrcnnはFalseにする
     
-    subword_limit=4
+    subword_limit=3
 
     base_layers = 3
     base_heads = 8
@@ -124,7 +124,7 @@ def cfg_train():
     # learning rate settings
     lr = {
         # learning rate initial value
-        'init': 1e-4, #1e-4,
+        'init': 2e-5, #1e-4,
         # lr scheduler type: {'linear', 'cosine', 'triangular', 'triangular2'}
         'profile': 'linear',
         # (LINEAR PROFILE) num epoch to adjust learning rate
@@ -157,9 +157,9 @@ def cfg_train():
     # size of transformer embeddings
     demb = 768
     # number of heads in multi-head attention
-    encoder_heads = 8
+    encoder_heads = 4
     # number of layers in transformer encoder
-    encoder_layers = 4
+    encoder_layers = 8
     # how many previous actions to use as input
     num_input_actions = 1
     # which encoder to use for language encoder (by default no encoder)
@@ -183,17 +183,17 @@ def cfg_train():
     # DROPOUTS
     dropout = {
         # dropout rate for language (goal + instr)
-        'lang': 0.0,
+        'lang': 0.4,
         # dropout rate for Resnet feats
         'vis': 0.3,
         # dropout rate for processed lang and visual embeddings
-        'emb': 0.0,
+        'emb': 0.3,
         # transformer model specific dropouts
         'transformer': {
             # dropout for transformer encoder
-            'encoder': 0.1,
+            'encoder': 0.3,
             # remove previous actions
-            'action': 0.0,
+            'action': 0.3,
         },
     }
 

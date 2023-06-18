@@ -34,10 +34,10 @@ from alfred.utils.data_util import tokens_to_lang, save_features_to_path, load_f
 from alfred.model import mat
 from alfred.nn.enc_visual import FeatureExtractor
 
-# deberta_model = AutoModel.from_pretrained("microsoft/mdeberta-v3-base").cuda()
-# deberta_tokenizer = AutoTokenizer.from_pretrained("microsoft/mdeberta-v3-base")
-# for param in deberta_model.parameters():
-#     param.requires_grad = False
+deberta_model = AutoModel.from_pretrained("microsoft/mdeberta-v3-base").cuda()
+deberta_tokenizer = AutoTokenizer.from_pretrained("microsoft/mdeberta-v3-base")
+for param in deberta_model.parameters():
+    param.requires_grad = False
 
 class Model(base.Model):
     def __init__(self, args, embs_ann, vocab_out, pad, seg, dim_size: int=768, rho1=0.9, rho2=0.999, lr_reduce=2e-3 / 8e-5, step_size=4):
@@ -245,8 +245,8 @@ class Model(base.Model):
                 batch_features = pad_sequence(batch_features, batch_first=True) #(batch_size, words_length, 768)
                 return batch_features, torch.tensor(batch_lengths).to(device)
         
-        # global deberta_model
-        # global deberta_tokenizer
+        global deberta_model
+        global deberta_tokenizer
 
         batch_features = []
         batch_lengths = []
@@ -444,9 +444,9 @@ class Model(base.Model):
             elif self.args.deberta:
                 emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
 
-                sentences = self.token_to_sentence_list(inputs['lang'], vocab)
+                sentences, nouns = self.token_to_sentence_list(inputs['lang'], vocab)
 
-                emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, device=inputs['lang'].device)
+                emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, nouns, device=inputs['lang'].device)
 
                 emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device=inputs['lang'].device)
 
@@ -455,10 +455,10 @@ class Model(base.Model):
             elif self.args.clip_deberta:
                 emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
 
-                sentences = self.token_to_sentence_list(inputs['lang'], vocab)
+                sentences, nouns = self.token_to_sentence_list(inputs['lang'], vocab)
 
                 # encode clip
-                emb_clip, lengths_clip = self.encode_clip_text(epoch, task_path, sentences, device=inputs['lang'].device)
+                emb_clip, lengths_clip = self.encode_clip_text(epoch, task_path, sentences, nouns, device=inputs['lang'].device)
 
                 # encode deberta
                 emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, device=inputs['lang'].device)

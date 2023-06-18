@@ -245,8 +245,8 @@ class Model(base.Model):
                 batch_features = pad_sequence(batch_features, batch_first=True) #(batch_size, words_length, 768)
                 return batch_features, torch.tensor(batch_lengths).to(device)
         
-        global deberta_model
-        global deberta_tokenizer
+        # global deberta_model
+        # global deberta_tokenizer
 
         batch_features = []
         batch_lengths = []

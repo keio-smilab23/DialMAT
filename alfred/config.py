@@ -83,9 +83,9 @@ def cfg_train():
     wandb = False
     wandb_name = 'maskrcnn-new'
     clip_image = False
-    clip_text = True
+    clip_text = False
     clip_resnet = False
-    clip_deberta = False
+    clip_deberta = True
     clip_object = False
     maskrcnn = False
     mask = True #from id 213

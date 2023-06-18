@@ -542,10 +542,10 @@ class Model(base.Model):
                 *encoder_out_visual.shape[:2], *action_flat.shape[1:])
             
             # get the output objects
-            # emb_object_flat = emb_object.view(-1, self.args.demb)
+            emb_object_flat = emb_object.view(-1, self.args.demb)
 
-            # decoder_input = action_emb_flat + emb_object_flat
-            decoder_input = action_emb_flat
+            decoder_input = action_emb_flat + emb_object_flat
+            # decoder_input = action_emb_flat
             
             object_flat = self.dec_object(decoder_input)
 

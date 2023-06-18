@@ -161,7 +161,7 @@ def cfg_train():
     # number of layers in transformer encoder
     encoder_layers = 4
     # how many previous actions to use as input
-    num_input_actions = 1
+    num_input_actions = 2
     # which encoder to use for language encoder (by default no encoder)
     encoder_lang = {
         'shared': True,

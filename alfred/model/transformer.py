@@ -542,9 +542,10 @@ class Model(base.Model):
                 *encoder_out_visual.shape[:2], *action_flat.shape[1:])
             
             # get the output objects
-            emb_object_flat = emb_object.view(-1, self.args.demb)
+            # emb_object_flat = emb_object.view(-1, self.args.demb)
 
-            decoder_input = action_emb_flat + emb_object_flat
+            # decoder_input = action_emb_flat + emb_object_flat
+            decoder_input = action_emb_flat
             
             object_flat = self.dec_object(decoder_input)
 
@@ -759,8 +760,8 @@ class Model(base.Model):
         '''
         reset internal states (used for real-time execution during eval)
         '''
-        self.frames_traj = [torch.zeros(1, 0, 128, 25, 25), torch.zeros(1, 0, 768), 
-                            torch.zeros(1, 0, self.args.subword_limit, 4, 25, 25), torch.zeros(1, 0, self.args.subword_limit, 768),  torch.zeros(1, 0, self.args.subword_limit, 1000)]
+        self.frames_traj = [torch.zeros(1, 0, 768), torch.zeros(1, 0, self.args.subword_limit, 768), 
+                            torch.zeros(1, 0, self.args.subword_limit, 768), torch.zeros(1, 0, self.args.subword_limit, 1000)]
         self.length_traj = []
         self.action_traj = torch.zeros(1, 0).long()
 
@@ -833,9 +834,8 @@ class Model(base.Model):
                 torch.cat((self.frames_traj[0].to(device), frames[0][None].to(device)), dim=1),
                 torch.cat((self.frames_traj[1].to(device), frames[1][None].to(device)), dim=1),
                 torch.cat((self.frames_traj[2].to(device), frames[2][None].to(device)), dim=1),
-                torch.cat((self.frames_traj[3].to(device), frames[3][None].to(device)), dim=1),
-                torch.cat((self.frames_traj[4].to(device), frames[4][None].to(device)), dim=1)]
-            frames = [self.frames_traj[0].clone(), self.frames_traj[1].clone(), self.frames_traj[2].clone(), self.frames_traj[3].clone(), self.frames_traj[4].clone()]
+                torch.cat((self.frames_traj[3].to(device), frames[3][None].to(device)), dim=1)]
+            frames = [self.frames_traj[0].clone(), self.frames_traj[1].clone(), self.frames_traj[2].clone(), self.frames_traj[3].clone()]
             lengths_frames = torch.tensor([self.frames_traj[0].size(1)])
             length_subword = input_dict['lengths_subword']
             # lengths_subword = torch.cat([self.length_traj, length_subword], dim=0)

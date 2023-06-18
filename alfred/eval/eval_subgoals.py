@@ -152,7 +152,7 @@ def evaluate_subgoals_mc(
     return dict(**metrics, **task_info), mc_lists
 
 def evaluate_subgoals_start_qa(
-        env, model, dataset, extractor, extractor_bbox, pretrained_resnet, trial_uid, dataset_idx, args, obj_predictor, clip_model, subword_limit=5):
+        env, model, dataset, extractor, pretrained_resnet, trial_uid, dataset_idx, args, obj_predictor, clip_model, subword_limit=5):
     # set up the evaluation
     # load trajectory data from the dataset
     traj_data, traj_key = dataset.jsons_and_keys[dataset_idx]
@@ -200,8 +200,8 @@ def evaluate_subgoals_start_qa(
     for a_expert in expert_dict['actions']:
         if len(nouns) > subword_limit:
             nouns = nouns[:subword_limit]
-        bbox, label, mask, length = eval_util.get_observation_maskrcnn_with_mask(env.last_event, extractor_bbox, pretrained_resnet, clip_model, nouns, subgoal_limit=subword_limit)
-        input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor), bbox, label, mask]
+        bbox, label, mask, length = eval_util.get_observation_maskrcnn_with_mask(env.last_event, obj_predictor, pretrained_resnet, clip_model, nouns, subgoal_limit=subword_limit)
+        input_dict['frames'] = [eval_util.get_observation_clip(env.last_event, extractor), bbox, label, mask]
         input_dict['lengths_subword'] = length
         init_failed, prev_action = eval_util.expert_step(
             a_expert['action'], expert_dict['masks'], model,
@@ -213,7 +213,7 @@ def evaluate_subgoals_start_qa(
     return init_states
 
 def evaluate_subgoals_middle_qa(
-        env, model, dataset, extractor, extractor_bbox, pretrained_resnet, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, clip_model, num_rollout=5, subword_limit=4):
+        env, model, dataset, extractor, pretrained_resnet, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, clip_model, num_rollout=5, subword_limit=4):
     # modification of evaluate_subgoals: add qa and skip init
     # model.reset_for_clip()
     # add initial states from expert initialization
@@ -260,8 +260,8 @@ def evaluate_subgoals_middle_qa(
         t_current = 0
         while t_agent < args.max_steps and t_current < num_rollout:
 
-            bbox, label, mask, length = eval_util.get_observation_maskrcnn_with_mask(env.last_event, extractor_bbox, pretrained_resnet, clip_model, nouns, subgoal_limit=subword_limit)
-            input_dict['frames'] = [eval_util.get_observation(env.last_event, extractor), eval_util.get_observation_clip(env.last_event, extractor), bbox, label, mask]
+            bbox, label, mask, length = eval_util.get_observation_maskrcnn_with_mask(env.last_event, obj_predictor, pretrained_resnet, clip_model, nouns, subgoal_limit=subword_limit)
+            input_dict['frames'] = [eval_util.get_observation_clip(env.last_event, extractor), bbox, label, mask]
             input_dict['lengths_subword'] = length
             episode_end, prev_action, num_fails, _, _, mc_array = eval_util.agent_step_mc(
                 model, input_dict, vocab, prev_action, env, args,

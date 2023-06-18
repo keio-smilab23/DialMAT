@@ -362,7 +362,7 @@ def get_maskrcnn_features_with_mask(image,  extractor_bbox, pretrained_resnet, c
                 _mask.append(masked_image.unsqueeze(0))
 
     if len(_regions) == 0:
-        return torch.zeros(1, subgoal_limit, 4, 25, 25).cuda(), torch.zeros(1, subgoal_limit, 768).cuda(),\
+        return torch.zeros(1, subgoal_limit, 768).cuda(), torch.zeros(1, subgoal_limit, 768).cuda(),\
              torch.zeros(1, subgoal_limit, 1000).cuda(), 0
     
     _regions = torch.cat(_regions,dim=0) # (N,3,224,224)
@@ -390,8 +390,8 @@ def get_maskrcnn_features_with_mask(image,  extractor_bbox, pretrained_resnet, c
     top_bboxes = torch.cat([_regions[use_index[i]].unsqueeze(0) for i in range(len(use_index))],dim=0)
     top_label_clip = torch.cat([label_clip[use_index[i]].unsqueeze(0) for i in range(len(use_index))],dim=0)
     if len(top_bboxes) == 0:
-        return torch.zeros( 1, subgoal_limit, 4, 25, 25).cuda(), torch.zeros( 1, subgoal_limit, 768).cuda(),\
-            torch.zeros( 1, subgoal_limit, 1000).cuda(), 0
+        return torch.zeros(1, subgoal_limit, 768).cuda(), torch.zeros(1, subgoal_limit, 768).cuda(),\
+             torch.zeros(1, subgoal_limit, 1000).cuda(), 0
 
     # 特徴量の結合
     # print("output_resnet.shape", output_resnet.shape)
@@ -401,21 +401,26 @@ def get_maskrcnn_features_with_mask(image,  extractor_bbox, pretrained_resnet, c
     ])
     
     with torch.no_grad():
-        batch_images = top_bboxes.view(-1, 3, 224, 224) # (subgoal_words * num_of_use, 3, 224, 224)
-        batch_images_maskrcnn = [transforms.ToPILImage()(img) for img in batch_images]
+        # batch_images = top_bboxes.view(-1, 3, 224, 224) # (subgoal_words * num_of_use, 3, 224, 224)
+        # batch_images_maskrcnn = [transforms.ToPILImage()(img) for img in batch_images]
 
-        feats_mask = extract_features(batch_images_maskrcnn, extractor_bbox)
+        # feats_mask = extract_features(batch_images_maskrcnn, extractor_bbox)
+
+        batch_images = my_transform(top_bboxes) # (subgoal_words, num_of_use, 3, 224, 224)
+        batch_images = batch_images.view(-1, 3, 224, 224) # (subgoal_words * num_of_use, 3, 224, 224)
+        feats_clip = clip_model.encode_image(batch_images) # (subgoal_words * num_of_use,768)
+        feats_clip = feats_clip.view(len(use_index), 768) # (subgoal_words, num_of_use, 768)
 
         mask = torch.stack([resnet_preprocess(_mask[use_index[i]]) for i in range(len(use_index))])
         output_resnet = pretrained_resnet(mask.cuda()) # [subgoal_word, 1000]
         
         if subgoal_limit > len(use_index):
             top_label_clip = torch.cat([top_label_clip, torch.zeros(subgoal_limit - len(use_index), 768).cuda()], dim=0)
-            feats_mask = torch.cat([feats_mask.cuda(), torch.zeros(subgoal_limit - len(use_index), 4, 25, 25).cuda()], dim=0)
-            # feats_clip = torch.cat([feats_clip, torch.zeros(subgoal_limit - len(use_index), 768).cuda()], dim=0)
+            # feats_mask = torch.cat([feats_mask.cuda(), torch.zeros(subgoal_limit - len(use_index), 4, 25, 25).cuda()], dim=0)
+            feats_clip = torch.cat([feats_clip, torch.zeros(subgoal_limit - len(use_index), 768).cuda()], dim=0)
             output_resnet = torch.cat([output_resnet, torch.zeros(subgoal_limit - len(use_index), 1000).cuda()], dim=0)
     
-    return feats_mask.unsqueeze(0).cpu(), top_label_clip.unsqueeze(0).cpu(), output_resnet.unsqueeze(0).cpu(), len(use_index)
+    return feats_clip.unsqueeze(0).cpu(), top_label_clip.unsqueeze(0).cpu(), output_resnet.unsqueeze(0).cpu(), len(use_index)
 
 def get_maskrcnn_features_similarity_lmdb(images, obj_predictor, pretrained_resnet, clip_model, subgoal_words, subgoal_limit=5, num_of_use=1, batch_size=7):
     '''

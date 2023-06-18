@@ -287,8 +287,8 @@ def generate_attention_mask(len_lang, len_frames, len_actions,  device, len_subw
         # frames_resnet_to_frames_clip = triangular_mask(len_frames, device)
         frames_clip_to_bbox = torch.ones((len_frames, len_frames * len_subword), device=device).float() * float('-inf')
         # id:204
-        for i in range(len_frames):
-            frames_clip_to_bbox[i, :(i+1) * len_subword] = 0.
+        # for i in range(len_frames):
+        #     frames_clip_to_bbox[i, :(i+1) * len_subword] = 0.
         frames_clip_to_label = frames_clip_to_bbox.clone()
         # frames_resnet_to_mask = frames_resnet_to_bbox.clone()
         # 2.3 frames should attend to actions with timestep < t. first make all actions invisible
@@ -308,7 +308,7 @@ def generate_attention_mask(len_lang, len_frames, len_actions,  device, len_subw
         # frames_bbox_to_lang = torch.ones((len_frames * len_subword * num_of_use, len_lang), device=device).float() * float('-inf')
         #id:204
         # bbox_to_lang = torch.zeros((len_frames * len_subword, len_lang), device=device).float()
-        bbox_to_lang = torch.ones((len_frames * len_subword, len_lang), device=device).float() * float('-inf')
+        bbox_to_lang = torch.zeros((len_frames * len_subword, len_lang), device=device).float()
 
         bbox_to_frames_clip = torch.ones((len_frames * len_subword, len_frames), device=device).float() * float('-inf')
         # frames_bbox_to_frames_resnet = torch.zeros((len_frames * len_subword * num_of_use, len_frames), device=device).float()

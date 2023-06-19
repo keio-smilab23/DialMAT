@@ -89,7 +89,7 @@ class EncoderVL(nn.Module):
             mask_attn = torch.zeros(
                 (mask_pad.shape[1], mask_pad.shape[1]),
                 device=mask_pad.device).float()
-            
+        
         # encode the inputs
         output = self.enc_transformer(
             emb_all.transpose(0, 1), mask_attn, mask_pad).transpose(0, 1)

@@ -26,12 +26,13 @@ class AlfredDataset(BaseDataset):
 
     def __getitem__(self, idx):
         task_json, key = self.jsons_and_keys[idx]
+        task_path = os.path.join(constants.ET_DATA, 'generated_2.1.0', task_json['split'], task_json['task'])
         feat_dict = {}
         if self._load_features:
             feat_dict = self.load_features(task_json)
         if self._load_frames:
             feat_dict['frames'] = self.load_frames(key)
-        return task_json, feat_dict
+        return task_path, task_json, feat_dict
 
     def load_masks(self, key):
         '''

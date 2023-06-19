@@ -206,7 +206,11 @@ def tensorize_and_pad(batch, device, pad):
     '''
     device = torch.device(device)
     input_dict, gt_dict, feat_dict = dict(), dict(), dict()
-    traj_data, feat_list = list(zip(*batch))
+    if len(list(zip(*batch))) == 3:
+        task_path, traj_data, feat_list = list(zip(*batch))
+    else:
+        traj_data, feat_list = list(zip(*batch))
+        task_path = ""
     for key in feat_list[0].keys():
         feat_dict[key] = [el[key] for el in feat_list]
     # check that all samples come from the same dataset
@@ -248,15 +252,17 @@ def tensorize_and_pad(batch, device, pad):
             # print("v[1][1].shape", v[1][1].shape)#torch.Size([72, 768])
             seqs = [vv[0].clone().detach().to(device).type(torch.float) for vv in v]
             pad_seq = pad_sequence(seqs, batch_first=True, padding_value=pad)
+            clip = [vv[1].clone().detach().to(device).type(torch.float) for vv in v]
+            pad_clip = pad_sequence(clip, batch_first=True, padding_value=pad)
             # print("pad_seq.shape",pad_seq.shape)#torch.Size([2, 72, 512, 7, 7])
             # dict_assign[k] = pad_seq
             #pad_seqとv[0][1]とv[1][1]を結合
-            if len(v) == 1:
-                pad_seq = [pad_seq, v[0][1]]
-            else:
-                pad_seq = [pad_seq, v[0][1], v[1][1]]
+            # if len(v) == 1:
+            #     pad_seq = [pad_seq, v[0][1]]
+            # else:
+            #     pad_seq = [pad_seq, v[0][1], v[1][1]]
             # print("pad_seq[0].shape",pad_seq[0].shape)
-            dict_assign[k] = pad_seq
+            dict_assign[k] = [pad_seq, pad_clip]
             dict_assign['lengths_' + k] = torch.tensor(list(map(len, seqs)))
             dict_assign['length_' + k + '_max'] = max(map(len, seqs))
         else:
@@ -264,7 +270,7 @@ def tensorize_and_pad(batch, device, pad):
             seqs = [torch.tensor(vv, device=device, dtype=torch.long) for vv in v]
             pad_seq = pad_sequence(seqs, batch_first=True, padding_value=pad)
             dict_assign[k] = pad_seq
-    return traj_data, input_dict, gt_dict
+    return task_path, traj_data, input_dict, gt_dict
 
 
 def sample_batches(iterators, device, pad, args):
@@ -278,9 +284,9 @@ def sample_batches(iterators, device, pad, args):
         except StopIteration as e:
             return None
         dataset_name = dataset_id.split(':')[1]
-        traj_data, input_dict, gt_dict = tensorize_and_pad(
+        task_path, traj_data, input_dict, gt_dict = tensorize_and_pad(
             batches, device, pad)
-        batches_dict[dataset_name] = (traj_data, input_dict, gt_dict)
+        batches_dict[dataset_name] = (task_path, traj_data, input_dict, gt_dict)
     return batches_dict
 
 
@@ -301,6 +307,30 @@ def load_vocab(name, ann_type='lang'):
         vocab.ann_type = ann_type
     return vocab_dict
 
+def save_features_to_path(output_path, feature):
+    """
+    Save features to a file.
+    """
+    if not os.path.exists(os.path.dirname(output_path)):
+        os.makedirs(os.path.dirname(output_path))
+
+    with open(output_path, "wb") as f:
+        pickle.dump(feature, f)
+
+def load_features_from_path(path):
+    """
+    Load features from a file.
+    """
+
+    #まずpathにファイルがあるかを確認する
+    if os.path.exists(path):
+        #あれば読み込む
+        with open(path, "rb") as f:
+            features = pickle.load(f)
+    else:
+        return None
+        
+    return features
 
 def get_feat_shape(visual_archi, compress_type=None):
     '''

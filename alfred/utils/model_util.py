@@ -235,7 +235,7 @@ def generate_attention_mask(len_lang, len_frames, len_actions,  device, num_inpu
     if is_clip_resnet:
         # 1. language should attend only to language
         lang_to_lang = torch.zeros((len_lang, len_lang), device=device).float()
-        lang_to_rest = torch.ones((len_lang, len_actions * 3), device=device).float() * float('-inf')
+        lang_to_rest = torch.ones((len_lang, len_actions * 2), device=device).float() * float('-inf')
         lang_to_all = torch.cat((lang_to_lang, lang_to_rest), dim=1)
         # 2.1 frames should attend to all language tokens
         frames_to_lang = torch.zeros((len_frames, len_lang), device=device).float()
@@ -252,17 +252,7 @@ def generate_attention_mask(len_lang, len_frames, len_actions,  device, num_inpu
                 frames_to_actions[f_idx, f_idx - 1 - a_idx] = 0.
         frames_to_all = torch.cat((frames_to_lang, frames_to_frames, frames_to_actions), dim=1)
         # 3. actions should attend to the same indices as frames
-        actions_to_lang = torch.zeros((len_actions, len_lang), device=device).float()
-        actions_to_frames = torch.zeros((len_actions, len_frames), device=device).float()
-        actions_to_actions = torch.ones((len_actions, len_actions), device=device).float() * float('-inf')
-        for a_idx in range(num_input_actions):
-            for f_idx in range(len_actions):
-                if f_idx - 1 - a_idx < 0:
-                    # the index is out of bound
-                    continue
-                actions_to_actions[f_idx, f_idx - 1 - a_idx] = 0.
-
-        actions_to_all = torch.cat((actions_to_lang, actions_to_frames, actions_to_actions), dim=1)
+        actions_to_all = frames_to_all.clone()
         # 4. concatenate all the masks
         all_to_all = torch.cat((lang_to_all, frames_to_all, actions_to_all), dim=0)
 

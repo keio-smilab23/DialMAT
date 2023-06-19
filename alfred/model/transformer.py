@@ -1,6 +1,7 @@
 #追加
 import re
 import copy
+import os
 
 import torch
 from torch import nn
@@ -9,6 +10,10 @@ from torch.nn import functional as F
 import clip
 from torch.nn.utils.rnn import pad_sequence
 from transformers import AutoTokenizer, AutoModel
+#追加
+import nltk
+from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.tag import pos_tag
 
 from alfred.model import base
 from alfred.nn.enc_lang import EncoderLang
@@ -17,7 +22,7 @@ from alfred.nn.enc_vl import EncoderVL
 from alfred.nn.encodings import DatasetLearnedEncoding
 from alfred.nn.dec_object import ObjectClassifier
 from alfred.utils import model_util
-from alfred.utils.data_util import tokens_to_lang
+from alfred.utils.data_util import tokens_to_lang, save_features_to_path, load_features_from_path
 
 #追加
 from alfred.model import mat
@@ -28,6 +33,10 @@ class Model(base.Model):
         transformer agent
         '''
         super().__init__(args, embs_ann, vocab_out, pad, seg)
+
+        nltk.download('punkt')
+        nltk.download('averaged_perceptron_tagger')
+        nltk.download('wordnet')
 
         #追加
         # if args.clip_image or args.clip_text or args.clip_resnet:
@@ -43,6 +52,8 @@ class Model(base.Model):
 
         # if args.mat_action:
         self.mat = mat.AdversarialPerturbationAdder(dim_size)
+
+        self.frames_fc = nn.Linear(args.demb * 2, args.demb)
 
         # encoder and visual embeddings
         self.encoder_vl = EncoderVL(args)
@@ -100,28 +111,72 @@ class Model(base.Model):
     #追加
     def token_to_sentence_list(self, tokens, vocab):
         sentences_list = []
+        nouns_list = []
         for token in tokens:
             # tokens to text
             text = tokens_to_lang(token.tolist(), vocab)
             # remove tokens enclosed in << >>
             text = re.sub(r'<<.*?>>', '.', text)
 
+            nouns = self.extract_nouns(text)
+
             # split text into sentences using period as delimiter
             sentences = text.split('.')
 
             # remove leading and trailing white space from each sentence
             sentences = [s.strip() for s in sentences if s.strip() and (s != "" or s != " " or s != ", ")]
+            nouns = [n.strip() for n in nouns if n.strip() and (n != "" or n != " " or n != ", ")]
             sentences_list.append(sentences)
-        return sentences_list
-    
-    def encode_deberta(self, sentences, device="cuda:0"):
+            nouns_list.append(nouns)
+
+        #nouns_listの中で重複しているものを削除
+        nouns_list = [list(set(nouns)) for nouns in nouns_list]
+        return sentences_list, nouns_list
+
+    def extract_nouns(self, text):
+        nouns = []
+        # 単語をトークン化
+        words = word_tokenize(text)
+        # 単語の品詞タグ付け
+        tagged_words = nltk.pos_tag(words)
+        
+        for word, tag in tagged_words:
+            # 名詞のみを抽出
+            if tag.startswith('NN'):
+                nouns.append(word)
+        
+        #nounsをアルファベット順にする
+        nouns.sort()
+        return nouns
+
+    def encode_deberta(self, epoch, task_paths, sentences, device="cuda:0"):
         """
         Encode two sentences with the deberta model.
         """
+        if epoch != -1:
+            batch_features = []
+            batch_lengths = []
 
-        text_features_list = []
-        lengths_list = []
+            is_saved = True
 
+            for task_path in task_paths:
+                # task_path = task_path.replace("traj_data.json", "deberta.pth")
+                task_path = os.path.join(task_path,"deberta.pth")
+                text_features = load_features_from_path(task_path) #len(words), 768
+
+                if text_features is None:
+                    is_saved = False
+                    break
+
+                batch_features.append(text_features)
+                batch_lengths.append(text_features.shape[0])
+
+            if is_saved:
+                batch_features = pad_sequence(batch_features, batch_first=True) #(batch_size, words_length, 768)
+                return batch_features, torch.tensor(batch_lengths).to(device)
+
+        batch_features = []
+        batch_lengths = []
         for i in range(len(sentences)):
             sentence = sentences[i]
             # 全ての文を.で結合
@@ -131,49 +186,67 @@ class Model(base.Model):
             text_features = self.deberta_model(tokenized).last_hidden_state.squeeze(0).to(device) #ex. (64, 768)
             # print("text_features.shape: ", text_features.shape)
 
-            text_features_list.append(text_features)
-            lengths_list.append(text_features.shape[0])
+            batch_features.append(text_features)
+            batch_lengths.append(text_features.shape[0])
 
-        text_features = pad_sequence(text_features_list, batch_first=True)
+            if epoch != -1:
+                task_path = os.path.join(task_paths[i], "deberta.pth")
+                save_features_to_path(task_path, text_features)
+            # print("text_features(deberta).shape: ", text_features.shape)
+            # print("lengths_list: ", batch_lengths )
 
-        return text_features, torch.tensor(lengths_list).to(device)
+        batch_features = pad_sequence(batch_features, batch_first=True) #(batch_size, words_length, 768)
+
+        return batch_features, torch.tensor(batch_lengths).to(device)
 
     #追加
-    def encode_clip_text(self, sentences, device="cuda:0"):
+    def encode_clip_text(self, epoch, task_paths, sentences, nouns, device="cuda:0"):
         """
-        Encode two sentences with the CLIP model.
+        Encode sentences with the CLIP model.
         """
+        if False:
+        # if epoch != -1 and (epoch != 0 or not self.args.update_feat):
+            batch_features = []
+            batch_lengths = []
 
-        text_features_list = []
-        lengths_list = []
+            is_saved = True
+
+            for task_path in task_paths:
+                task_path = os.path.join(task_path, "clip_text.pth")
+                text_features = load_features_from_path(task_path) #len(sentences), 768
+                if text_features is None:
+                    is_saved = False
+                    print("failed to load features")
+                    break
+                
+                batch_features.append(text_features)
+                batch_lengths.append(text_features.shape[0])
+            
+            if is_saved:
+                batch_features = pad_sequence(batch_features, batch_first=True) #(batch_size, max_sentence_length, 768)
+                return batch_features, torch.tensor(batch_lengths).to(device)
+        
+        batch_features = []
+        batch_lengths = []
 
         for i in range(len(sentences)):
+            # print("sentences[i]: ", sentences[i])
             tokenized = clip.tokenize(sentences[i]).to(device)
-            text_features = self.clip_model.encode_text(tokenized)
-            text_features_list.append(text_features)
-            lengths_list.append(tokenized.shape[0])
-
-        text_features = pad_sequence(text_features_list, batch_first=True)
-
-        return text_features, torch.tensor(lengths_list).to(device)
-
-        # if len(sentences) == 2:
-        #     # Tokenize the text
-        #     tokenized1 = clip.tokenize(sentences[0]).to(device)
-        #     tokenized2 = clip.tokenize(sentences[1]).to(device)
+            tokenized_nouns = clip.tokenize(nouns[i]).to(device)
+            tokenized = torch.cat([tokenized, tokenized_nouns], dim=0)
+            text_features = self.clip_model.encode_text(tokenized) #(len(sentences), 768)
+            batch_features.append(text_features)
+            batch_lengths.append(tokenized.shape[0])
             
-        #     # Encode the text
-        #     text_features1 = self.clip_model.encode_text(tokenized1)
-        #     text_features2 = self.clip_model.encode_text(tokenized2)
+            if epoch != -1:
+                task_path = os.path.join(task_paths[i],  "clip_text.pth")
+                save_features_to_path(task_path, text_features)
+            # print("text_features(clip).shape: ", text_features.shape)
+            # print("lengths_list: ", batch_lengths )
 
-        #     text_features = pad_sequence([text_features1, text_features2], batch_first=True)
-        #     return text_features, torch.tensor([tokenized1.shape[0], tokenized2.shape[0]]).to(device)
-        # else:
-        #     tokenized = clip.tokenize(sentences[0]).to(device)
-        #     text_features = self.clip_model.encode_text(tokenized)
-        #     return text_features, torch.tensor([tokenized.shape[0]]).to(device)
-        
-        #上記はsentencesのshapeが[2, max]であることを前提としているが、それを一般化する
+        batch_features = pad_sequence(batch_features, batch_first=True) #(batch_size, max_sentence_length, 768)
+
+        return batch_features, torch.tensor(batch_lengths).to(device)
 
     #追加
     def concat_embeddings_lang(self, emb_lang, lengths_lang, emb_other, lengths_other, device="cuda:0"):
@@ -212,7 +285,7 @@ class Model(base.Model):
 
         return emb_frame, lengths
 
-    def forward(self, vocab, **inputs):
+    def forward(self, epoch, task_path, vocab, **inputs):
         '''
         forward the model for multiple time-steps (used for training)
         '''
@@ -225,10 +298,10 @@ class Model(base.Model):
             #emb_lang:[batch, max, 768](2つのデータの大きい方をmaxに入れる), lengths_lang:[batch](emb_langのbatch個のデータの長さを持つ.)
             
             # token to sentence
-            sentences = self.token_to_sentence_list(inputs['lang'], vocab)
+            sentences, nouns = self.token_to_sentence_list(inputs['lang'], vocab)
             
             # encode clip
-            emb_clip, lengths_clip = self.encode_clip_text(sentences, device=inputs['lang'].device)
+            emb_clip, lengths_clip = self.encode_clip_text(epoch, task_path, sentences, device=inputs['lang'].device)
             
             # concat clip and lang
             emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
@@ -238,7 +311,7 @@ class Model(base.Model):
         elif self.args.deberta:
             emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
 
-            sentences = self.token_to_sentence_list(inputs['lang'], vocab)
+            sentences, nouns = self.token_to_sentence_list(inputs['lang'], vocab)
 
             emb_deberta, lengths_deberta = self.encode_deberta(sentences, device=inputs['lang'].device)
 
@@ -249,13 +322,13 @@ class Model(base.Model):
         elif self.args.clip_deberta:
             emb_lang, lengths_lang = self.embed_lang(inputs['lang'], vocab)
 
-            sentences = self.token_to_sentence_list(inputs['lang'], vocab)
+            sentences, nouns = self.token_to_sentence_list(inputs['lang'], vocab)
 
             # encode clip
-            emb_clip, lengths_clip = self.encode_clip_text(sentences, device=inputs['lang'].device)
+            emb_clip, lengths_clip = self.encode_clip_text(epoch, task_path, sentences, nouns, device=inputs['lang'].device)
 
             # encode deberta
-            emb_deberta, lengths_deberta = self.encode_deberta(sentences, device=inputs['lang'].device)
+            emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, device=inputs['lang'].device)
 
             # concat clip and lang
             emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
@@ -275,28 +348,10 @@ class Model(base.Model):
 
         #変更(CLIPのimage情報のみを用いる)
         if self.args.clip_image or self.args.clip_resnet:
-            inputs_frames = [inputs['frames'][i] for i in range(len(inputs['frames'])) if i != 0]
-
-            emb_clip = pad_sequence(inputs_frames, batch_first=True, padding_value=0).to("cuda")
-
-            if len(emb_clip.shape) == 4:
-                emb_clip = emb_clip.squeeze(0)
-
             emb_resnet, emb_object = self.embed_frames(inputs['frames'][0])
-
-            #clipとresnetのどちらも使う場合
-            if self.args.clip_resnet:
-                # emb_frames = torch.cat([emb_clip, emb_resnet], dim=1)
-                emb_frames, lengths_frames = self.concat_embeddings_frame(emb_clip, emb_resnet, inputs['lengths_frames'], device=inputs['frames'][0].device)
-                length_frames_max = lengths_frames.max().item()
-                lengths_actions = inputs['lengths_frames'].clone()
-            #clipのみの場合
-            else:
-                emb_frames = emb_clip
-                lengths_frames = inputs['lengths_frames']
-                length_frames_max = inputs['length_frames_max']
-                lengths_actions = lengths_frames.clone()
-        
+            emb_clip = inputs['frames'][1]
+            emb_frames = torch.cat([emb_resnet, emb_clip], dim=2)
+            emb_frames = self.frames_fc(emb_frames)
         else:
             #元々
             # embed frames and actions
@@ -307,12 +362,12 @@ class Model(base.Model):
             
             else:
                 emb_frames, emb_object = self.embed_frames(inputs['frames'][0])
-            lengths_frames = inputs['lengths_frames']
-            length_frames_max = inputs['length_frames_max']
-            lengths_actions = lengths_frames.clone()
 
         #emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]
         emb_actions = self.embed_actions(inputs['action'])
+        lengths_frames = inputs['lengths_frames']
+        length_frames_max = inputs['length_frames_max']
+        lengths_actions = lengths_frames.clone()
 
         if self.args.mat_text:
             emb_lang = self.mat(emb_lang)
@@ -335,11 +390,6 @@ class Model(base.Model):
         encoder_out_visual = encoder_out[
             :, lengths_lang.max().item():
             lengths_lang.max().item() + length_frames_max]
-
-        if self.args.clip_resnet:
-            #encoder_out_visualを半分にして足し合わせる
-            middle_shape = encoder_out_visual.shape[1]
-            encoder_out_visual = encoder_out_visual[:, :middle_shape//2, :] + encoder_out_visual[:, middle_shape//2:,:]
 
         # get the output actions
         decoder_input = encoder_out_visual.reshape(-1, self.args.demb)

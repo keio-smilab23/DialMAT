@@ -207,7 +207,7 @@ def gather_data(output_path, num_workers):
                 path_symlink.symlink_to(path_file)
 
     # partitions = ('pseudo_valid', 'pseudo_test')
-    partitions = ('train', 'valid_seen', 'pseudo_test', 'pseudo_valid')
+    partitions = ('train', 'valid_seen', 'valid_unseen')
     if not (output_path / '.deleting_worker_dirs').exists():
         for partition in partitions:
             print('Processing {} trajectories'.format(partition))

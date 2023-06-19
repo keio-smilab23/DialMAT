@@ -147,7 +147,7 @@ def cfg_train():
     # number of heads in multi-head attention
     encoder_heads = 12
     # number of layers in transformer encoder
-    encoder_layers = 2
+    encoder_layers = 4
     # how many previous actions to use as input
     num_input_actions = 1
     # which encoder to use for language encoder (by default no encoder)

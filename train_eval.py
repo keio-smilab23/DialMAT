@@ -32,6 +32,10 @@ from alfred.data.zoo.alfred import AlfredDataset
 from alfred.eval.eval_subgoals import *
 from seq2seq_questioner_multimodel import *
 from utils import *
+from tqdm import tqdm
+import nltk
+from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.tag import pos_tag
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 N_ITER = 1000
@@ -126,7 +130,7 @@ def trainIters(args, lang, dataset, encoder, decoder, critic, performer, extract
             data_instruct_list.append(i)
     print("dataset length", len(data_instruct_list))
 
-    for it in range(0, n_iters):
+    for it in tqdm(range(n_iters)):
         log_probs = []
         log_prob = 0
         values = []
@@ -385,7 +389,7 @@ def evalIters(args, lang, dataset, encoder, decoder, critic, performer, extracto
     n_iters = len(data_instruct_list) * 4
 
     # first sample a subgoal and get the instruction and image feature
-    for dataset_idx in data_instruct_list:
+    for dataset_idx in tqdm(data_instruct_list):
         task_json = dataset.jsons_and_keys[dataset_idx]
         turk_annos = task_json[0]["turk_annotations"]["anns"]
         subgoal_idxs = [sg['high_idx'] for sg in task_json[0]['plan']['high_pddl']]
@@ -688,8 +692,8 @@ def trainModel(args):
 def evalModel(args):
     np.random.seed(0)
     # data_split = "unseen"
-    data_split = "pseudo_test"
-    # data_split = "valid_unseen"
+    # data_split = "pseudo_test"
+    data_split = "valid_unseen"
     train_id = 1
     logging.basicConfig(filename='./logs/rl_anytime_eval_'+ data_split + str(train_id) + '.log', level=logging.INFO)
 
@@ -758,6 +762,10 @@ def main():
     # parser.add_argument("--wandb_run", type=str, default="tmp_run")
 
     args = parser.parse_args()
+
+    nltk.download('punkt')
+    nltk.download('averaged_perceptron_tagger')
+    nltk.download('wordnet')
 
     # wandb.init(project="DialFRED-2023", name=args.wandb_run)
 

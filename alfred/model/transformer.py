@@ -80,6 +80,13 @@ class Model(base.Model):
         #         encoder_output_size, args.demb)
         # else:
         self.dec_action = nn.Linear(
+            encoder_output_size, args.demb * 2)
+        self.dec_action1 = nn.Linear(
+            args.demb * 2, 1024)
+        self.dec_action2 = nn.Linear(
+            1024, args.demb)
+        
+        self.dec_input_object = nn.Linear(
             encoder_output_size, args.demb)
         
         self.dec_object = ObjectClassifier(encoder_output_size)
@@ -204,7 +211,7 @@ class Model(base.Model):
         """
         Encode sentences with the CLIP model.
         """
-        if False:
+        if epoch != -1:
         # if epoch != -1 and (epoch != 0 or not self.args.update_feat):
             batch_features = []
             batch_lengths = []
@@ -352,6 +359,7 @@ class Model(base.Model):
             emb_clip = inputs['frames'][1]
             emb_frames = torch.cat([emb_resnet, emb_clip], dim=2)
             emb_frames = self.frames_fc(emb_frames)
+            emb_object = self.dec_input_object(emb_frames)
         else:
             #元々
             # embed frames and actions
@@ -394,6 +402,8 @@ class Model(base.Model):
         # get the output actions
         decoder_input = encoder_out_visual.reshape(-1, self.args.demb)
         action_emb_flat = self.dec_action(decoder_input)
+        action_emb_flat = self.dec_action1(action_emb_flat)
+        action_emb_flat = self.dec_action2(action_emb_flat)
         action_flat = action_emb_flat.mm(self.emb_action.weight.t())
         action = action_flat.view(
             *encoder_out_visual.shape[:2], *action_flat.shape[1:])
@@ -520,6 +530,8 @@ class Model(base.Model):
              torch.zeros((1, 1)).to(device).long()), dim=1)
         
         model_out = self.forward(
+            epoch=-1,
+            task_path="",
             vocab=vocab['word'],
             lang=input_dict['lang'],
             lengths_lang=input_dict['lengths_lang'],
@@ -597,6 +609,12 @@ class Model(base.Model):
         super().init_weights(init_range)
         self.dec_action.bias.data.zero_()
         self.dec_action.weight.data.uniform_(-init_range, init_range)
+        self.dec_action1.bias.data.zero_()
+        self.dec_action1.weight.data.uniform_(-init_range, init_range)
+        self.dec_action2.bias.data.zero_()
+        self.dec_action2.weight.data.uniform_(-init_range, init_range)
+        self.dec_input_object.bias.data.zero_()
+        self.dec_input_object.weight.data.uniform_(-init_range, init_range)
         self.emb_action.weight.data.uniform_(-init_range, init_range)
 
     def compute_metrics(self, model_out, gt_dict, metrics_dict, verbose=False):

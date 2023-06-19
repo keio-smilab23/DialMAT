@@ -84,9 +84,9 @@ def cfg_train():
     wandb_name = 'deberta'
     clip_image = False
     clip_text = False
-    clip_resnet = True
-    clip_deberta = True
-    deberta = False
+    clip_resnet = False
+    clip_deberta = False
+    deberta = True
     mat_text = True
     mat_image = True
     mat_action = True
@@ -145,9 +145,9 @@ def cfg_train():
     # size of transformer embeddings
     demb = 768
     # number of heads in multi-head attention
-    encoder_heads = 12
+    encoder_heads = 6
     # number of layers in transformer encoder
-    encoder_layers = 4
+    encoder_layers = 6
     # how many previous actions to use as input
     num_input_actions = 1
     # which encoder to use for language encoder (by default no encoder)

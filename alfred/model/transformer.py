@@ -320,7 +320,7 @@ class Model(base.Model):
 
             sentences, nouns = self.token_to_sentence_list(inputs['lang'], vocab)
 
-            emb_deberta, lengths_deberta = self.encode_deberta(sentences, device=inputs['lang'].device)
+            emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, device=inputs['lang'].device)
 
             emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device=inputs['lang'].device)
 
@@ -354,22 +354,12 @@ class Model(base.Model):
 
 
         #変更(CLIPのimage情報のみを用いる)
-        if self.args.clip_image or self.args.clip_resnet:
-            emb_resnet, emb_object = self.embed_frames(inputs['frames'][0])
-            emb_clip = inputs['frames'][1]
-            emb_frames = torch.cat([emb_resnet, emb_clip], dim=2)
-            emb_frames = self.frames_fc(emb_frames)
-            emb_object = self.dec_input_object(emb_frames)
-        else:
-            #元々
-            # embed frames and actions
-            if len(inputs["frames"]) == 1: #推論時
-                if len(inputs["frames"].shape) != 5:
-                    inputs["frames"] = inputs["frames"].unsqueeze(0)
-                emb_frames, emb_object = self.embed_frames(inputs['frames'])
-            
-            else:
-                emb_frames, emb_object = self.embed_frames(inputs['frames'][0])
+        emb_resnet, emb_object = self.embed_frames(inputs['frames'][0])
+        emb_clip = inputs['frames'][1]
+        emb_frames = emb_resnet
+        # emb_frames = torch.cat([emb_resnet, emb_clip], dim=2)
+        # emb_frames = self.frames_fc(emb_frames)
+        # emb_object = self.dec_input_object(emb_frames)
 
         #emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]
         emb_actions = self.embed_actions(inputs['action'])
@@ -387,8 +377,7 @@ class Model(base.Model):
         #     emb_object = self.mat(emb_object)
 
         #変更
-        if not (self.args.clip_image or self.args.clip_resnet):
-            assert emb_frames.shape == emb_actions.shape
+        assert emb_frames.shape == emb_actions.shape
 
         # concatenate language, frames and actions and add encodings
         encoder_out, _ = self.encoder_vl(

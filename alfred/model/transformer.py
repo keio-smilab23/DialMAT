@@ -79,12 +79,14 @@ class Model(base.Model):
         #     self.dec_action = nn.Linear(
         #         encoder_output_size, args.demb)
         # else:
+        self.object_fc = nn.Linear(
+            encoder_output_size * 2, args.demb)
         self.dec_action = nn.Linear(
-            encoder_output_size, args.demb * 2)
+            encoder_output_size * 2, args.demb * 3)
         self.dec_action1 = nn.Linear(
-            args.demb * 2, 1024)
+            args.demb * 3, encoder_output_size * 2)
         self.dec_action2 = nn.Linear(
-            1024, args.demb)
+            encoder_output_size * 2, args.demb)
         
         self.dec_input_object = nn.Linear(
             encoder_output_size, args.demb)
@@ -350,9 +352,9 @@ class Model(base.Model):
         emb_resnet, emb_object = self.embed_frames(inputs['frames'][0])
         emb_clip = inputs['frames'][1]
         emb_frames = emb_resnet
-        # emb_frames = torch.cat([emb_resnet, emb_clip], dim=2)
-        # emb_frames = self.frames_fc(emb_frames)
-        # emb_object = self.dec_input_object(emb_frames)
+        emb_frames = torch.cat([emb_resnet, emb_clip], dim=2)
+        emb_frames = self.frames_fc(emb_frames)
+        emb_object = self.dec_input_object(emb_frames)
 
         #emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]
         emb_actions = self.embed_actions(inputs['action'])
@@ -381,8 +383,17 @@ class Model(base.Model):
             :, lengths_lang.max().item():
             lengths_lang.max().item() + length_frames_max]
 
+        encoder_out_action = encoder_out[
+            :, lengths_lang.max().item() + length_frames_max:
+            ]
+        
+
         # get the output actions
-        decoder_input = encoder_out_visual.reshape(-1, self.args.demb)
+        decoder_input_visual = encoder_out_visual.reshape(-1, self.args.demb)
+        decoder_input_action = encoder_out_action.reshape(-1, self.args.demb)
+
+        decoder_input = torch.cat([decoder_input_visual, decoder_input_action], dim=1)
+
         action_emb_flat = self.dec_action(decoder_input)
         action_emb_flat = self.dec_action1(action_emb_flat)
         action_emb_flat = self.dec_action2(action_emb_flat)
@@ -393,7 +404,8 @@ class Model(base.Model):
         # get the output objects
         emb_object_flat = emb_object.view(-1, self.args.demb)
 
-        decoder_input = decoder_input + emb_object_flat
+        decoder_input_object = self.object_fc(decoder_input)
+        decoder_input = decoder_input_object + emb_object_flat
         
         object_flat = self.dec_object(decoder_input)
 
@@ -580,6 +592,10 @@ class Model(base.Model):
         self.dec_action1.weight.data.uniform_(-init_range, init_range)
         self.dec_action2.bias.data.zero_()
         self.dec_action2.weight.data.uniform_(-init_range, init_range)
+        self.frames_fc.bias.data.zero_()
+        self.frames_fc.weight.data.uniform_(-init_range, init_range)
+        self.object_fc.bias.data.zero_()
+        self.object_fc.weight.data.uniform_(-init_range, init_range)
         self.dec_input_object.bias.data.zero_()
         self.dec_input_object.weight.data.uniform_(-init_range, init_range)
         self.emb_action.weight.data.uniform_(-init_range, init_range)

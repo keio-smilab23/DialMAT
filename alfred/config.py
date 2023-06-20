@@ -84,9 +84,9 @@ def cfg_train():
     wandb_name = 'deberta'
     clip_image = False
     clip_text = False
-    clip_resnet = False
-    clip_deberta = False
-    deberta = True
+    clip_resnet = True
+    clip_deberta = True
+    deberta = False
     mat_text = True
     mat_image = True
     mat_action = True

@@ -105,14 +105,7 @@ class Model(base.Model):
         # final touch
         self.init_weights()
 
-        # self.reset()
-        if args.clip_image:
-            # self.reset_for_clip()
-            self.reset_for_both()
-        elif args.clip_resnet:
-            self.reset_for_both()
-        else:
-            self.reset()
+        self.reset_for_both()
 
 
     #追加
@@ -477,12 +470,8 @@ class Model(base.Model):
         '''
         forward the model for a single time-step (used for real-time execution during eval)
         '''
-        if self.args.clip_image or self.args.clip_resnet:
-            frames = input_dict['frames']
-            device = frames[0].device
-        else:
-            frames = input_dict['frames'][0]
-            device = frames.device
+        frames = input_dict['frames']
+        device = frames[0].device
 
 
         #もともと
@@ -495,23 +484,12 @@ class Model(base.Model):
                 (self.action_traj.to(device), prev_action_tensor), dim=1)
 
         #変更
-        if self.args.clip_image or self.args.clip_resnet:
-            self.frames_traj = [torch.cat(
-                (self.frames_traj[0].to(device), frames[0][None]), dim=1), torch.cat(
-                (self.frames_traj[1].to(device), frames[1][None]), dim=1)]
-            frames = copy.deepcopy(self.frames_traj)
-            if self.args.clip_resnet:
-                lengths_frames = torch.tensor([self.frames_traj[0].size(1)])
-                length_frames_max=self.frames_traj[0].size(1)
-            else:
-                lengths_frames = torch.tensor([self.frames_traj[1].size(1)])
-                length_frames_max=self.frames_traj[1].size(1)
-        else:
-            self.frames_traj = torch.cat(
-                (self.frames_traj.to(device), frames[None]), dim=1)
-            frames = self.frames_traj.clone()
-            lengths_frames = torch.tensor([self.frames_traj.size(1)])
-            length_frames_max=self.frames_traj.size(1)
+        self.frames_traj = [torch.cat(
+            (self.frames_traj[0].to(device), frames[0][None]), dim=1), torch.cat(
+            (self.frames_traj[1].to(device), frames[1][None]), dim=1)]
+        frames = copy.deepcopy(self.frames_traj)
+        lengths_frames = torch.tensor([self.frames_traj[0].size(1)])
+        length_frames_max=self.frames_traj[0].size(1)
         
         # at timestep t we have t-1 prev actions so we should pad them
         action_traj_pad = torch.cat(

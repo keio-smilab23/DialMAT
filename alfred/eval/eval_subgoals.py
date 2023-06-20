@@ -157,13 +157,7 @@ def evaluate_subgoals_start_qa(
         print(traj_data)
     # reset model and setup scene
     #変更(for clip)
-    if args.clip_image:
-        # model.reset_for_clip()
-        model.reset_for_both()
-    elif args.clip_resnet:
-        model.reset_for_both()
-    else:
-        model.reset()
+    model.reset_for_both()
         
     eval_util.setup_scene(env, traj_data, reward_type='dense')
     vocab = {'word': dataset.vocab_in, 'action_low': model.vocab_out}

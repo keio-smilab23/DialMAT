@@ -6,7 +6,7 @@ from torch.nn import functional as F
 
 from alfred.utils import model_util
 from alfred.nn.encodings import PosEncoding, PosLearnedEncoding, TokenLearnedEncoding
-
+torch.autograd.set_detect_anomaly(True)
 
 class EncoderVL(nn.Module):
     def __init__(self, args):
@@ -57,15 +57,15 @@ class EncoderVL(nn.Module):
             (len(emb_lang), length_mask_pad), device=emb_lang.device).bool()
         for i, (len_l, len_f, len_a) in enumerate(
                 zip(lengths_lang, lengths_frames, lengths_actions)):
-                # # mask padded words
-                # mask_pad[i, len_l: length_lang_max] = True
-                # # mask padded frames
-                # mask_pad[i, length_lang_max + len_f:
-                #         length_lang_max + length_frames_max] = True
-                # mask_pad[i, length_lang_max + length_frames_max + len_f:
-                #         length_lang_max + length_frames_max * 2] = True
-                # # mask padded actions
-                # mask_pad[i, length_lang_max + length_frames_max * 2 + len_a:] = True
+            # # mask padded words
+            # mask_pad[i, len_l: length_lang_max] = True
+            # # mask padded frames
+            # mask_pad[i, length_lang_max + len_f:
+            #         length_lang_max + length_frames_max] = True
+            # mask_pad[i, length_lang_max + length_frames_max + len_f:
+            #         length_lang_max + length_frames_max * 2] = True
+            # # mask padded actions
+            # mask_pad[i, length_lang_max + length_frames_max * 2 + len_a:] = True
                 
             # mask padded words
             mask_pad[i, len_l: length_lang_max] = True
@@ -90,6 +90,12 @@ class EncoderVL(nn.Module):
                 (mask_pad.shape[1], mask_pad.shape[1]),
                 device=mask_pad.device).float()
         
+        # print("emb_lang.shape", emb_lang.shape)
+        # print("emb_frames.shape", emb_frames.shape)
+        # print("emb_actions.shape", emb_actions.shape)
+        # print("emb_all.shape", emb_all.shape)
+        # print("mask_attn.shape", mask_attn.shape)
+        # print("mask_pad.shape", mask_pad.shape)
         # encode the inputs
         output = self.enc_transformer(
             emb_all.transpose(0, 1), mask_attn, mask_pad).transpose(0, 1)

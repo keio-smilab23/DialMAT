@@ -84,7 +84,7 @@ def cfg_train():
     wandb_name = 'deberta'
     clip_image = False
     clip_text = False
-    clip_resnet = True
+    clip_resnet = False
     clip_deberta = True
     deberta = False
     mat_text = True
@@ -102,7 +102,7 @@ def cfg_train():
 
     # HYPER PARAMETERS
     # batch size
-    batch = 2
+    batch = 4
     # number of epochs
     epochs = 20
     # optimizer type, must be in ('adam', 'adamw')
@@ -143,11 +143,11 @@ def cfg_train():
 
     # TRANSFORMER settings
     # size of transformer embeddings
-    demb = 768
+    demb = 768 * 2
     # number of heads in multi-head attention
-    encoder_heads = 6
+    encoder_heads = 12
     # number of layers in transformer encoder
-    encoder_layers = 6
+    encoder_layers = 2
     # how many previous actions to use as input
     num_input_actions = 1
     # which encoder to use for language encoder (by default no encoder)

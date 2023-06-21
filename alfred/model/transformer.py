@@ -27,6 +27,8 @@ from alfred.utils.data_util import tokens_to_lang, save_features_to_path, load_f
 #追加
 from alfred.model import mat
 
+torch.autograd.set_detect_anomaly(True)
+
 class Model(base.Model):
     def __init__(self, args, embs_ann, vocab_out, pad, seg, dim_size: int=768, rho1=0.9, rho2=0.999, lr_reduce=2e-3 / 8e-5, step_size=4):
         '''
@@ -51,9 +53,11 @@ class Model(base.Model):
             param.requires_grad = False
 
         # if args.mat_action:
-        self.mat = mat.AdversarialPerturbationAdder(dim_size)
+        self.mat = mat.AdversarialPerturbationAdder(args.demb)
 
         self.frames_fc = nn.Linear(args.demb * 2, args.demb)
+        self.lang_clip_fc = nn.Linear(768, args.demb)
+        self.lang_deberta_fc = nn.Linear(768, args.demb)
 
         # encoder and visual embeddings
         self.encoder_vl = EncoderVL(args)
@@ -63,7 +67,7 @@ class Model(base.Model):
         # feature embeddings
         self.vis_feat = FeatureFlat(
             input_shape=self.visual_tensor_shape,
-            output_size=args.demb)
+            output_size=args.demb // 2)
         # dataset id learned encoding (applied after the encoder_lang)
         self.dataset_enc = None
         if args.enc['dataset']:
@@ -80,23 +84,23 @@ class Model(base.Model):
         #         encoder_output_size, args.demb)
         # else:
         self.object_fc = nn.Linear(
-            encoder_output_size * 2, args.demb)
+            encoder_output_size , args.demb)
         self.dec_action = nn.Linear(
-            encoder_output_size * 2, args.demb * 3)
+            encoder_output_size , args.demb * 2)
         self.dec_action1 = nn.Linear(
-            args.demb * 3, encoder_output_size * 2)
+            args.demb * 2, 1024)
         self.dec_action2 = nn.Linear(
-            encoder_output_size * 2, args.demb)
+            1024, args.demb)
         
         self.dec_input_object = nn.Linear(
-            encoder_output_size, args.demb)
+            encoder_output_size , args.demb)
         
         self.dec_object = ObjectClassifier(encoder_output_size)
 
         # skip connection for object predictions
         self.object_feat = FeatureFlat(
             input_shape=self.visual_tensor_shape,
-            output_size=args.demb)
+            output_size=args.demb // 2)
 
         # progress monitoring heads
         if self.args.progress_aux_loss_wt > 0:
@@ -329,14 +333,21 @@ class Model(base.Model):
             # encode clip
             emb_clip, lengths_clip = self.encode_clip_text(epoch, task_path, sentences, nouns, device=inputs['lang'].device)
 
+            #emb_clipのデータ型をfloat32に変換
+            emb_clip = emb_clip.to(torch.float32)
+            emb_clip = self.lang_clip_fc(emb_clip)
+
             # encode deberta
             emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, device=inputs['lang'].device)
 
+            emb_deberta = self.lang_deberta_fc(emb_deberta)
+            
             # concat clip and lang
             emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
 
             # concat deberta and lang
             emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device=inputs['lang'].device)
+
 
             emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
 
@@ -351,10 +362,7 @@ class Model(base.Model):
         #変更(CLIPのimage情報のみを用いる)
         emb_resnet, emb_object = self.embed_frames(inputs['frames'][0])
         emb_clip = inputs['frames'][1]
-        emb_frames = emb_resnet
         emb_frames = torch.cat([emb_resnet, emb_clip], dim=2)
-        emb_frames = self.frames_fc(emb_frames)
-        emb_object = self.dec_input_object(emb_frames)
 
         #emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]
         emb_actions = self.embed_actions(inputs['action'])
@@ -368,31 +376,42 @@ class Model(base.Model):
             emb_frames = self.mat(emb_frames)
         if self.args.mat_action:
             emb_actions = self.mat(emb_actions)
+
+        emb_object = emb_frames.clone()
+        emb_object = self.dec_input_object(emb_object)
+
         # if self.args.mat_object:
         #     emb_object = self.mat(emb_object)
 
         #変更
-        assert emb_frames.shape == emb_actions.shape
+        # assert emb_frames.shape == emb_actions.shape
 
         # concatenate language, frames and actions and add encodings
         encoder_out, _ = self.encoder_vl(
             emb_lang, emb_frames, emb_actions, lengths_lang,
             lengths_frames, lengths_actions, length_frames_max, is_clip_resnet=self.args.clip_resnet)
         # use outputs corresponding to visual frames for prediction only
+        # encoder_out_visual = encoder_out[
+        #     :, lengths_lang.max().item():
+        #     lengths_lang.max().item() + length_frames_max]
+
+        # encoder_out_clip = encoder_out[
+        #     :, lengths_lang.max().item() + length_frames_max:
+        #     lengths_lang.max().item() + length_frames_max * 2
+        #     ]
+
         encoder_out_visual = encoder_out[
             :, lengths_lang.max().item():
-            lengths_lang.max().item() + length_frames_max]
-
-        encoder_out_action = encoder_out[
-            :, lengths_lang.max().item() + length_frames_max:
+            lengths_lang.max().item() + length_frames_max
             ]
         
 
         # get the output actions
-        decoder_input_visual = encoder_out_visual.reshape(-1, self.args.demb)
-        decoder_input_action = encoder_out_action.reshape(-1, self.args.demb)
+        decoder_input = encoder_out_visual.reshape(-1, self.args.demb)
+        # decoder_input_clip = encoder_out_clip.reshape(-1, self.args.demb)
+        # decoder_input_action = encoder_out_action.reshape(-1, self.args.demb)
 
-        decoder_input = torch.cat([decoder_input_visual, decoder_input_action], dim=1)
+        # decoder_input = encoder_out_action.reshape(-1, self.args.demb)
 
         action_emb_flat = self.dec_action(decoder_input)
         action_emb_flat = self.dec_action1(action_emb_flat)
@@ -404,8 +423,7 @@ class Model(base.Model):
         # get the output objects
         emb_object_flat = emb_object.view(-1, self.args.demb)
 
-        decoder_input_object = self.object_fc(decoder_input)
-        decoder_input = decoder_input_object + emb_object_flat
+        decoder_input = decoder_input + emb_object_flat
         
         object_flat = self.dec_object(decoder_input)
 
@@ -594,6 +612,10 @@ class Model(base.Model):
         self.dec_action2.weight.data.uniform_(-init_range, init_range)
         self.frames_fc.bias.data.zero_()
         self.frames_fc.weight.data.uniform_(-init_range, init_range)
+        self.lang_clip_fc.bias.data.zero_()
+        self.lang_clip_fc.weight.data.uniform_(-init_range, init_range)
+        self.lang_deberta_fc.bias.data.zero_()
+        self.lang_deberta_fc.weight.data.uniform_(-init_range, init_range)
         self.object_fc.bias.data.zero_()
         self.object_fc.weight.data.uniform_(-init_range, init_range)
         self.dec_input_object.bias.data.zero_()

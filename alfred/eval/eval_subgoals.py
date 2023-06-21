@@ -188,7 +188,6 @@ def evaluate_subgoals_start_qa(
 def evaluate_subgoals_middle_qa(
         env, model, dataset, extractor, trial_uid, dataset_idx, args, obj_predictor, init_states, interm_states, qa, num_rollout=5):
     # modification of evaluate_subgoals: add qa and skip init
-    # model.reset_for_clip()
     # add initial states from expert initialization
     task_info, vocab, prev_action, init_failed, expert_dict = init_states
     

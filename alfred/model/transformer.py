@@ -53,7 +53,9 @@ class Model(base.Model):
             param.requires_grad = False
 
         # if args.mat_action:
-        self.mat = mat.AdversarialPerturbationAdder(args.demb)
+        self.lang_mat = mat.AdversarialPerturbationAdder(args.demb)
+        self.frames_mat = mat.AdversarialPerturbationAdder(args.demb)
+        self.actions_mat = mat.AdversarialPerturbationAdder(args.demb)
 
         self.frames_fc = nn.Linear(args.demb * 2, args.demb)
         self.lang_clip_fc = nn.Linear(768, args.demb)
@@ -371,11 +373,11 @@ class Model(base.Model):
         lengths_actions = lengths_frames.clone()
 
         if self.args.mat_text:
-            emb_lang = self.mat(emb_lang)
+            emb_lang = self.lang_mat(emb_lang)
         if self.args.mat_image:
-            emb_frames = self.mat(emb_frames)
+            emb_frames = self.frames_mat(emb_frames)
         if self.args.mat_action:
-            emb_actions = self.mat(emb_actions)
+            emb_actions = self.actions_mat(emb_actions)
 
         emb_object = emb_frames.clone()
         emb_object = self.dec_input_object(emb_object)

@@ -179,7 +179,12 @@ python eval_from_metadata.py --mode eval  --performer-path model_09.pth --questi
 
 If you use our code or data, please consider citing our paper.
 ```bash
-
+@InProceedings{dialmat2023,
+  title={{DialMAT: Dialogue-Enabled Transformer with Moment-Based Adversarial Training}},
+  author={Kaneda, Kanta and Korekata, Ryosuke and Wada, Yuiga and Nagashima, Shunya and Kambara, Motonari and Iioka, Yui and Matsuo, Haruka and Imai, Yuto and Nishimura, Takayuki and Sugiura, Komei}
+  year= {2023},
+  booktitle= {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops},
+}
 ```
 
 ## License

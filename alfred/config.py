@@ -112,7 +112,7 @@ def cfg_train():
     # learning rate settings
     lr = {
         # learning rate initial value
-        'init': 2e-4, #default 1e-4
+        'init': 8e-5, #default 1e-4
         # lr scheduler type: {'linear', 'cosine', 'triangular', 'triangular2'}
         'profile': 'linear',
         # (LINEAR PROFILE) num epoch to adjust learning rate
@@ -145,13 +145,9 @@ def cfg_train():
     # size of transformer embeddings
     demb = 768 * 2
     # number of heads in multi-head attention
-    encoder_heads = 12
+    encoder_heads = 16
     # number of layers in transformer encoder
-<<<<<<< HEAD
     encoder_layers = 2
-=======
-    encoder_layers = 4
->>>>>>> 09394cda9754629052d967a7ab87f61d02281f31
     # how many previous actions to use as input
     num_input_actions = 1
     # which encoder to use for language encoder (by default no encoder)
@@ -175,19 +171,15 @@ def cfg_train():
     # DROPOUTS
     dropout = {
         # dropout rate for language (goal + instr)
-        'lang': 0.2,
+        'lang': 0.0,
         # dropout rate for Resnet feats
         'vis': 0.2,
         # dropout rate for processed lang and visual embeddings
-        'emb': 0.2,
+        'emb': 0.0,
         # transformer model specific dropouts
         'transformer': {
             # dropout for transformer encoder
-<<<<<<< HEAD
-            'encoder': 0.0,
-=======
-            'encoder': 0.2,
->>>>>>> 09394cda9754629052d967a7ab87f61d02281f31
+            'encoder': 0.1,
             # remove previous actions
             'action': 0.0,
         },

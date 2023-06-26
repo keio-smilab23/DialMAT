@@ -104,7 +104,7 @@ def cfg_train():
     # batch size
     batch = 4
     # number of epochs
-    epochs = 20
+    epochs = 30
     # optimizer type, must be in ('adam', 'adamw')
     optimizer = 'adamw'
     # L2 regularization weight
@@ -112,7 +112,7 @@ def cfg_train():
     # learning rate settings
     lr = {
         # learning rate initial value
-        'init': 5e-5, #default 1e-4
+        'init': 2e-4, #default 1e-4
         # lr scheduler type: {'linear', 'cosine', 'triangular', 'triangular2'}
         'profile': 'linear',
         # (LINEAR PROFILE) num epoch to adjust learning rate
@@ -145,9 +145,9 @@ def cfg_train():
     # size of transformer embeddings
     demb = 768 * 2
     # number of heads in multi-head attention
-    encoder_heads = 6
+    encoder_heads = 12
     # number of layers in transformer encoder
-    encoder_layers = 6
+    encoder_layers = 2
     # how many previous actions to use as input
     num_input_actions = 1
     # which encoder to use for language encoder (by default no encoder)
@@ -173,13 +173,13 @@ def cfg_train():
         # dropout rate for language (goal + instr)
         'lang': 0.0,
         # dropout rate for Resnet feats
-        'vis': 0.3,
+        'vis': 0.2,
         # dropout rate for processed lang and visual embeddings
         'emb': 0.0,
         # transformer model specific dropouts
         'transformer': {
             # dropout for transformer encoder
-            'encoder': 0.1,
+            'encoder': 0.0,
             # remove previous actions
             'action': 0.0,
         },

@@ -90,7 +90,7 @@ class Model(base.Model):
         self.dec_action = nn.Linear(
             encoder_output_size , args.demb *2)
         self.dec_action1 = nn.Linear(
-            args.demb *2, int((args.demb * 3)/2))
+            args.demb *2, args.demb)
         self.dec_action2 = nn.Linear(
             int((args.demb * 3)/2), args.demb)
         self.dec_action3 = nn.Linear(
@@ -419,8 +419,8 @@ class Model(base.Model):
 
         action_emb_flat = self.dec_action(decoder_input)
         action_emb_flat = self.dec_action1(action_emb_flat)
-        action_emb_flat = self.dec_action2(action_emb_flat)
-        action_emb_flat = self.dec_action3(action_emb_flat)
+        # action_emb_flat = self.dec_action2(action_emb_flat)
+        # action_emb_flat = self.dec_action3(action_emb_flat)
         action_flat = action_emb_flat.mm(self.emb_action.weight.t())
         action = action_flat.view(
             *encoder_out_visual.shape[:2], *action_flat.shape[1:])

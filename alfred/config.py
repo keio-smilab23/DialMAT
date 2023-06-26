@@ -104,7 +104,7 @@ def cfg_train():
     # batch size
     batch = 4
     # number of epochs
-    epochs = 30
+    epochs = 20
     # optimizer type, must be in ('adam', 'adamw')
     optimizer = 'adamw'
     # L2 regularization weight

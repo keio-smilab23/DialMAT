@@ -10,9 +10,10 @@ from tqdm import tqdm
 from importlib import import_module
 from torch import nn
 from tensorboardX import SummaryWriter
+from torchinfo import summary
 
 from alfred.utils import data_util, model_util
-
+from vocab import Vocab
 
 class LearnedModel(nn.Module):
     def __init__(self, args, embs_ann, vocab_out):
@@ -42,6 +43,9 @@ class LearnedModel(nn.Module):
         vocabs_in = {'{};{}'.format(
             loader.dataset.name, loader.dataset.ann_type): loader.dataset.vocab_in
                      for loader in loaders.values()}
+        #追加
+        self.model.vocabs_in = vocabs_in
+
         epoch_length = len(next(iter(loaders_train.values())))
         # initialize summary writer for tensorboardX
         self.summary_writer = SummaryWriter(log_dir=self.args.dout)
@@ -75,7 +79,10 @@ class LearnedModel(nn.Module):
 
                 # do the forward passes
                 model_outs, losses_train = {}, {}
+                
                 for batch_name, (task_path, traj_data, input_dict, gt_dict) in batches.items():
+                    input_size = ([(4, 72), (4, 780), (4,), (4, 72, 512, 7, 7), (4, 72, 768), (4,)])
+                    summary(self.model, input_size=input_size, col_names=["output_size", "num_params", "mult_adds"])
                     model_outs[batch_name] = self.model.forward(
                         epoch,
                         task_path,

@@ -39,7 +39,8 @@ class Model(base.Model):
         nltk.download('punkt')
         nltk.download('averaged_perceptron_tagger')
         nltk.download('wordnet')
-
+        #追加
+        self.vocabs_in = None
         #追加
         # if args.clip_image or args.clip_text or args.clip_resnet:
         self.clip_model, self.clip_preprocess = clip.load("ViT-L/14", device="cuda")
@@ -295,10 +296,26 @@ class Model(base.Model):
 
         return emb_frame, lengths
 
-    def forward(self, epoch, task_path, vocab, **inputs):
+    def forward(self, action, lang, lengths_lang, frames_resnet, frames_clip, lengths_frames):
         '''
         forward the model for multiple time-steps (used for training)
         '''
+        epoch = -1
+        task_path = None
+        lengths_frames = torch.tensor([frames_resnet.shape[1], frames_resnet.shape[1]]).to('cuda')
+        lengths_lang = torch.tensor([lang.shape[1], lang.shape[1]]).to('cuda')
+        length_frames_max = lengths_frames.max().item()
+        length_lang_max = lengths_lang.max().item()
+        frames = [frames_resnet, frames_clip]
+        print("lang", lang.shape)
+        #langの型をIntのTensorに変更
+        lang = lang.type(torch.LongTensor).to('cuda')
+        action = action.type(torch.LongTensor).to('cuda')
+        datasets = []
+        ann_types = iter('lang')
+        vocab = self.vocabs_in["lmdb_augmented_human_subgoal;lang"]
+        inputs = {'action': action, 'lang': lang, 'frames': frames, 'lengths_frames': lengths_frames, 'length_frames_max': length_frames_max, 'length_lang_max': length_lang_max, 'lengths_lang': lengths_lang}
+
         # embed language
         output = {}
 
@@ -334,23 +351,27 @@ class Model(base.Model):
 
             sentences, nouns = self.token_to_sentence_list(inputs['lang'], vocab)
 
+            # print("sentences", sentences)
+            # print("nouns", nouns)
+            sentences = [['put a warm slice of bread on the shelf', 'go to the countertop , grab the butterknife', 'butterknife', 'the butterknife is gray and made of metal', 'you should turn right', 'move to the bread', 'bread', 'the bread is to your front right on the counter top', 'bread', 'the bread is to your front right on the counter top', 'bread', 'the bread is to your front right on the counter top', 'cut the bread', 'bread', 'the bread is in front of you on the counter top', 'bread', 'the bread is in front of you on the counter top', 'bread', 'the bread is in front of you on the counter top', 'move to the microwave , open up the microwave', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'place in the microwave', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'close the microwave', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'grab the breadsliced', 'open the microwave', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'leave in the microwave', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'close the microwave', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'turn on the microwave', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'turn off the microwave', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'open the microwave , grab the breadsliced , close the microwave', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'microwave', 'the microwave is in front of you on the counter top', 'go to the countertop , leave on the countertop', 'countertop', 'the countertop is to your front right', 'countertop', 'the countertop is to your front right', 'countertop', 'the countertop is to your front right'], ['place two spray bottles on top of the white cabinet in the bathroom', 'go to the garbagecan , pick up the spraybottle', 'you should turn left', 'you should turn left', 'go to the dresser , put on the dresser', 'dresser', 'the dresser is to your rear right', 'dresser', 'the dresser is to your rear right', 'dresser', 'the dresser is tan', 'move to the toilet', 'toilet', 'the toilet is to your left', 'toilet', 'the toilet is to your left', 'toilet', 'the toilet is gray', 'put the spraybottle into the dresser', 'you should turn right', 'you should turn right'], ['put a chilled pan on the stove', 'grab the pan', 'pan', 'the pan is to your left on the stove burner', 'move to the fridge , cool the pan', 'pan', 'the pan is in front of you', 'go to the stoveburner , leave on the stoveburner', 'stoveburner', 'the stoveburner is behind you'], ['put a bowl with a knife on the counter with microwave on it', 'pick up the butterknife', 'butterknife', 'the butterknife is to your right on the dining table', 'you should turn right', 'you should turn right', 'go to the bowl , put in the bowl', 'bowl', 'the bowl is in front of you on the dining table', "you don ' t need to move", "you don ' t need to move", 'put the bowl into the countertop', 'bowl', 'the bowl is in front of you on the dining table', 'countertop', 'the countertop is black', 'bowl', 'the bowl is gray and made of ceramic']]
+            nouns = [['breadsliced', 'place', 'bread', 'slice', 'turn', 'right', 'metal', 'top', 'microwave', 'shelf', 'butterknife', 'move', 'counter', 'front', 'countertop'], ['bathroom', 'bottles', 'dresser', 'place', 'toilet', 'right', 'top', 'spray', 'move', 'spraybottle', 'cabinet', 'left'], ['fridge', 'pan', 'move', 'stove', 'stoveburner', 'burner', 'front'], ['right', 'bowl', 't', 'microwave', 'table', 'butterknife', 'dining', 'counter', 'knife', 'front', 'countertop']]
             # encode clip
-            emb_clip, lengths_clip = self.encode_clip_text(epoch, task_path, sentences, nouns, device=inputs['lang'].device)
+            emb_clip, lengths_clip = self.encode_clip_text(epoch, task_path, sentences, nouns, device="cuda")
 
             #emb_clipのデータ型をfloat32に変換
             emb_clip = emb_clip.to(torch.float32)
             emb_clip = self.lang_clip_fc(emb_clip)
 
             # encode deberta
-            emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, device=inputs['lang'].device)
+            emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, device="cuda")
 
             emb_deberta = self.lang_deberta_fc(emb_deberta)
             
             # concat clip and lang
-            emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device=inputs['lang'].device)
+            emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_clip, lengths_clip, device="cuda")
 
             # concat deberta and lang
-            emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device=inputs['lang'].device)
+            emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device="cuda")
 
 
             emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang

@@ -52,7 +52,6 @@ class EncoderVL(nn.Module):
         # create a mask for padded elements
 
         length_mask_pad = length_lang_max + length_frames_max + length_actions_max
-            
         mask_pad = torch.zeros(
             (len(emb_lang), length_mask_pad), device=emb_lang.device).bool()
         for i, (len_l, len_f, len_a) in enumerate(

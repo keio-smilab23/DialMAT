@@ -85,12 +85,12 @@ def cfg_train():
     clip_image = False
     clip_text = False
     clip_resnet = False
-    clip_deberta = True
-    deberta = False
+    clip_deberta = False
+    deberta = True
     mat_text = True
     mat_image = True
     mat_action = True
-    # mat_object = False
+    mat_object = True
 
     # GENERAL TRANING SETTINGS
     # random seed
@@ -145,9 +145,9 @@ def cfg_train():
     # size of transformer embeddings
     demb = 768 * 2
     # number of heads in multi-head attention
-    encoder_heads = 16
+    encoder_heads = 12
     # number of layers in transformer encoder
-    encoder_layers = 2
+    encoder_layers = 4
     # how many previous actions to use as input
     num_input_actions = 1
     # which encoder to use for language encoder (by default no encoder)
@@ -155,7 +155,7 @@ def cfg_train():
         'shared': True,
         'layers': 2,
         'pos_enc': True,
-        'instr_enc': False,
+        'instr_enc': True,
     }
     # which decoder to use for the speaker model
     decoder_lang = {

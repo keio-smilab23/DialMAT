@@ -56,6 +56,9 @@ class Model(base.Model):
         self.lang_mat = mat.AdversarialPerturbationAdder(args.demb)
         self.frames_mat = mat.AdversarialPerturbationAdder(args.demb)
         self.actions_mat = mat.AdversarialPerturbationAdder(args.demb)
+        self.object_mat = mat.AdversarialPerturbationAdder(args.demb)
+        self.resnet_mat = mat.AdversarialPerturbationAdder(args.demb//2)
+        self.clip_mat = mat.AdversarialPerturbationAdder(args.demb//2)
 
         self.frames_fc = nn.Linear(args.demb * 2, args.demb)
         self.lang_clip_fc = nn.Linear(768, args.demb)
@@ -325,6 +328,8 @@ class Model(base.Model):
 
             emb_deberta, lengths_deberta = self.encode_deberta(epoch, task_path, sentences, device=inputs['lang'].device)
 
+            emb_deberta = self.lang_deberta_fc(emb_deberta)
+
             emb_lang, lengths_lang = self.concat_embeddings_lang(emb_lang, lengths_lang, emb_deberta, lengths_deberta, device=inputs['lang'].device)
 
             emb_lang = self.dataset_enc(emb_lang, vocab) if self.dataset_enc else emb_lang
@@ -366,6 +371,9 @@ class Model(base.Model):
         #変更(CLIPのimage情報のみを用いる)
         emb_resnet, emb_object = self.embed_frames(inputs['frames'][0])
         emb_clip = inputs['frames'][1]
+        if self.args.mat_image:
+            emb_resnet = self.resnet_mat(emb_resnet)
+            emb_clip = self.clip_mat(emb_clip)
         emb_frames = torch.cat([emb_resnet, emb_clip], dim=2)
 
         #emb_frames:[2, max_, 768], lengths_frames:[2],emb_actions:[2,max_,768] (langのmaxとは違う), ex. inputs['frames']: [2, 72, 512, 7, 7]
@@ -376,12 +384,14 @@ class Model(base.Model):
 
         if self.args.mat_text:
             emb_lang = self.lang_mat(emb_lang)
-        if self.args.mat_image:
-            emb_frames = self.frames_mat(emb_frames)
+        # if self.args.mat_image:
+            # emb_frames = self.frames_mat(emb_frames)
         if self.args.mat_action:
             emb_actions = self.actions_mat(emb_actions)
 
         emb_object = emb_frames.clone()
+        if self.args.mat_object:
+            emb_object = self.object_mat(emb_object)
         emb_object = self.dec_input_object(emb_object)
 
         # if self.args.mat_object:
